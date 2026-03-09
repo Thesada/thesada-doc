@@ -1,18 +1,8 @@
-# Author/Organization
-author:
-  name: Thesada
-  url: https://thesada.cloud
-  
-theme: "minimal-mistakes-jekyll"
-minimal_mistakes_skin    : "default"
+locale: "en-CA"
+title: "Thesada Cloud Documentation"
+description: Thesada Cloud Documentation
+url: "https://thesada.cloud"
+baseurl: "/" 
+repository: "thesada/thesada-docs"
 
-# Site Settings
-locale                   : "en-CA"
-title                    : "Thesada"
-title_separator          : "-"
-
-description:  > # this means to ignore newlines until "baseurl:"
-  Research on machine learning, experimental design, economic inequality, and optimal policy
-url                      : "https://thesada.cloud"
-baseurl                  : "/" 
-repository               : "thesada/thesada-docs"
+theme: jekyll-theme-minimal
