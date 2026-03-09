@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Dark background -->
+  <rect width="32" height="32" rx="4" fill="#1a1a2e"/>
+  
+  <!-- Circuit board traces -->
+  <!-- Horizontal trace top -->
+  <line x1="4" y1="8" x2="14" y2="8" stroke="#e0e0e0" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Horizontal trace bottom -->
+  <line x1="18" y1="24" x2="28" y2="24" stroke="#e0e0e0" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Vertical trace left -->
+  <line x1="8" y1="8" x2="8" y2="18" stroke="#e0e0e0" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Vertical trace right -->
+  <line x1="24" y1="14" x2="24" y2="24" stroke="#e0e0e0" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Diagonal connector -->
+  <line x1="8" y1="18" x2="14" y2="24" stroke="#e0e0e0" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="14" y1="24" x2="18" y2="24" stroke="#e0e0e0" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Top right connector -->
+  <line x1="14" y1="8" x2="24" y2="8" stroke="#e0e0e0" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="24" y1="8" x2="24" y2="14" stroke="#e0e0e0" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Solder pads / nodes -->
+  <circle cx="8" cy="8" r="2" fill="#ffffff"/>
+  <circle cx="24" cy="8" r="2" fill="#ffffff"/>
+  <circle cx="8" cy="18" r="2" fill="#ffffff"/>
+  <circle cx="24" cy="24" r="2" fill="#ffffff"/>
+  <circle cx="14" cy="24" r="1.5" fill="#ffffff"/>
+  <circle cx="24" cy="14" r="1.5" fill="#ffffff"/>
+  <circle cx="14" cy="8" r="1.5" fill="#ffffff"/>
+
+  <!-- Central chip -->
+  <rect x="13" y="13" width="6" height="6" rx="1" fill="#ffffff"/>
+</svg>

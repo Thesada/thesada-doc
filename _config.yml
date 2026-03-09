@@ -5,7 +5,7 @@ url: "https://thesada.cloud"
 baseurl: ""
 repository: "thesada/thesada-doc"
 
-remote_theme: just_the_doce/just-the-docs
+remote_theme: just-the-docs/just-the-docs
 
 search_enabled: true
 heading_anchors: true
@@ -13,6 +13,7 @@ color_scheme: dark
 nav_sort: case_insensitive
 
 footer_content: "Thesada — CERN-OHL-P-2.0 / Apache-2.0 / CC BY 4.0"
+favicon_ico: "/assets/img/favicon.svg"
 
 aux_links:
   "GitHub":
@@ -24,3 +25,4 @@ aux_links_new_tab: true
 
 plugins:
   - jekyll-seo-tag
+  - jekyll-github-metadata
