@@ -46,6 +46,7 @@ unxz /root/haos_ova-<version>.qcow2.xz
 In the Proxmox web UI, click **Create VM** and configure each tab as follows.
 
 ### General
+
 | Setting | Value |
 |---|---|
 | VM ID | Your choice (e.g. `200`) |
@@ -53,11 +54,13 @@ In the Proxmox web UI, click **Create VM** and configure each tab as follows.
 | Start at boot | ✅ Enabled |
 
 ### OS
+
 | Setting | Value |
 |---|---|
 | Use CD/DVD disc image | **Do not use any media** |
 
 ### System
+
 | Setting | Value |
 |---|---|
 | Machine | `q35` |
@@ -69,11 +72,13 @@ In the Proxmox web UI, click **Create VM** and configure each tab as follows.
 - Delete the default SCSI disk. The HA image will be imported separately.
 
 ### CPU
+
 | Setting | Value |
 |---|---|
 | Cores | Minimum **2** |
 
 ### Memory
+
 | Setting | Value |
 |---|---|
 | RAM | Minimum **4096 MB** |
