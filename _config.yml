@@ -5,7 +5,7 @@ url: "https://thesada.cloud"
 baseurl: ""
 repository: "thesada/thesada-doc"
 
-theme: just-the-docs
+remote_theme: just_the_doce/just-the-docs
 
 search_enabled: true
 heading_anchors: true
