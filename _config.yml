@@ -1,8 +1,26 @@
 locale: "en-CA"
-title: "Thesada Cloud Documentation"
-description: Thesada Cloud Documentation
+title: "Thesada Documentation"
+description: "Open-source property monitoring platform"
 url: "https://thesada.cloud"
-baseurl: "/" 
-repository: "thesada/thesada-docs"
+baseurl: ""
+repository: "thesada/thesada-doc"
 
-theme: jekyll-theme-minimal
+theme: just-the-docs
+
+search_enabled: true
+heading_anchors: true
+color_scheme: dark
+nav_sort: case_insensitive
+
+footer_content: "Thesada — CERN-OHL-P-2.0 / Apache-2.0 / CC BY 4.0"
+
+aux_links:
+  "GitHub":
+    - "https://github.com/thesada"
+  "YouTube":
+    - "https://youtube.com/@FoothillsBuilds"
+
+aux_links_new_tab: true
+
+plugins:
+  - jekyll-seo-tag
