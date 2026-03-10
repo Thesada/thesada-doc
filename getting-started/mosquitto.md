@@ -6,7 +6,7 @@ nav_order: 3
 
 # Mosquitto MQTT Broker
 
-Mosquitto is the MQTT broker used by all nodes. It runs as a Home Assistant add-on and handles all sensor data published by ESPHome nodes — both on the local network and remotely over cellular.
+Mosquitto is the MQTT broker used by all nodes. It runs as a Home Assistant app and handles all sensor data published by ESPHome nodes — both on the local network and remotely over cellular.
 
 This guide covers:
 - Installing and configuring Mosquitto in Home Assistant
@@ -129,7 +129,7 @@ mosquitto_pub -h mqtt.yourdomain.com -p 8883 \
   -t 'test/hello' -m 'world'
 ```
 
-You should see `test/hello world` in the subscribe terminal. If the connection is refused, verify your port forwarding rule and confirm the certificate was issued successfully in the Let's Encrypt add-on logs.
+You should see `test/hello world` in the subscribe terminal. If the connection is refused, verify your port forwarding rule and confirm the certificate was issued successfully in the Let's Encrypt app logs.
 
 ---
 
@@ -137,8 +137,8 @@ You should see `test/hello world` in the subscribe terminal. If the connection i
 
 | Component | Status check |
 |---|---|
-| Mosquitto running | HA → Add-ons → Mosquitto → green |
+| Mosquitto running | HA → Settings → Apps → Mosquitto → green |
 | MQTT integration | HA → Settings → Integrations → MQTT → connected |
-| DDNS updating | Cloudflare A record matches your public IP |
+| DDNS updating | See [Home Assistant DNS & SSL](ha-dns-ssl.md) |
 | Port 8883 open | External `mosquitto_sub` connects |
 | TLS active | Connection uses port 8883 without certificate errors |

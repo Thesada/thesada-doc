@@ -8,3 +8,15 @@ has_children: true
 
 Each Thesada module monitors a specific system on the property.
 Select a module below for wiring diagrams, BOM, and ESPHome config.
+
+---
+
+## OWB Monitor
+
+*(Coming soon)* Outdoor wood boiler monitor. Tracks temperature and pump state to detect faults and alert when the boiler requires attention.
+
+---
+
+## SHT31 Monitor
+
+Temperature and humidity sensor module based on the Sensirion SHT31. Suitable for indoor and sheltered outdoor use. Reports readings to Home Assistant via ESPHome every 30 seconds.
