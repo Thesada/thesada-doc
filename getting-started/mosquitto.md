@@ -1,7 +1,7 @@
 ---
-title: MQTT Integration in Home Assistant
+title: MQTT Integration in HA
 parent: Getting Started
-nav_order: 2
+nav_order: 3
 ---
 
 # Mosquitto MQTT Broker
@@ -11,8 +11,6 @@ Mosquitto is the MQTT broker used by all nodes. It runs as a Home Assistant add-
 This guide covers:
 - Installing and configuring Mosquitto in Home Assistant
 - Creating an MQTT user
-- Setting up Cloudflare DDNS for a dynamic IP
-- Obtaining a TLS certificate via Let's Encrypt and Cloudflare DNS challenge
 - Configuring Mosquitto for secure external access on port 8883
 
 ---
@@ -20,8 +18,7 @@ This guide covers:
 ## Prerequisites
 
 - Home Assistant running and accessible (see [Proxmox — HAOS Install](proxmox-haos.md))
-- A Cloudflare account managing your domain
-- A Cloudflare API token with `Zone:DNS:Read` and `Zone:DNS:Edit` permissions
+- DNS, DDNS, and Let's Encrypt certificate configured (see [Home Assistant DNS & SSL](ha-dns-ssl.md))
 - A router capable of custom port forwarding rules
 
 ---
@@ -73,41 +70,7 @@ Terminal 1 should print `test/hello world`. If you see `Connection Refused: not 
 
 ---
 
-## 4. Cloudflare DDNS
-
-Remote nodes connect to the MQTT broker over the internet. Since your home IP is dynamic, you need a DNS record that updates automatically.
-
-### Create the DNS record
-
-1. Log in to Cloudflare
-2. Select your domain
-3. **DNS → Records → Add record**
-   - Type: `A`
-   - Name: `mqtt` (resolves to `mqtt.yourdomain.com`)
-   - IPv4: your current public IP (find it at for example [ifconfig.me](https://ifconfig.me))
-   - Proxy: **OFF** (grey cloud — DNS only) — MQTT is TCP, Cloudflare proxy does not support it
-
-### Create a Cloudflare API token
-
-1. Cloudflare dashboard → **My Profile → API Tokens**
-2. Click **Create Token**
-3. Use the **Edit zone DNS** template
-4. Scope it to your specific zone (domain)
-5. Copy the token — you will need it in the next step
-
-### Install Cloudflare DDNS add-on
-
-1. In Home Assistant go to **Settings → Devices & services → Add integration**
-2. Search **Cloudflare**
-3. Select **Cloudflare** (**Not Cloudflare R2**)
-4. Enter your API token and click **Submit**
-5. Select the Zone, then the Domain to update and click **Submit**
-
-The add-on checks your public IP periodically and updates the Cloudflare A record automatically when it changes.
-
----
-
-## 5. Port Forwarding
+## 4. Port Forwarding
 
 On your router, create a port forwarding rule:
 
@@ -124,60 +87,13 @@ Consult your router's documentation for port forwarding instructions.
 
 ---
 
-## 6. Let's Encrypt TLS Certificate
+## 5. TLS Certificate
 
-Mosquitto must use TLS for any external connections. The certificate is obtained via Let's Encrypt using the Cloudflare DNS challenge — no port 80 required.
-
-### Configure the Let's Encrypt add-on
-
-1. In Home Assistant go to **Settings → Apps**
-2. Open the **Let's Encrypt** add-on (install if not present)
-3. Go to the **Configuration** tab and set:
-
-```yaml
-domains:
-  - mqtt.yourdomain.com
-certfile: fullchain.pem
-keyfile: privkey.pem
-challenge: dns
-email: you@yourdomain.com
-dns:
-  provider: dns-cloudflare
-  cloudflare_api_token: YOUR_CLOUDFLARE_API_TOKEN
-```
-
-4. Click **Save**
-
-The add-on will obtain a certificate and store it at:
-- `/data/letsencrypt/live/mqtt.yourdomain.com/fullchain.pem`
-- `/data/letsencrypt/live/mqtt.yourdomain.com/privkey.pem`
-
-### Auto-renewal
-
-Let's Encrypt certificates expire every 90 days. The add-on does **not** auto-renew — you must set up an automation to restart it every 60 days.
-
-In Home Assistant go to **Settings → Automations → Create Automation → Edit in YAML** and paste:
-
-```yaml
-alias: Let's Encrypt Auto-Renew
-description: Restart Let's Encrypt add-on every 60 days to renew certificate
-trigger:
-  - platform: time
-    at: "03:00:00"
-condition:
-  - condition: template
-    value_template: >
-      {{ (now() - states.automation.lets_encrypt_auto_renew.attributes.last_triggered).days >= 60 }}
-action:
-  - service: hassio.addon_restart
-    data:
-      addon: core_letsencrypt
-mode: single
-```
+Mosquitto must use TLS for any external connections. The certificate is obtained via Let's Encrypt — see [Home Assistant DNS & SSL](ha-dns-ssl.md) for the full setup. Complete that guide before continuing here.
 
 ---
 
-## 7. Configure Mosquitto for TLS
+## 6. Configure Mosquitto for TLS
 
 Now that the certificate exists, enable TLS in Mosquitto.
 
@@ -195,7 +111,7 @@ keyfile: privkey.pem
 
 ---
 
-## 8. Test External MQTT
+## 7. Test External MQTT
 
 From any machine outside your network (or using your domain instead of local IP):
 

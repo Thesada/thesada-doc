@@ -1,7 +1,7 @@
 ---
-title: ESPHome Setup in Home Assistant
+title: ESPHome Setup in HA
 parent: Getting Started
-nav_order: 3
+nav_order: 4
 ---
 
 # ESPHome Setup
@@ -20,7 +20,7 @@ This guide covers:
 ## Prerequisites
 
 - Home Assistant running and accessible
-- Let's Encrypt certificate already obtained (see [Mosquitto MQTT Broker](mosquitto.md))
+- Let's Encrypt certificate already obtained (see [Home Assistant DNS & SSL](ha-dns-ssl.md))
 - ESPHome CLI installed on your PC/Mac:
 
 ```bash
@@ -157,4 +157,4 @@ thesada-cfg/
 
 The `.gitignore` prevents `secrets.yaml` from being committed. Only `secrets.yaml.example` is tracked.
 
-Never commit real credentials to the repo.
+**Never commit real credentials to the repo.**

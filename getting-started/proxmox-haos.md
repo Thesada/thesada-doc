@@ -1,5 +1,5 @@
 ---
-title: Proxmox — Home Assistant OS Install
+title: Proxmox — HAOS Install
 parent: Getting Started
 nav_order: 1
 ---
@@ -101,7 +101,7 @@ qm importdisk <VMID> /root/haos_ova-<version>.qcow2 local-lvm
 Example:
 
 ```bash
-qm importdisk 200 /root/haos_ova-14.0.qcow2 local-lvm
+qm importdisk 600 /root/haos_ova-14.0.qcow2 local-lvm
 ```
 
 ---
@@ -164,15 +164,15 @@ Example:
 ```bash
 ha network update enp6s18 \
   --ipv4-method static \
-  --ipv4-address 192.168.1.50/24 \
-  --ipv4-gateway 192.168.1.1
+  --ipv4-address 10.254.0.60/24 \
+  --ipv4-gateway 10.254.0.1
 ```
 
 ### Set DNS Servers
 
 ```bash
 ha network update <INTERFACE> \
-  --dns 192.168.1.1,8.8.8.8
+  --dns 10.0.0.1
 ```
 
 ### Verify
