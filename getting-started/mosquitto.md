@@ -21,7 +21,7 @@ This guide covers:
 
 - Home Assistant running and accessible (see [Proxmox — HAOS Install](proxmox-haos.md))
 - A Cloudflare account managing your domain
-- A Cloudflare API token with `Zone:Zone:Read` and `Zone:DNS:Edit` permissions
+- A Cloudflare API token with `Zone:DNS:Read` and `Zone:DNS:Edit` permissions
 - A router capable of custom port forwarding rules
 
 ---
