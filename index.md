@@ -8,7 +8,7 @@ nav_order: 1
 Thesada is an open-source modular property monitoring platform built on ESP32 hardware,
 ESPHome firmware, and Home Assistant.
 
-Every build on [Foothills Builds](https://youtube.com/@FoothillsBuilds) gets instrumented.
+Every build on [Foothills Builds](https://youtube.com/@FoothillsBuilds) gets fully documented.
 This site is the technical reference for all of it.
 
 ## Where to start

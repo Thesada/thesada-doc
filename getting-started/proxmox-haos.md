@@ -142,6 +142,8 @@ Note the IP address shown — you'll need it for web access and CLI config.
 
 Access the HA CLI from the VM console (no login needed on HAOS):
 
+![HA Onboarding]({{ site.baseurl }}/assets/img/getting-started/ha_ready.png)
+
 ```bash
 ha network info
 ```
@@ -190,6 +192,7 @@ Navigate to:
 ```
 http://<IP>:8123
 ```
+![HA Onboarding]({{ site.baseurl }}/assets/img/getting-started/ha_onboarding.png)
 
 The onboarding wizard will walk through:
 
@@ -207,8 +210,3 @@ The onboarding wizard will walk through:
 | `non-existent or non-regular file` on `qm importdisk` | Check spelling — extension is `.qcow2` not `.gcow2` |
 | Port 8123 not reachable after first boot | Delete VM and redo from step 2; known to resolve config.yaml issues |
 | QEMU agent connected but CPU/RAM missing in PVE | Known HAOS limitation; network stats still work |
-
-<!-- SCREENSHOT: HAOS shell prompt showing local IP on first boot -->
-<!-- SCREENSHOT: HA onboarding wizard — account creation screen -->
-<!-- SCREENSHOT: HA onboarding wizard — location and timezone screen -->
-<!-- SCREENSHOT: HA onboarding wizard — device discovery screen -->
