@@ -84,6 +84,7 @@ trigger:
     value_template: >
       {{ (states('sensor.house_loop_supply_temp') | float -
           states('sensor.house_loop_return_temp') | float) < 5 }}
+    for: "00:05:00"
 action:
   - action: notify.YOUR_NOTIFY_ENTITY
     data:

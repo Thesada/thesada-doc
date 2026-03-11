@@ -98,9 +98,10 @@ trigger:
 condition:
   - condition: template
     value_template: >
-      {{ (now() - states.automation.lets_encrypt_auto_renew.attributes.last_triggered).days >= 60 }}
+      {{ states.automation.lets_encrypt_auto_renew.attributes.last_triggered is none
+         or (now() - states.automation.lets_encrypt_auto_renew.attributes.last_triggered).days >= 60 }}
 action:
-  - service: hassio.addon_restart
+  - action: hassio.addon_restart
     data:
       addon: core_letsencrypt
 mode: single
