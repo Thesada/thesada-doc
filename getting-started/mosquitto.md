@@ -50,8 +50,8 @@ All nodes authenticate with a dedicated MQTT user.
 1. **Settings → Apps → Mosquitto broker**
 2. Select the **Configuration** Tab
 3. Click **Add** in **Options → Logins**
-3. Set a username (e.g. `mqtt-user`) and a strong password (24+ characters recommended)
-4. This user exists only for broker authentication
+4. Set a username (e.g. `mqtt-user`) and a strong password (24+ characters recommended)
+5. This user exists only for broker authentication
 
 ---
 

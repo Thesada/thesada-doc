@@ -136,7 +136,7 @@ The Telegram polling integration fires a `telegram_command` event when the bot r
 
 Create via **Settings → Automations → Create Automation → Edit in YAML**.
 
-Replace `YOUR_CHAT_ID` with your Telegram chat ID and `notify.YOUR_NOTIFY_ENTITY` with your actual notify entity.
+Replace `notify.YOUR_NOTIFY_ENTITY` with your actual notify entity.
 
 ```yaml
 alias: OWB Telegram /temp
@@ -163,8 +163,6 @@ action:
           Return:  {{ states('sensor.barn_loop_return_temp') | round(1) }}°C
           Delta:   {{ (states('sensor.barn_loop_supply_temp') | float - states('sensor.barn_loop_return_temp') | float) | round(1) }}°C
           Pump:    {{ states('sensor.barn_pump_current') | round(2) }} A
-      target:
-        chat_id: YOUR_CHAT_ID
 mode: single
 ```
 
