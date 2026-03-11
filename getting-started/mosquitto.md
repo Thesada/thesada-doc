@@ -25,12 +25,21 @@ This guide covers:
 
 ## 1. Install Mosquitto
 
-1. In Home Assistant go to **Settings → Devices and services → Add integration**
-2. Search for **MQTT**
-3. Select **MQTT**
-4. Click **Install**
-5. Once installed, select the **Mosquitto Mqtt Broker** service in the integration and enable **Start on boot** and **Watchdog**
-6. Click **Start**
+Mosquitto is a Home Assistant add-on (app), not an integration. Install it from the App Store.
+
+1. **Settings → Apps → App Store**
+2. Search **Mosquitto broker**
+3. Click **Mosquitto broker** and click **Install**
+4. Enable **Start on boot** and **Watchdog**
+5. Click **Start**
+
+### Add the MQTT Integration
+
+Once the broker is running, Home Assistant should auto-discover it and prompt you to add the MQTT integration. If it doesn't:
+
+1. **Settings → Devices & Services → Add Integration**
+2. Search **MQTT** and select it
+3. Click **Submit** — HA will connect to the local Mosquitto broker automatically
 
 ---
 
@@ -41,8 +50,8 @@ All nodes authenticate with a dedicated MQTT user.
 1. **Settings → Apps → Mosquitto broker**
 2. Select the **Configuration** Tab
 3. Click **Add** in **Options → Logins**
-3. Set a username (e.g. `mqtt-user`) and a strong password (24+ characters recommended)
-4. This user exists only for broker authentication
+4. Set a username (e.g. `mqtt-user`) and a strong password (24+ characters recommended)
+5. This user exists only for broker authentication
 
 ---
 

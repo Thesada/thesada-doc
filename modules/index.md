@@ -13,7 +13,7 @@ Select a module below for wiring diagrams, BOM, and ESPHome config.
 
 ## OWB Monitor
 
-*(Coming soon)* Outdoor wood boiler monitor. Tracks temperature and pump state to detect faults and alert when the boiler requires attention.
+Outdoor wood boiler monitor. Tracks supply and return temperatures on two loops, pump current draw, and sends alerts when the boiler requires attention.
 
 ---
 

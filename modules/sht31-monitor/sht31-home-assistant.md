@@ -45,9 +45,8 @@ trigger:
   - platform: time_pattern
     hours: "/1"
 action:
-  - action: notify.send_message
+  - action: notify.YOUR_NOTIFY_ENTITY
     data:
-      entity_id: notify.YOUR_NOTIFY_ENTITY
       message: |-
         Thesada SHT31 Report:
         Temperature: {{ states('sensor.thesada_sht31_temperature') | round(2) }}°C
