@@ -26,13 +26,15 @@ nav_order: 1
 thesada-fw/base/
 ├── platformio.ini                  ← build targets + library deps
 ├── config.h                        ← compile-time module enables + TLS flag
+├── TODO.md                         ← project task list
 ├── scripts/
-│   ├── patch_asynctcp.py           ← pre-build: patches AsyncTCP null-PCB crash
 │   └── copy_firmware.py            ← post-build: copies .bin to build/
+├── lib/
+│   └── AsyncTCP/                   ← vendored AsyncTCP v3.3.2 (null-PCB crash fixes)
 ├── data/
 │   ├── config.json                 ← runtime config (LittleFS)
 │   ├── config.json.example         ← template with all fields documented
-│   └── ca.crt                      ← optional: override built-in ISRG Root X1 CA
+│   └── ca.crt                      ← TLS CA cert (required for cert verification)
 └── src/
     ├── main.cpp
     ├── core/
@@ -199,7 +201,9 @@ automation:
 ### WiFi path (normal)
 - Multi-SSID: configure a list of networks; ranked by RSSI at scan time
 - NTP synced on connect (`pool.ntp.org` by default, configurable)
-- PubSubClient MQTT over TLS (port 8883, ISRG Root X1 or `/ca.crt` from LittleFS)
+- PubSubClient MQTT over TLS (port 8883)
+- Optional minimum send interval: `mqtt.send_interval_s` — messages within the window are queued, not dropped
+- Optional static IP: `wifi.static_ip` / `gateway` / `subnet` / `dns`
 
 ### Cellular fallback (LTE-M/NB-IoT)
 - Activates when all WiFi networks fail
@@ -208,14 +212,17 @@ automation:
 - `Cellular::begin()` is guarded — calling it again after init is a no-op
 
 ### CA certificate
-By default the ISRG Root X1 (Let's Encrypt) certificate is compiled in. To override (e.g. for a private broker), place your CA cert as `/ca.crt` in `data/` — it will be uploaded to LittleFS and loaded at runtime by both WiFi MQTT and the cellular modem.
+No certificate is compiled in. Place your CA cert PEM as `data/ca.crt` and upload to LittleFS (`pio run --target uploadfs`). Both WiFi MQTT and the cellular modem load it at boot. If absent, TLS connects without certificate verification and a warning is logged.
+
+### AsyncTCP (vendored)
+AsyncTCP v3.3.2 is vendored in `lib/AsyncTCP/` with null-pointer guards added to `_accept`, `_s_accept`, and `_s_accepted`. These prevent `LoadProhibited` crashes (EXCVADDR 0x00000030) when lwIP calls TCP callbacks with a null PCB or freed server pointer. The upstream patch script (`scripts/patch_asynctcp.py`) has been removed — the fix is now permanent in the vendored source.
 
 ---
 
 ## compile-time config (`config.h`)
 
 ```cpp
-#define FIRMWARE_VERSION "1.0.5"
+#define FIRMWARE_VERSION "1.0.7"
 
 // Enable/disable modules
 #define ENABLE_TEMPERATURE
