@@ -272,6 +272,28 @@ curl -X POST http://[ip]/api/config \
 | Upload valid `.bin` with correct password | `Done — device rebooting`; new version boots |
 | Serial shows `[INF][WebServer] OTA upload complete` | Clean OTA |
 
+**Using the upload script (recommended for development):**
+
+`scripts/ota_upload.py` handles access check, password prompt, and upload in one step. Run from `base/`:
+
+```bash
+# Build first
+~/.platformio/penv/bin/pio run -e esp32-s3-dev
+
+# Upload (prompts for password, does not echo it)
+python3 scripts/ota_upload.py 172.16.1.212
+
+# Custom username or binary path
+python3 scripts/ota_upload.py 172.16.1.212 --user admin --bin build/firmware.bin
+```
+
+The script checks credentials before uploading and prints the current device version so you can confirm which firmware is being replaced. After a successful upload the device restarts automatically.
+
+Verify the new version booted:
+```bash
+curl http://172.16.1.212/api/info
+```
+
 ---
 
 ## 11. Temperature Alerts
