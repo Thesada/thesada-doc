@@ -25,7 +25,7 @@ The config references secrets that must be present in `secrets.yaml` in the ESPH
 ## Key Config Notes
 
 **`mqtt:`**
-Unlike the SHT31 monitor which uses the ESPHome native API, the OWB monitor publishes via MQTT. This allows remote nodes on cellular to reach the broker at `mqtt.thesada.cloud` over port 8883 without requiring a direct connection to the HA instance.
+Unlike the SHT31 monitor which uses the ESPHome native API, the OWB monitor publishes via MQTT. This allows remote nodes on cellular to reach the broker at `mqtt.thesada.app` over port 8883 without requiring a direct connection to the HA instance.
 
 **`one_wire:`**
 All four DS18B20 sensors share a single GPIO pin using the 1-Wire protocol. Each sensor has a unique 64-bit address burned into the chip at the factory.
@@ -36,7 +36,7 @@ All four DS18B20 sensors share a single GPIO pin using the 1-Wire protocol. Each
 To run the scan, flash the node with `logger: level: DEBUG` and read the boot log — ESPHome will print all detected 1-Wire addresses.
 
 **`ads1115:`**
-The ADS1115 runs at I2C address `0x48` (default — ADDR pin to GND). Two differential channels are used: `A0_GND` for the house pump and `A1_GND` for the barn pump.
+The ADS1115 runs at I2C address `0x48` (default — ADDR pin to GND). Two differential channels are used: `A0_A1` for the house pump and `A2_A3` for the barn pump.
 
 **Collection vs publish interval**
 Sensors collect every 60 seconds. The `sliding_window_moving_average` filter accumulates 60 readings and publishes once per hour. This reduces MQTT traffic while preserving local data resolution.
@@ -55,7 +55,6 @@ The node runs a lightweight web server on port 80. This provides a local dashboa
 web_server:
   port: 80
 ```
-
 
 **`api: encryption: key:`**
 Required as of ESPHome 2026.1. Generate with `openssl rand -base64 32`.
@@ -102,13 +101,11 @@ This provides local data recovery if MQTT connectivity is lost. The SD card can 
 
 ## GPIO Pin Assignments
 
-> **TODO:** Confirm all GPIO assignments against the LILYGO T-SIM7080-S3 pinout before flashing.
-
 | Function | GPIO (placeholder) |
 |---|---|
-| 1-Wire (DS18B20) | GPIO4 |
-| I2C SDA (ADS1115) | GPIO8 |
-| I2C SCL (ADS1115) | GPIO9 |
+| 1-Wire (DS18B20) | GPIO12 |
+| I2C SDA (ADS1115) | GPIO2 |
+| I2C SCL (ADS1115) | GPIO1 |
 
 ---
 

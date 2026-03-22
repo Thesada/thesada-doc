@@ -16,20 +16,16 @@ Four DS18B20 waterproof probes mounted on pipes using hose clamps with thermal p
 
 | Sensor | Location | GPIO |
 |---|---|---|
-| House loop supply | Supply pipe — house loop | GPIO4 (1-Wire bus) |
-| House loop return | Return pipe — house loop | GPIO4 (1-Wire bus) |
-| Barn loop supply | Supply pipe — barn loop | GPIO4 (1-Wire bus) |
-| Barn loop return | Return pipe — barn loop | GPIO4 (1-Wire bus) |
-
-> **TODO:** Confirm GPIO4 against LILYGO T-SIM7080-S3 pinout before flashing.
+| House loop supply | Supply pipe — house loop | GPIO12 (1-Wire bus) |
+| House loop return | Return pipe — house loop | GPIO12 (1-Wire bus) |
+| Barn loop supply | Supply pipe — barn loop | GPIO12 (1-Wire bus) |
+| Barn loop return | Return pipe — barn loop | GPIO12 (1-Wire bus) |
 
 ### Mounting
 
 - Apply thermal paste to the pipe at each sensor location
 - Place the DS18B20 probe flat against the paste
 - Secure with a hose clamp sized to the pipe OD
-
-> **TODO:** Measure pipe OD at all four locations on site — needed for hose clamp sizing.
 
 ### 1-Wire Pull-up Resistor
 
@@ -45,14 +41,12 @@ The pumps are plug-in. A custom monitored outlet box routes each pump's hot cond
 
 | Sensor | Pump | ADS1115 Channel |
 |---|---|---|
-| House pump current | House loop pump | A0 (differential A0_GND) |
-| Barn pump current | Barn loop pump | A1 (differential A1_GND) |
+| House pump current | House loop pump | A0_A1 (differential) |
+| Barn pump current | Barn loop pump | A2_A3 (differential) |
 
-### Burden Resistor
+### SCT-013-030 Notes
 
-The SCT-013-030 requires a burden resistor across its output to convert current to voltage for the ADS1115. Without it the output will rail.
-
-> **TODO:** Confirm burden resistor value against ADS1115 input range (0–3.3V) before building the outlet box.
+The SCT-013-030 is the **voltage output** version with a built-in burden resistor. Output is 0-1V AC proportional to 0-30A. Connects directly to ADS1115 - no external resistor needed.
 
 ---
 
@@ -62,11 +56,9 @@ The SCT-013-030 requires a burden resistor across its output to convert current 
 |---|---|
 | VCC | 3.3V |
 | GND | GND |
-| SDA | GPIO8 |
-| SCL | GPIO9 |
+| SDA | GPIO2 |
+| SCL | GPIO1 |
 | ADDR | GND (default address 0x48) |
-
-> **TODO:** Confirm GPIO8/9 for I2C against LILYGO T-SIM7080-S3 pinout.
 
 ---
 

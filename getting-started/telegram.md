@@ -45,7 +45,7 @@ Before adding the chat ID to Home Assistant, open your bot in Telegram and send 
 1. **Settings → Devices & Services → Add Integration**
 2. Search for **Telegram bot**
 3. Select **Telegram bot**
-4. Choose **Polling** as the platform — this requires no port forwarding or public access
+4. Choose **Webhooks** as the platform - this requires HTTPS (already configured in the DNS & SSL guide) but delivers incoming commands instantly
 5. Enter your bot token and click **Submit**
 
 ---
