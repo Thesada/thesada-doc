@@ -104,8 +104,8 @@ This provides local data recovery if MQTT connectivity is lost. The SD card can 
 | Function | GPIO (placeholder) |
 |---|---|
 | 1-Wire (DS18B20) | GPIO12 |
-| I2C SDA (ADS1115) | GPIO2 |
-| I2C SCL (ADS1115) | GPIO1 |
+| I2C SDA (ADS1115) | GPIO1 |
+| I2C SCL (ADS1115) | GPIO2 |
 
 ---
 

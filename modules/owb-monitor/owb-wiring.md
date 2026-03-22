@@ -56,8 +56,8 @@ The SCT-013-030 is the **voltage output** version with a built-in burden resisto
 |---|---|
 | VCC | 3.3V |
 | GND | GND |
-| SDA | GPIO2 |
-| SCL | GPIO1 |
+| SDA | GPIO1 |
+| SCL | GPIO2 |
 | ADDR | GND (default address 0x48) |
 
 ---
