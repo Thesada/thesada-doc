@@ -137,6 +137,12 @@ The same commands work in both the serial terminal and the web terminal.
 | GET `http://[ip]/` with wrong password | 401, no dashboard |
 | Dashboard loads with correct password | Sensor table visible |
 | Sensor values update every ~60 s | Timestamp refreshes |
+| MQTT status bar visible above sensor table | Green dot + `MQTT connected` + last publish time |
+| MQTT disconnected state | Red dot + `MQTT disconnected` |
+| Admin → Terminal tab | `[connected]` appears; live log lines flow in |
+| Log level filter set to `WRN` | Only `[WRN]` lines visible; others hidden |
+| Log level filter set to `ALL` | All log lines visible again |
+| Clear button | Terminal output cleared |
 | Admin → Terminal → type `version` | Firmware version returned via WebSocket |
 | Admin → Terminal → type `help` | All commands listed |
 
@@ -152,7 +158,7 @@ curl -s -u admin:changeme \
   -X POST http://[ip]/api/cmd \
   -H 'Content-Type: application/json' \
   -d '{"cmd":"version"}'
-# → {"ok":true,"output":["thesada-fw v1.0.9 ..."]}
+# → {"ok":true,"output":["thesada-fw v1.0.10 ..."]}
 
 # wrong password → 401
 curl -s -u admin:wrong \
@@ -164,7 +170,7 @@ curl -s -u admin:wrong \
 
 | Check | Expected |
 |---|---|
-| POST `/api/cmd` `{"cmd":"version"}` with correct password | `{"ok":true,"output":["thesada-fw v1.0.9 ..."]}` |
+| POST `/api/cmd` `{"cmd":"version"}` with correct password | `{"ok":true,"output":["thesada-fw v1.0.10 ..."]}` |
 | POST `/api/cmd` `{"cmd":"heap"}` | `{"ok":true,"output":["Free: XXXXXX B ..."]}` |
 | POST `/api/cmd` `{"cmd":"xyzzy"}` | `{"ok":true,"output":["Unknown command: xyzzy"]}` |
 | POST `/api/cmd` with wrong password | `401 Unauthorized` |
@@ -177,7 +183,44 @@ python tests/test_firmware.py --web-pass changeme
 
 ---
 
-## 6. Config Editor
+## 6. Security
+
+**Rate limiting** — 5 failed logins lock out the source IP for 30 s:
+
+```bash
+for i in $(seq 1 6); do
+  curl -s -u admin:wrong http://[ip]/api/auth/check
+  echo
+done
+# Attempts 1-5 → {"ok":false,"error":"Unauthorized"}
+# Attempt 6   → {"ok":false,"error":"Too many attempts — wait 30s"}
+```
+
+**WebSocket auth** — unauthenticated direct connections are rejected:
+
+```bash
+curl -i http://[ip]/ws/serial \
+  -H "Upgrade: websocket" \
+  -H "Connection: Upgrade" \
+  -H "Sec-WebSocket-Key: dGhlc2FtcGxlbm9uY2U=" \
+  -H "Sec-WebSocket-Version: 13"
+# → 101 (handshake completes), then immediately receives WS close frame
+# Serial log shows: [WRN][WebServer] WS: rejected — not pre-authorized
+```
+
+**WS token endpoint** — requires auth:
+
+```bash
+curl http://[ip]/api/ws/token
+# → {"ok":false,"error":"Unauthorized"}
+
+curl -u admin:changeme http://[ip]/api/ws/token
+# → {"ok":true}
+```
+
+---
+
+## 7. Config Editor
 
 | Check | Expected |
 |---|---|
@@ -195,7 +238,7 @@ curl -X POST http://[ip]/api/config \
 
 ---
 
-## 6. Lua Scripting
+## 8. Lua Scripting
 
 | Check | Expected |
 |---|---|
@@ -208,7 +251,7 @@ curl -X POST http://[ip]/api/config \
 
 ---
 
-## 7. OTA (pull-based)
+## 9. OTA (pull-based)
 
 | Check | Expected |
 |---|---|
@@ -221,7 +264,7 @@ curl -X POST http://[ip]/api/config \
 
 ---
 
-## 8. OTA (push via web)
+## 10. OTA (push via web)
 
 | Check | Expected |
 |---|---|
@@ -231,7 +274,7 @@ curl -X POST http://[ip]/api/config \
 
 ---
 
-## 9. Temperature Alerts
+## 11. Temperature Alerts
 
 Set `temp_high_c` just below current room temperature to trigger immediately.
 
@@ -246,7 +289,7 @@ Set `temp_high_c` just below current room temperature to trigger immediately.
 
 ---
 
-## 10. Webhook
+## 12. Webhook
 
 Set `webhook.url` to a local netcat listener:
 ```bash
@@ -258,7 +301,7 @@ Trigger an alert. Netcat should receive the POST with `{"value":"[overheat] ..."
 
 ---
 
-## 11. SD Card Logging
+## 13. SD Card Logging
 
 | Check | Expected |
 |---|---|
@@ -280,7 +323,7 @@ Both files should appear in `ls /sd/`. Reset `max_file_kb` to `1024` when done.
 
 ---
 
-## 12. Cellular Fallback
+## 14. Cellular Fallback
 
 | Check | Expected |
 |---|---|

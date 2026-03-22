@@ -369,7 +369,7 @@ AsyncTCP v3.3.2 is vendored in `lib/AsyncTCP/` with null-pointer guards added to
 ## Compile-time config (`config.h`)
 
 ```cpp
-#define FIRMWARE_VERSION "1.0.9"
+#define FIRMWARE_VERSION "1.0.10"
 
 // Enable/disable modules
 #define ENABLE_TEMPERATURE
@@ -419,16 +419,27 @@ Accessible at `http://[device-ip]/` — requires login (credentials from `web` c
 
 | Route | Method | Auth | Description |
 |---|---|---|---|
-| `/` | GET | public | Live sensor dashboard |
+| `/` | GET | public | Live sensor dashboard with MQTT status bar |
 | `/api/info` | GET | public | Firmware version, build date, device name |
-| `/api/state` | GET | public | Current sensor readings as JSON |
+| `/api/state` | GET | public | Current sensor readings as JSON (includes `_mqtt` metadata) |
 | `/api/config` | GET | yes | Read `config.json` |
 | `/api/config` | POST | yes | Write `config.json`, restart device |
 | `/api/backup` | POST | yes | Copy `config.json` to SD card |
 | `/api/cmd` | POST | yes | Run any Shell command, get JSON output |
 | `/api/restart` | POST | yes | Reboot device |
+| `/api/ws/token` | GET | yes | Issue a 30 s IP-bound WS auth grant (required before opening WebSocket) |
 | `/ota` | POST | yes | Upload firmware `.bin` (push OTA) |
-| `/ws/serial` | WS | public | Bidirectional terminal — log stream + all Shell commands |
+| `/ws/serial` | WS | token | Bidirectional terminal — log stream + all Shell commands |
+
+**Dashboard** — public read-only view:
+- Sensor table polls `/api/state` every 5 s
+- MQTT status bar: green/red dot, connected state, last publish timestamp (from `_mqtt` key in `/api/state`)
+
+**Admin terminal** — auth-gated WebSocket terminal:
+- Streams all firmware log lines in real time
+- Log level filter: ALL / INF / WRN / ERR / DBG (client-side, 500-line ring buffer)
+- Clear button; auto-reconnects on disconnect
+- WebSocket auth: JS fetches `/api/ws/token` (Basic Auth) before opening the socket; the server grants the caller IP 30 s access; `WS_EVT_CONNECT` verifies and closes unauthenticated connections immediately
 
 **WebSocket / serial terminal commands:** all Shell built-ins (see Shell section above). Type `help` for the full list.
 
@@ -497,6 +508,31 @@ The timestamp is inserted between the log level and the tag. `Log::write()` chec
 6. Add one `#ifdef ENABLE_NEWMODULE` block to `ModuleRegistry.cpp`
 
 No other files touched.
+
+---
+
+## Security
+
+| Control | Implementation |
+|---|---|
+| Dashboard + `/api/state` | Public (read-only sensor data) |
+| All admin endpoints | HTTP Basic Auth (credentials from `web.user` / `web.password` in `config.json`) |
+| Rate limiting | `/api/auth/check`: 5 failed attempts per source IP triggers a 30 s lockout (returns 429) |
+| WebSocket terminal | Requires prior `GET /api/ws/token` (auth-gated); server records caller IP as authorized for 30 s (one-time use); `WS_EVT_CONNECT` rejects connections without a valid grant |
+| TLS | All MQTT and OTA HTTPS uses the CA cert from `/ca.crt` on LittleFS; `setInsecure()` fallback logs a warning |
+
+**WebSocket auth flow:**
+
+```
+1. JS calls GET /api/ws/token  (Authorization: Basic ...)
+2. Server records remoteIP → authorized for 30 s
+3. JS opens ws://device/ws/serial  (no credentials in URL)
+4. WS_EVT_CONNECT: server checks remoteIP against grant table → allow or close
+```
+
+Unauthenticated WebSocket connections (e.g. direct curl or wscat) are accepted at TCP level (101 Switching Protocols) then immediately closed with a WS close frame. The rejection is logged as `[WRN][WebServer] WS: rejected — not pre-authorized`.
+
+**Note:** The web interface uses HTTP, not HTTPS. Admin credentials transit in cleartext on the LAN. For internet-exposed deployments, put the device behind a reverse proxy with TLS termination.
 
 ---
 
