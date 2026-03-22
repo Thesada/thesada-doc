@@ -118,7 +118,42 @@ The same commands work in both the serial terminal and the web terminal.
 
 ---
 
-## 5. Config Editor
+## 5. /api/cmd (HTTP Shell)
+
+All Shell commands are available over HTTP. Requires auth. Run the test script with `--web-pass` to enable automated checks, or test manually with curl:
+
+```bash
+# version command
+curl -s -u admin:changeme \
+  -X POST http://[ip]/api/cmd \
+  -H 'Content-Type: application/json' \
+  -d '{"cmd":"version"}'
+# → {"ok":true,"output":["thesada-fw v1.0.9 ..."]}
+
+# wrong password → 401
+curl -s -u admin:wrong \
+  -X POST http://[ip]/api/cmd \
+  -H 'Content-Type: application/json' \
+  -d '{"cmd":"version"}'
+# → {"ok":false,"error":"Unauthorized"}
+```
+
+| Check | Expected |
+|---|---|
+| POST `/api/cmd` `{"cmd":"version"}` with correct password | `{"ok":true,"output":["thesada-fw v1.0.9 ..."]}` |
+| POST `/api/cmd` `{"cmd":"heap"}` | `{"ok":true,"output":["Free: XXXXXX B ..."]}` |
+| POST `/api/cmd` `{"cmd":"xyzzy"}` | `{"ok":true,"output":["Unknown command: xyzzy"]}` |
+| POST `/api/cmd` with wrong password | `401 Unauthorized` |
+| POST `/api/cmd` with malformed JSON body | `400` / `{"ok":false,"error":"..."}` |
+
+**Test script:**
+```bash
+python tests/test_firmware.py --web-pass changeme
+```
+
+---
+
+## 6. Config Editor
 
 | Check | Expected |
 |---|---|

@@ -155,6 +155,7 @@ EventBus::subscribe("temperature", [](JsonObject data) {
 **Transport wiring:**
 - Serial: `main.cpp` reads characters, calls `Shell::execute(line, serialOut)` on newline
 - WebSocket: `WebServer.cpp` receives WS data, calls `Shell::execute(cmd, [client](line){ client->text(line); })`
+- HTTP: `POST /api/cmd` with `{"cmd":"..."}` collects output lines into a JSON array and returns `{"ok":true,"output":[...]}`
 
 **Registering a command:**
 ```cpp
@@ -424,6 +425,7 @@ Accessible at `http://[device-ip]/` — requires login (credentials from `web` c
 | `/api/config` | GET | yes | Read `config.json` |
 | `/api/config` | POST | yes | Write `config.json`, restart device |
 | `/api/backup` | POST | yes | Copy `config.json` to SD card |
+| `/api/cmd` | POST | yes | Run any Shell command, get JSON output |
 | `/api/restart` | POST | yes | Reboot device |
 | `/ota` | POST | yes | Upload firmware `.bin` (push OTA) |
 | `/ws/serial` | WS | public | Bidirectional terminal — log stream + all Shell commands |
