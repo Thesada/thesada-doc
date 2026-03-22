@@ -6,7 +6,36 @@ nav_order: 1
 
 # OWB Monitor — Wiring
 
-> **TODO:** Wiring diagram to be added after first site visit. GPIO pin assignments to be confirmed against LILYGO T-SIM7080-S3 pinout.
+## Wiring Diagram
+
+```
+                    LILYGO T-SIM7080-S3
+                   ┌─────────────────────┐
+       DC1 (3V3) ──┤ 3V3                 │
+             GND ──┤ GND                 │
+                   │                     │
+          GPIO12 ──┤ 1-Wire ─────────────┼──[4.7kΩ]── DC1 (3V3)
+                   │          │          │
+                   │          ├── DS18B20 (House loop supply)
+                   │          ├── DS18B20 (House loop return)
+                   │          ├── DS18B20 (Barn loop supply)
+                   │          └── DS18B20 (Barn loop return)
+                   │                     │
+            GPIO1 ──┤ SDA ───────────────── ADS1115 SDA
+            GPIO2 ──┤ SCL ───────────────── ADS1115 SCL
+                   └─────────────────────┘
+
+    ADS1115 (addr 0x48)
+   ┌──────────────────────────────────────┐
+   │ VCC  ── DC1 (3V3)                    │
+   │ GND  ── GND                          │
+   │ ADDR ── GND                          │
+   │ A0 ──┐  SCT-013-030 (house pump)     │
+   │ A1 ──┘                               │
+   │ A2 ──┐  SCT-013-030 (barn pump)      │
+   │ A3 ──┘                               │
+   └──────────────────────────────────────┘
+```
 
 ---
 
@@ -54,11 +83,11 @@ The SCT-013-030 is the **voltage output** version with a built-in burden resisto
 
 | ADS1115 Pin | LILYGO T-SIM7080-S3 Pin |
 |---|---|
-| VCC | 3.3V |
+| VCC | DC1 (3V3) |
 | GND | GND |
 | SDA | GPIO1 |
 | SCL | GPIO2 |
-| ADDR | GND (default address 0x48) |
+| ADDR | GND (address 0x48) |
 
 ---
 

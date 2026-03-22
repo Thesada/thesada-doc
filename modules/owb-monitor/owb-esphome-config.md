@@ -6,13 +6,16 @@ nav_order: 2
 
 # OWB Monitor — ESPHome Config
 
-Full ESPHome YAML configuration for the OWB monitor node.
+{: .warning }
+> This configuration is not actively developed. The OWB monitor runs [custom firmware (thesada-fw)](../../firmware/fw-architecture.md) instead.
+>
+> ESPHome was evaluated for this node but the LILYGO T-SIM7080-S3 hardware requires low-level control of the AXP2101 PMU and SIM7080G modem that ESPHome cannot provide without significant custom component work. The custom firmware handles these directly.
 
 ---
 
 ## Config File
 
-Location in repo: [`thesada-cfg/esphome/owb-monitor.yaml`](https://github.com/Thesada/thesada-cfg/blob/main/esphome/owb-monitor.yaml)
+Location in repo: [`thesada-cfg/esphome/thesada-owb.yaml`](https://github.com/Thesada/thesada-cfg/blob/main/esphome/thesada-owb.yaml)
 
 ---
 
