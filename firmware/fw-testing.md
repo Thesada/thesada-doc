@@ -51,6 +51,12 @@ The script runs 13 test groups — 6 fully automated (parses serial output), 7 m
 | Serial shows `[INF][Lua] /scripts/rules.lua executed` | Lua rules loaded |
 | Serial shows `[INF][Boot] Ready. Type 'help' for commands.` | Boot complete |
 
+**NTP log timestamps:** once NTP syncs, log lines gain an ISO 8601 timestamp between the level and the tag:
+```
+[INF][2026-03-22T14:32:00Z][WiFi] Connected to myssid
+```
+Before sync the format is `[INF][WiFi] ...`. Run `ntp` to confirm — it reports `log timestamps: active` or `log timestamps: pending sync`.
+
 **Quick check via shell:**
 ```
 selftest
@@ -83,7 +89,7 @@ The same commands work in both the serial terminal and the web terminal.
 | `uptime` | `0d 00:05:12` |
 | `ifconfig` | `WiFi: connected` + IP, SSID, RSSI, MAC |
 | `ping 8.8.8.8` | `8.8.8.8 resolved to 8.8.8.8` |
-| `ntp` | `NTP: synced  UTC: 2026-03-22T...` |
+| `ntp` | `NTP: synced  UTC: 2026-03-22T...` + `log timestamps: active` |
 | `mqtt` | `MQTT: connected  broker: ...:8883` |
 | `module.list` | Lists enabled modules with `[x]` |
 | `ls /` | LittleFS root listing |
