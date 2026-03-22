@@ -63,7 +63,6 @@ thesada-fw/base/
         ├── cellular/               ← cellular module (alert routing via LTE)
         ├── sd/                     ← SD card CSV logger
         ├── telegram/               ← temperature threshold alerts + webhook
-        ├── current/                ← current sensor module
         └── pwm/                    ← PWM output
 ```
 
