@@ -2,6 +2,7 @@
 title: Wiring
 parent: OWB Monitor
 nav_order: 1
+description: "Wiring diagram for the OWB monitor -- DS18B20 1-Wire bus, ADS1115 I2C, CT clamp connections."
 ---
 
 # OWB Monitor — Wiring

@@ -2,6 +2,7 @@
 title: Testing
 parent: Firmware
 nav_order: 2
+description: "Manual and automated test checklist for thesada-fw firmware -- API, OTA, MQTT, sensors, and WebSocket verification."
 ---
 
 # Firmware Testing

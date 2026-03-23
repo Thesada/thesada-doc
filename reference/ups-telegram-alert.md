@@ -2,6 +2,7 @@
 title: UPS On-Battery Telegram Alert
 parent: Reference
 nav_order: 3
+description: "Send Telegram alerts when UPS switches to battery power using NUT and Home Assistant automations."
 ---
 
 # UPS On-Battery Telegram Alert

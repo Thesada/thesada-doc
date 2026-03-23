@@ -2,6 +2,7 @@
 title: Network Architecture
 parent: Reference
 nav_order: 1
+description: "Network design with VLAN segmentation -- IoT, DMZ, guest isolation on OpenWrt with firewall rules and traffic flows."
 ---
 
 # Network Architecture and IPAM

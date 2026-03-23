@@ -2,6 +2,7 @@
 title: SSH Identity Switching for Multiple GitHub Orgs
 parent: Troubleshooting
 nav_order: 4
+description: "Use different SSH keys for different GitHub organisations with host aliases and includeIf."
 ---
 
 # Using Different SSH Keys for Different GitHub Organisations

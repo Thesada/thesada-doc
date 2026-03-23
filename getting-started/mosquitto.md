@@ -2,6 +2,7 @@
 title: MQTT Integration in HA
 parent: Getting Started
 nav_order: 3
+description: "Configure the Mosquitto MQTT broker as a Home Assistant add-on with TLS encryption."
 ---
 
 # Mosquitto MQTT Broker

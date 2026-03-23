@@ -2,6 +2,7 @@
 title: Proxmox — HAOS Install
 parent: Getting Started
 nav_order: 1
+description: "Install Home Assistant OS as a VM on Proxmox VE with dedicated networking and USB passthrough."
 ---
 
 # Home Assistant OS on Proxmox VE 9 — Install & Initial Config

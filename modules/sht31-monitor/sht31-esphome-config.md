@@ -2,6 +2,7 @@
 title: ESPHome Config
 parent: SHT31 Monitor
 nav_order: 2
+description: "ESPHome YAML configuration for the SHT31 temperature and humidity monitor."
 ---
 
 # SHT31 Monitor — ESPHome Config

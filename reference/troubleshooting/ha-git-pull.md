@@ -2,6 +2,7 @@
 title: HA Git Pull Add-on with Deploy Keys
 parent: Troubleshooting
 nav_order: 6
+description: "Fix Home Assistant Git pull add-on authentication with SSH deploy keys."
 ---
 
 # Home Assistant Git Pull Add-on Authentication

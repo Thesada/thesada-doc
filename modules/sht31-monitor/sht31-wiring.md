@@ -2,6 +2,7 @@
 title: Wiring
 parent: SHT31 Monitor
 nav_order: 1
+description: "Wiring diagram for the SHT31 monitor -- I2C connections to Freenove ESP32-S3."
 ---
 
 # SHT31 Monitor — Wiring

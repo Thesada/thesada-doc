@@ -2,6 +2,7 @@
 title: Telegram Alerts in Home Assistant
 parent: Troubleshooting
 nav_order: 3
+description: "Set up Telegram bot alerts in Home Assistant -- webhook mode, automation syntax, bot commands."
 ---
 
 # Telegram Bot Alerts from Home Assistant

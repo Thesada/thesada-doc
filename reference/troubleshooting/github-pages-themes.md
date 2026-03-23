@@ -2,6 +2,7 @@
 title: GitHub Pages with Third-Party Jekyll Themes
 parent: Troubleshooting
 nav_order: 5
+description: "Fix GitHub Pages build failures with third-party Jekyll themes using a GitHub Actions workflow."
 ---
 
 # GitHub Pages Not Building with a Third-Party Jekyll Theme

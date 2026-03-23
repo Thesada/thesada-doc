@@ -2,6 +2,7 @@
 title: mDNS Across VLANs (OpenWrt)
 parent: Troubleshooting
 nav_order: 1
+description: "Fix mDNS discovery across VLANs on OpenWrt using mdns-repeater and correct firewall rules."
 ---
 
 # mDNS Not Working Across VLANs on OpenWrt

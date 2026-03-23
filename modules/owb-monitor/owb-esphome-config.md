@@ -2,6 +2,7 @@
 title: ESPHome Config
 parent: OWB Monitor
 nav_order: 2
+description: "ESPHome YAML configuration for the OWB monitor node (obsolete -- OWB now runs thesada-fw custom firmware)."
 ---
 
 # OWB Monitor — ESPHome Config

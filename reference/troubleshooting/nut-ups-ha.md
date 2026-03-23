@@ -2,6 +2,7 @@
 title: NUT UPS Integration with Home Assistant
 parent: Troubleshooting
 nav_order: 2
+description: "Fix NUT UPS integration not connecting from Home Assistant -- upsd binding, firewall, and secure setup."
 ---
 
 # NUT UPS Not Connecting from Home Assistant

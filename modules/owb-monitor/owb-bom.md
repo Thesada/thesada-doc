@@ -2,6 +2,7 @@
 title: Bill of Materials
 parent: OWB Monitor
 nav_order: 1
+description: "Bill of materials for the outdoor wood boiler monitoring node -- DS18B20, CT clamps, ADS1115, LILYGO T-SIM7080-S3."
 ---
 
 # OWB Monitor - Bill of Materials
