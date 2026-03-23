@@ -362,7 +362,20 @@ Both files should appear in `ls /sd/`. Reset `max_file_kb` to `1024` when done.
 
 ---
 
-## 15. Cellular Fallback
+## 15. Deep Sleep
+
+| Check | Expected |
+|---|---|
+| `sleep` command with sleep disabled | `Sleep: disabled  boot #1` |
+| Set `sleep.enabled: true, sleep_s: 30, wake_s: 30`, restart | `[INF][Sleep] Enabled - awake 30s, sleep 30s (boot #1)` |
+| Wait 30s | Device goes to sleep (unreachable for 30s) |
+| Wait another 30s | Device wakes, boot count increments |
+| `sleep` command after several cycles | `boot #N` incrementing, last OTA check persisted |
+| Set `sleep.enabled: false`, restart | Normal continuous operation restored |
+
+---
+
+## 16. Cellular Fallback
 
 | Check | Expected |
 |---|---|

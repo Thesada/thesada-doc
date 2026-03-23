@@ -59,7 +59,8 @@ thesada-fw/base/
     │   ├── Cellular.h/.cpp         ← SIM7080G modem-native MQTT over TLS
     │   ├── PowerManager.h/.cpp     ← AXP2101 PMU init, battery getters, heartbeat LED
     │   ├── WebServer.h/.cpp        ← dashboard, config editor, file browser, terminal
-    │   └── dashboard.html.h        ← PROGMEM HTML for the web dashboard (extracted from WebServer.cpp)
+    │   ├── dashboard.html.h        ← PROGMEM HTML for the web dashboard (extracted from WebServer.cpp)
+    │   └── SleepManager.h/.cpp    ← deep sleep orchestrator (RTC memory, graceful shutdown)
     └── modules/
         ├── temperature/            ← DS18B20 one-wire sensors
         ├── ads1115/                ← ADS1115 differential current sensing
@@ -89,6 +90,7 @@ setup()
   ScriptEngine::begin()   → Lua state, executes main.lua + rules.lua
                             registers MQTT cmd/lua/reload handler
   ModuleRegistry::begin() → begin() on all enabled modules
+  SleepManager::begin()   → reads sleep config, sets wake deadline, inits RTC data
 
 loop()
   Serial shell            → reads characters, executes line on newline via Shell::execute()
@@ -97,6 +99,7 @@ loop()
   OTAUpdate::loop()       → periodic interval check (WiFi only)
   WebServer::loop()       → handle deferred restarts
   ModuleRegistry::loop()  → loop() on all enabled modules
+  SleepManager::loop()    → checks wake deadline, triggers graceful shutdown + deep sleep
 ```
 
 ---
@@ -180,6 +183,7 @@ Shell::registerCommand("name", "one-line help text", [](int argc, char** argv, S
 | `uptime` | Days + HH:MM:SS |
 | `sensors` | All configured sensors with addresses/pins/mux/gain + battery reading |
 | `battery` | Voltage, percent, charging state |
+| `sleep` | Sleep enabled/disabled, boot count, wake/sleep times, last OTA check |
 | `selftest` | 10-point check with pass/fail/warn per item |
 | `ls [path]` | Directory listing with file sizes |
 | `cat <path>` | Print file contents |
@@ -299,6 +303,46 @@ end)
 ```
 
 Reference: [Xinyuan-LilyGO/LilyGo-T-SIM7080G](https://github.com/Xinyuan-LilyGO/LilyGo-T-SIM7080G) examples (MIT licence).
+
+---
+
+## Deep Sleep (SleepManager)
+
+`SleepManager` orchestrates a wake/sleep cycle for battery-powered deployments. When enabled, the device stays awake for `wake_s` seconds (takes readings, publishes to MQTT, handles OTA), then enters ESP32 deep sleep for `sleep_s` seconds. Deep sleep resets the CPU - on wake, the full boot sequence runs from `setup()`.
+
+**Config:**
+```json
+"sleep": {
+  "enabled": false,
+  "sleep_s": 300,
+  "wake_s":  30
+}
+```
+
+- `sleep_s` minimum: 10 seconds
+- `wake_s` minimum: 10 seconds
+- Default: disabled (continuous operation)
+
+**RTC memory** (persists across deep sleep, cleared on power cycle):
+- `bootCount` - increments on every wake
+- `lastOtaCheck` - UTC epoch of last OTA manifest check
+
+**OTA awareness:** When sleep is enabled, `OTAUpdate` uses wall clock time (NTP) + the RTC-persisted last check time instead of `millis()` (which resets on every wake). OTA only checks when the configured interval has actually elapsed in real time.
+
+**Graceful shutdown sequence:**
+1. Publish `"sleeping"` to `<prefix>/status` via MQTT
+2. Flush MQTT queue (20 iterations x 50ms)
+3. Disconnect WiFi
+4. Configure RTC timer wake source
+5. Enter `esp_deep_sleep_start()`
+
+**Shell command:**
+```
+sleep
+  Sleep: enabled  boot #6
+    wake 30s  sleep 300s
+    last OTA check: 1774306670
+```
 
 ---
 
@@ -502,7 +546,8 @@ See `data/config.json.example` for all fields. Key sections:
   "sd":       { "enabled": true, "pin_clk": 38, "pin_cmd": 39, "pin_data": 40 },
   "telegram": { "bot_token": "", "chat_ids": [], "alerts": [ { "enabled": true, "name": "overheat", "temp_high_c": 40.0 } ] },
   "webhook":  { "url": "", "message_template": "{{value}}" },
-  "battery":  { "enabled": true, "interval_s": 60, "low_pct": 20 },
+  "battery":  { "enabled": true, "interval_s": 60, "low_pct": 20, "charge_ma": 300, "charge_v": 4.2 },
+  "sleep":    { "enabled": false, "sleep_s": 300, "wake_s": 30 },
   "ota":      { "enabled": true, "manifest_url": "https://github.com/Thesada/thesada-fw/releases/latest/download/firmware.json", "check_interval_s": 21600 }
 }
 ```
