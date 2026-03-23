@@ -294,15 +294,23 @@ HTTP(S) pull-based OTA. The device fetches a JSON manifest, compares semver, and
 
 **Triggers:**
 1. Periodic interval check (default 6 h, configurable via `ota.check_interval_s`)
-2. MQTT message to `<topic_prefix>/cmd/ota` (any payload)
+2. First check runs 30 seconds after boot
+3. MQTT message to `ota.cmd_topic` (any payload) — defaults to `<topic_prefix>/cmd/ota`
+
+Trigger manually from the shell without an external MQTT client:
+```
+lua.exec MQTT.publish("thesada/node/cmd/ota", "check")
+```
 
 **TLS:** loads `/ca.crt` from LittleFS; falls back to `setInsecure()` with a warning if absent.
 
 **config.json keys:**
 ```json
 "ota": {
-  "manifest_url":     "https://example.com/firmware.json",
-  "check_interval_s": 21600
+  "enabled":          true,
+  "manifest_url":     "https://github.com/Thesada/thesada-fw/releases/latest/download/firmware.json",
+  "check_interval_s": 21600,
+  "cmd_topic":        "thesada/node/cmd/ota"
 }
 ```
 
