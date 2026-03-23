@@ -58,7 +58,8 @@ thesada-fw/base/
     │   ├── ScriptEngine.h/.cpp     ← Lua 5.3 runtime with EventBus + MQTT bindings
     │   ├── Cellular.h/.cpp         ← SIM7080G modem-native MQTT over TLS
     │   ├── PowerManager.h/.cpp     ← AXP2101 PMU init, battery getters, heartbeat LED
-    │   └── WebServer.h/.cpp        ← dashboard, config editor, file browser, terminal
+    │   ├── WebServer.h/.cpp        ← dashboard, config editor, file browser, terminal
+    │   └── dashboard.html.h        ← PROGMEM HTML for the web dashboard (extracted from WebServer.cpp)
     └── modules/
         ├── temperature/            ← DS18B20 one-wire sensors
         ├── ads1115/                ← ADS1115 differential current sensing
@@ -501,7 +502,7 @@ See `data/config.json.example` for all fields. Key sections:
   "sd":       { "enabled": true, "pin_clk": 38, "pin_cmd": 39, "pin_data": 40 },
   "telegram": { "bot_token": "", "chat_ids": [], "alerts": [ { "enabled": true, "name": "overheat", "temp_high_c": 40.0 } ] },
   "webhook":  { "url": "", "message_template": "{{value}}" },
-  "battery":  { "interval_s": 60, "low_pct": 20 },
+  "battery":  { "enabled": true, "interval_s": 60, "low_pct": 20 },
   "ota":      { "enabled": true, "manifest_url": "https://github.com/Thesada/thesada-fw/releases/latest/download/firmware.json", "check_interval_s": 21600 }
 }
 ```
@@ -527,8 +528,9 @@ Accessible at `http://[device-ip]/` - requires login (credentials from `web` con
 | `/ws/serial` | WS | token | Bidirectional terminal - log stream + all Shell commands |
 
 **Dashboard** - public read-only view:
-- Sensor table polls `/api/state` every 5 s
+- Sensor table polls `/api/state` every 5 s - shows temperature, current, and battery (%, voltage, charge state)
 - MQTT status bar: green/red dot, connected state, last publish timestamp (from `_mqtt` key in `/api/state`)
+- Battery rows color-coded: green when charging, red when below 20%
 
 **Admin terminal** - auth-gated WebSocket terminal:
 - Streams all firmware log lines in real time

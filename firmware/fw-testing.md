@@ -138,6 +138,8 @@ The same commands work in both the serial terminal and the web terminal.
 | GET `http://[ip]/` with wrong password | 401, no dashboard |
 | Dashboard loads with correct password | Sensor table visible |
 | Sensor values update every ~60 s | Timestamp refreshes |
+| Battery %, Battery V, Battery Charge State rows visible | Shows percent, voltage, Charging/Discharging |
+| Battery % red when <= 20%, green when charging | Color coding works |
 | MQTT status bar visible above sensor table | Green dot + `MQTT connected` + last publish time |
 | MQTT disconnected state | Red dot + `MQTT disconnected` |
 | Admin → Terminal tab | `[connected]` appears; live log lines flow in |
@@ -346,7 +348,21 @@ Both files should appear in `ls /sd/`. Reset `max_file_kb` to `1024` when done.
 
 ---
 
-## 14. Cellular Fallback
+## 14. Battery Monitoring
+
+| Check | Expected |
+|---|---|
+| `sensors` command | Battery line: `batt  X.XXV  XX%  [CHG/DSG]` |
+| `battery` command | `X.XXV  XX%  charging/discharging` |
+| `module.status` | `battery  pmu=ok  present=yes` |
+| `/api/state` includes `battery` object | `{"present":true,"voltage_v":X.XX,"percent":XX,"charging":false}` |
+| Dashboard shows Battery %, V, Charge State | Three rows in sensor table |
+| Set `battery.enabled` to `false`, restart | `[INF][Battery] Disabled via config` — no battery rows on dashboard |
+| Set `battery.enabled` to `true`, restart | Battery monitoring resumes |
+
+---
+
+## 15. Cellular Fallback
 
 | Check | Expected |
 |---|---|
