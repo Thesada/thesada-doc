@@ -148,7 +148,7 @@ EventBus::subscribe("temperature", [](JsonObject data) {
 | `temperature` | TemperatureModule | `{ "sensors": [ { "name": "x", "address": "...", "temp_c": 18.4 } ] }` |
 | `current` | ADS1115Module | `{ "channels": [ { "name": "x", "voltage_v": 0.012, "raw": 123 } ] }` |
 | `battery` | BatteryModule | `{ "present": true, "voltage_v": 3.91, "percent": 35, "charging": false }` |
-| `alert` | TelegramModule | `{ "value": "alert message text" }` |
+| `alert` | TelegramModule | `{ "value": "alert message text" }` (MQTTClient and CellularModule subscribe) |
 
 ---
 
@@ -331,17 +331,22 @@ Modules and Lua scripts can add further subscriptions via `MQTTClient::subscribe
 
 ---
 
-## Temperature Alerts (TelegramModule)
+## Alerts (TelegramModule)
 
-The `TelegramModule` subscribes to `temperature` events and fires alerts when readings cross configured thresholds. Alerts are sent via:
-1. **MQTT** — published to `<topic_prefix>/alert` as `{ "value": "..." }`
-2. **HTTP webhook** — optional POST to `webhook.url` with configurable message template
-3. **Home Assistant** — subscribes to the MQTT alert topic and forwards to Telegram
+The `TelegramModule` subscribes to `temperature` and `battery` events and fires alerts when readings cross configured thresholds. Alerts are delivered via three independent channels:
 
-Alert config in `config.json`:
+1. **MQTT** — `MQTTClient` subscribes to the `alert` EventBus event and publishes to `<topic_prefix>/alert` as `{ "value": "..." }`
+2. **Telegram Bot API** — optional direct HTTPS call if `telegram.bot_token` and `telegram.chat_ids` are set. Sends to all chat IDs in the array.
+3. **HTTP webhook** — optional POST to `webhook.url` with configurable message template
+
+All three channels fire independently. If `bot_token` or `chat_ids` are empty, the Telegram API call is skipped. If `webhook.url` is empty, the webhook is skipped. MQTT alerts always fire.
+
+**Alert config in `config.json`:**
 
 ```json
 "telegram": {
+  "bot_token": "",
+  "chat_ids": [],
   "alerts": [
     { "enabled": true,  "name": "overheat", "temp_high_c": 40.0 },
     { "enabled": true,  "name": "freeze",   "temp_low_c":  2.0  },
@@ -350,14 +355,26 @@ Alert config in `config.json`:
 }
 ```
 
+| Field | Description |
+|---|---|
+| `bot_token` | Telegram Bot API token (from @BotFather). Empty = skip direct Telegram. |
+| `chat_ids` | Array of Telegram chat ID strings. Supports users and groups (negative IDs). |
+| `alerts` | Array of threshold rules (see below) |
+
 - Each rule has an independent enable toggle
 - `temp_high_c` fires when **any** sensor exceeds the threshold
 - `temp_low_c` fires when **any** sensor drops below the threshold
 - **Hysteresis**: alert fires only on state transition — no repeated messages
+- **Low battery**: fires when battery percent drops below `battery.low_pct` (default 20%) while not charging
 
 Alert state per `ruleName:sensorName`: `0` = normal, `1` = high, `-1` = low.
 
 Message format: `[overheat] barn_supply: 42.10°C — OVERHEAT (>= 40.0°C)`
+
+**MQTT alerting via Lua (alternative):** alerts can also be published from Lua scripts without the TelegramModule:
+```lua
+MQTT.publish("thesada/node/alert", "custom alert message")
+```
 
 ---
 
@@ -421,7 +438,7 @@ AsyncTCP v3.3.2 is vendored in `lib/AsyncTCP/` with null-pointer guards added to
 ## Compile-time config (`config.h`)
 
 ```cpp
-#define FIRMWARE_VERSION "1.0.12"
+#define FIRMWARE_VERSION "1.0.13"
 
 // Enable/disable modules
 #define ENABLE_TEMPERATURE
@@ -459,7 +476,7 @@ See `data/config.json.example` for all fields. Key sections:
   "ads1115":  { "i2c_sda": 1, "i2c_scl": 2, "address": 72, "interval_s": 60, "channels": [...] },
   "cellular": { "apn": "OSC", "sim_pin": "", "rf_settle_ms": 15000, "reg_timeout_ms": 180000 },
   "sd":       { "enabled": true, "pin_clk": 38, "pin_cmd": 39, "pin_data": 40 },
-  "telegram": { "alerts": [ { "enabled": true, "name": "overheat", "temp_high_c": 40.0 } ] },
+  "telegram": { "bot_token": "", "chat_ids": [], "alerts": [ { "enabled": true, "name": "overheat", "temp_high_c": 40.0 } ] },
   "webhook":  { "url": "", "message_template": "{{value}}" },
   "battery":  { "interval_s": 60, "low_pct": 20 },
   "ota":      { "enabled": true, "manifest_url": "https://github.com/Thesada/thesada-fw/releases/latest/download/firmware.json", "check_interval_s": 21600 }
