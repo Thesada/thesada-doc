@@ -5,7 +5,7 @@ nav_order: 6
 description: "Version-control Home Assistant config with Git -- private repo, deploy key, one-way sync from GitHub."
 ---
 
-# Home Assistant Config — Git Setup
+# Home Assistant Config - Git Setup
 ## Private repo, one-way sync (GitHub → HA)
 
 This guide covers exporting your Home Assistant config to a private GitHub repository and keeping it in sync using the Git pull add-on.
@@ -36,7 +36,7 @@ git remote add origin git@github.com:YOUR_ORG/YOUR_REPO.git
 
 ### Create .gitignore
 
-Some files should never be committed — secrets, tokens, the database, and runtime files:
+Some files should never be committed - secrets, tokens, the database, and runtime files:
 
 ```bash
 cat > .gitignore << 'EOF'
@@ -87,7 +87,7 @@ git push -u origin main
 ssh-keygen -t ed25519 -C "homeassistant" -f ~/.ssh/id_ha
 ```
 
-Leave the passphrase empty — the Git pull add-on cannot handle passphrases.
+Leave the passphrase empty - the Git pull add-on cannot handle passphrases.
 
 ### Add the public key to GitHub as a deploy key
 
@@ -101,12 +101,12 @@ Copy the output. In GitHub:
 2. Click **Add deploy key**
 3. Give it a title (e.g. `homeassistant-node`)
 4. Paste the public key
-5. **Do not** check "Allow write access" — read-only is sufficient for one-way sync
+5. **Do not** check "Allow write access" - read-only is sufficient for one-way sync
 6. Click **Add key**
 
 ### Configure git to use this key for /config
 
-Use `includeIf` to scope the key to the `/config` repo only — no global SSH config changes needed:
+Use `includeIf` to scope the key to the `/config` repo only - no global SSH config changes needed:
 
 ```bash
 cat >> ~/.gitconfig << 'EOF'
@@ -207,6 +207,6 @@ If you see authentication errors, confirm the deploy key is added to the repo an
 
 ## Notes
 
-- `secrets.yaml` is never committed — manage it directly on the HA instance
+- `secrets.yaml` is never committed - manage it directly on the HA instance
 - If you add new sensitive files later, add them to `.gitignore` before committing
-- The add-on pulls changes from GitHub into HA only — changes made directly in HA are not pushed back automatically
+- The add-on pulls changes from GitHub into HA only - changes made directly in HA are not pushed back automatically

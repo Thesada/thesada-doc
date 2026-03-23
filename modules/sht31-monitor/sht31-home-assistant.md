@@ -4,7 +4,7 @@ parent: SHT31 Monitor
 nav_order: 3
 ---
 
-# SHT31 Monitor — Home Assistant
+# SHT31 Monitor - Home Assistant
 
 Once the SHT31 node is flashed and online, Home Assistant auto-discovers it via the ESPHome integration. This page covers verifying the entities and setting up hourly Telegram alerts.
 
@@ -20,8 +20,8 @@ Once the SHT31 node is flashed and online, Home Assistant auto-discovers it via 
 ## 1. Verify ESPHome Entities
 
 1. **Settings → Integrations → ESPHome**
-2. Find `thesada-sht31` — it should appear automatically once the device is online
-3. Click the device — you should see two entities:
+2. Find `thesada-sht31` - it should appear automatically once the device is online
+3. Click the device - you should see two entities:
    - `sensor.thesada_sht31_temperature`
    - `sensor.thesada_sht31_humidity`
 
@@ -36,7 +36,7 @@ This automation sends temperature and humidity readings to Telegram every hour.
 1. **Settings → Automations → Create Automation**
 2. Click **Create new automation**
 3. Click **Edit in YAML**
-4. Paste the following — replace `notify.YOUR_NOTIFY_ENTITY` with your actual notify entity ID:
+4. Paste the following - replace `notify.YOUR_NOTIFY_ENTITY` with your actual notify entity ID:
 
 ```yaml
 alias: SHT31 Hourly Telegram Report
@@ -58,7 +58,7 @@ mode: single
 
 ### Find your notify entity ID
 
-**Settings → Integrations → Telegram bot** — the notify entity is listed under the integration. It will be something like `notify.telegram_bot_YOUR_NAME`.
+**Settings → Integrations → Telegram bot** - the notify entity is listed under the integration. It will be something like `notify.telegram_bot_YOUR_NAME`.
 
 ### Test the automation
 

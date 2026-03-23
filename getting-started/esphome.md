@@ -68,13 +68,13 @@ This uses the Let's Encrypt certificate from the Mosquitto setup. No additional 
 1. Click **Start**
 2. Click **Open Web UI**
 
-You will be asked for your Home Assistant credentials — ESPHome uses HA's authentication system.
+You will be asked for your Home Assistant credentials - ESPHome uses HA's authentication system.
 
 ---
 
 ## 4. Create secrets.yaml
 
-All sensitive values — WiFi credentials, API keys, OTA passwords — are stored in a `secrets.yaml` file in the ESPHome dashboard, never in the device config directly.
+All sensitive values - WiFi credentials, API keys, OTA passwords - are stored in a `secrets.yaml` file in the ESPHome dashboard, never in the device config directly.
 
 In the ESPHome dashboard:
 1. Click **Secrets** in the top right
@@ -99,15 +99,15 @@ openssl rand -base64 24
 
 ---
 
-## 5. First Flash — CLI Method (macOS)
+## 5. First Flash - CLI Method (macOS)
 
 ESPHome's browser-based Web Serial flash does not work reliably on macOS with the Freenove ESP32-S3 WROOM. Use the CLI for the first flash. All subsequent updates are OTA.
 
 ### Download the config and binary
 
 1. In the ESPHome dashboard, create your device and edit the config
-2. Click **Install → Manual download → Modern format** — save the `.factory.bin` file
-3. Click the **three dots** menu on the device → **Download configuration** — save the `.yaml` file
+2. Click **Install → Manual download → Modern format** - save the `.factory.bin` file
+3. Click the **three dots** menu on the device → **Download configuration** - save the `.yaml` file
 4. Copy your `secrets.yaml` from the ESPHome dashboard to the same folder as the downloaded `.yaml`
 
 ### Flash via CLI

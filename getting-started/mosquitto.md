@@ -7,7 +7,7 @@ description: "Configure the Mosquitto MQTT broker as a Home Assistant add-on wit
 
 # Mosquitto MQTT Broker
 
-Mosquitto is the MQTT broker used by all nodes. It runs as a Home Assistant app and handles all sensor data published by ESPHome nodes — both on the local network and remotely over cellular.
+Mosquitto is the MQTT broker used by all nodes. It runs as a Home Assistant app and handles all sensor data published by ESPHome nodes - both on the local network and remotely over cellular.
 
 This guide covers:
 - Installing and configuring Mosquitto in Home Assistant
@@ -18,7 +18,7 @@ This guide covers:
 
 ## Prerequisites
 
-- Home Assistant running and accessible (see [Proxmox — HAOS Install](proxmox-haos.md))
+- Home Assistant running and accessible (see [Proxmox - HAOS Install](proxmox-haos.md))
 - DNS, DDNS, and Let's Encrypt certificate configured (see [Home Assistant DNS & SSL](ha-dns-ssl.md))
 - A router capable of custom port forwarding rules
 
@@ -40,7 +40,7 @@ Once the broker is running, Home Assistant should auto-discover it and prompt yo
 
 1. **Settings → Devices & Services → Add Integration**
 2. Search **MQTT** and select it
-3. Click **Submit** — HA will connect to the local Mosquitto broker automatically
+3. Click **Submit** - HA will connect to the local Mosquitto broker automatically
 
 ---
 
@@ -62,14 +62,14 @@ From a machine on the same network, confirm the broker is reachable. Install the
 
 Open two terminals.
 
-**Terminal 1 — subscribe:**
+**Terminal 1 - subscribe:**
 ```bash
 mosquitto_sub -h YOUR_HA_IP -p 1883 \
   -u mqtt-user -P YOUR_PASSWORD \
   -t 'test/#' -v
 ```
 
-**Terminal 2 — publish:**
+**Terminal 2 - publish:**
 ```bash
 mosquitto_pub -h YOUR_HA_IP -p 1883 \
   -u mqtt-user -P YOUR_PASSWORD \
@@ -99,7 +99,7 @@ Consult your router's documentation for port forwarding instructions.
 
 ## 5. TLS Certificate
 
-Mosquitto must use TLS for any external connections. The certificate is obtained via Let's Encrypt — see [Home Assistant DNS & SSL](ha-dns-ssl.md) for the full setup. Complete that guide before continuing here.
+Mosquitto must use TLS for any external connections. The certificate is obtained via Let's Encrypt - see [Home Assistant DNS & SSL](ha-dns-ssl.md) for the full setup. Complete that guide before continuing here.
 
 ---
 

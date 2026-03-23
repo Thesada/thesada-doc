@@ -5,9 +5,9 @@ nav_order: 1
 description: "Wiring diagram for the SHT31 monitor -- I2C connections to Freenove ESP32-S3."
 ---
 
-# SHT31 Monitor — Wiring
+# SHT31 Monitor - Wiring
 
-The SHT31 communicates over I2C — four wires from the sensor to the ESP32.
+The SHT31 communicates over I2C - four wires from the sensor to the ESP32.
 
 ---
 
@@ -25,12 +25,12 @@ The SHT31 communicates over I2C — four wires from the sensor to the ESP32.
 
 ## Notes
 
-- Use the **3.3V** pin, not 5V — the SHT31 is a 3.3V device
+- Use the **3.3V** pin, not 5V - the SHT31 is a 3.3V device
 - Leave the **ADDR** pin floating (unconnected) for default address `0x44`
-- Connect with jumper wires via pin headers — no soldering required
+- Connect with jumper wires via pin headers - no soldering required
 - The Freenove ESP32-S3 WROOM has two USB-C ports:
-  - **USB port** — used for flashing and serial monitor
-  - **UART port** — do not use for flashing, monitoring only
+  - **USB port** - used for flashing and serial monitor
+  - **UART port** - do not use for flashing, monitoring only
 
 ---
 

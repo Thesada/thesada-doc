@@ -17,15 +17,15 @@ A hydronic woodboiler monitoring node built on the LILYGO T-SIM7080-S3 and four 
 - ADS1115 16-bit ADC
 
 **What it measures:**
-- Supply and return temperature — house loop
-- Supply and return temperature — barn loop
-- AC current draw — house loop pump
-- AC current draw — barn loop pump
+- Supply and return temperature - house loop
+- Supply and return temperature - barn loop
+- AC current draw - house loop pump
+- AC current draw - barn loop pump
 
 **Collection interval:** 60s (temperature), 60s (current)
 **Publish interval:** Every 60 readings (once per hour)
 
 **Alerts:**
-- Supply temperature below 40°C — boiler going out or not heating
-- Supply/return delta below 5°C — possible flow or pump issue
-- Pump current at zero during heating hours — pump failure
+- Supply temperature below 40°C - boiler going out or not heating
+- Supply/return delta below 5°C - possible flow or pump issue
+- Pump current at zero during heating hours - pump failure

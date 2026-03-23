@@ -5,7 +5,7 @@ nav_order: 1
 description: "Wiring diagram for the OWB monitor -- DS18B20 1-Wire bus, ADS1115 I2C, CT clamp connections."
 ---
 
-# OWB Monitor — Wiring
+# OWB Monitor - Wiring
 
 ## Wiring Diagram
 
@@ -40,16 +40,16 @@ description: "Wiring diagram for the OWB monitor -- DS18B20 1-Wire bus, ADS1115 
 
 ---
 
-## Temperature Sensors — DS18B20
+## Temperature Sensors - DS18B20
 
 Four DS18B20 waterproof probes mounted on pipes using hose clamps with thermal paste. All four sensors share a single 1-Wire data line.
 
 | Sensor | Location | GPIO |
 |---|---|---|
-| House loop supply | Supply pipe — house loop | GPIO12 (1-Wire bus) |
-| House loop return | Return pipe — house loop | GPIO12 (1-Wire bus) |
-| Barn loop supply | Supply pipe — barn loop | GPIO12 (1-Wire bus) |
-| Barn loop return | Return pipe — barn loop | GPIO12 (1-Wire bus) |
+| House loop supply | Supply pipe - house loop | GPIO12 (1-Wire bus) |
+| House loop return | Return pipe - house loop | GPIO12 (1-Wire bus) |
+| Barn loop supply | Supply pipe - barn loop | GPIO12 (1-Wire bus) |
+| Barn loop return | Return pipe - barn loop | GPIO12 (1-Wire bus) |
 
 ### Mounting
 
@@ -63,11 +63,11 @@ The 1-Wire bus requires a 4.7kΩ pull-up resistor between the data line and 3.3V
 
 ---
 
-## Current Sensors — SCT-013-030
+## Current Sensors - SCT-013-030
 
-Two CT clamps, one per pump. Each clamp goes around the **hot conductor only** — not both conductors in the cable. Clamping both conductors cancels the magnetic field and produces a null reading.
+Two CT clamps, one per pump. Each clamp goes around the **hot conductor only** - not both conductors in the cable. Clamping both conductors cancels the magnetic field and produces a null reading.
 
-The pumps are plug-in. A custom monitored outlet box routes each pump's hot conductor through a CT clamp before the outlet. The box plugs into a standard 120V outlet — no panel work required.
+The pumps are plug-in. A custom monitored outlet box routes each pump's hot conductor through a CT clamp before the outlet. The box plugs into a standard 120V outlet - no panel work required.
 
 | Sensor | Pump | ADS1115 Channel |
 |---|---|---|
@@ -80,7 +80,7 @@ The SCT-013-030 is the **voltage output** version with a built-in burden resisto
 
 ---
 
-## ADS1115 — I2C
+## ADS1115 - I2C
 
 | ADS1115 Pin | LILYGO T-SIM7080-S3 Pin |
 |---|---|

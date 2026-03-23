@@ -6,7 +6,7 @@ nav_order: 5
 
 # Telegram
 
-Telegram is used by all Thesada nodes for critical alerts — pump failures, temperature thresholds, boiler faults. This guide covers creating a Telegram bot, finding your chat ID, and adding it to Home Assistant.
+Telegram is used by all Thesada nodes for critical alerts - pump failures, temperature thresholds, boiler faults. This guide covers creating a Telegram bot, finding your chat ID, and adding it to Home Assistant.
 
 ---
 
@@ -21,8 +21,8 @@ Telegram is used by all Thesada nodes for critical alerts — pump failures, tem
 
 1. Open Telegram and search for **@BotFather**
 2. Start a conversation and send `/newbot`
-3. Follow the prompts — choose a name and a username (username must end in `bot`)
-4. BotFather will return a **bot token** — copy it and keep it somewhere safe
+3. Follow the prompts - choose a name and a username (username must end in `bot`)
+4. BotFather will return a **bot token** - copy it and keep it somewhere safe
 
 ---
 
@@ -30,7 +30,7 @@ Telegram is used by all Thesada nodes for critical alerts — pump failures, tem
 
 1. Search for **@id_bot** in Telegram
 2. Send `/start`
-3. The bot will return your **chat ID** — copy it
+3. The bot will return your **chat ID** - copy it
 
 ---
 
@@ -56,7 +56,7 @@ Before adding the chat ID to Home Assistant, open your bot in Telegram and send 
 2. Click the three dots → **Add allowed chat ID**
 3. Enter your chat ID and click **Submit**
 
-Home Assistant will create a `notify` entity automatically — you will see it listed under **Settings → Devices & Services → Telegram bot**.
+Home Assistant will create a `notify` entity automatically - you will see it listed under **Settings → Devices & Services → Telegram bot**.
 
 ---
 
@@ -84,7 +84,7 @@ action:
     data:
       message: |-
         Thesada Alert:
-        {{ trigger.to_state.attributes.friendly_name }} — {{ trigger.to_state.state }}
+        {{ trigger.to_state.attributes.friendly_name }} - {{ trigger.to_state.state }}
 ```
 
 Use `|-` for multiline messages to preserve line breaks.
@@ -101,7 +101,7 @@ The Telegram webhook integration fires a `telegram_command` event when the bot r
 
 All bot command automations follow the same structure. Create via **Settings → Automations → Create Automation → Edit in YAML**.
 
-### Example — /temp and /getpic
+### Example - /temp and /getpic
 
 The automation below handles two commands: `/temp` returns sensor readings, `/getpic` sends a camera snapshot.
 
@@ -127,7 +127,7 @@ actions:
             data:
               entity_id: notify.YOUR_NOTIFY_ENTITY
               message: |-
-                Thesada — Current Readings:
+                Thesada - Current Readings:
                 {{ states('sensor.YOUR_TEMP_ENTITY') | round(1) }}°C
                 {{ states('sensor.YOUR_HUMIDITY_ENTITY') | round(1) }}%
       - conditions:
@@ -147,7 +147,7 @@ actions:
 mode: single
 ```
 
-### /getpic — Required Setup
+### /getpic - Required Setup
 
 The `camera.snapshot` action writes to `/config/tmp/`. Two things required before this works:
 

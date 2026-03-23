@@ -2,7 +2,7 @@
 title: Architecture
 parent: Firmware
 nav_order: 1
-description: "thesada-fw firmware architecture — ModuleRegistry, EventBus, Shell, PowerManager, OTA, Lua scripting, and MQTT over TLS on ESP32-S3."
+description: "thesada-fw firmware architecture - ModuleRegistry, EventBus, Shell, PowerManager, OTA, Lua scripting, and MQTT over TLS on ESP32-S3."
 ---
 
 # Firmware Architecture
@@ -13,12 +13,12 @@ description: "thesada-fw firmware architecture — ModuleRegistry, EventBus, She
 
 ## Design Principles
 
-- **Modular** — each sensor or peripheral is a self-contained module
-- **Config-driven** — compile-time enables via `config.h`, runtime values via `config.json` on LittleFS
-- **Event-driven** — modules communicate via an internal Event Bus, not direct calls
-- **Pluggable** — adding a new module requires creating one folder and one line in `config.h`
-- **Resilient** — automatic WiFi → cellular fallback; MQTT queue survives short disconnects
-- **Scriptable** — Lua 5.3 runtime with hot-reloadable rules; no recompile needed for logic changes
+- **Modular** - each sensor or peripheral is a self-contained module
+- **Config-driven** - compile-time enables via `config.h`, runtime values via `config.json` on LittleFS
+- **Event-driven** - modules communicate via an internal Event Bus, not direct calls
+- **Pluggable** - adding a new module requires creating one folder and one line in `config.h`
+- **Resilient** - automatic WiFi → cellular fallback; MQTT queue survives short disconnects
+- **Scriptable** - Lua 5.3 runtime with hot-reloadable rules; no recompile needed for logic changes
 
 ---
 
@@ -120,7 +120,7 @@ The `ModuleRegistry` calls `begin()` once at startup and `loop()` every cycle. M
 
 ## Event Bus
 
-Modules never call each other directly. They publish events with a JSON payload and subscribe to events from other modules. The Event Bus is synchronous — subscribers run inline when `publish()` is called.
+Modules never call each other directly. They publish events with a JSON payload and subscribe to events from other modules. The Event Bus is synchronous - subscribers run inline when `publish()` is called.
 
 ```cpp
 // Publish a temperature reading (in TemperatureModule)
@@ -154,7 +154,7 @@ EventBus::subscribe("temperature", [](JsonObject data) {
 
 ## Shell (CLI)
 
-`Shell` is a unified command-line interface. The same command handlers run for both the serial terminal and the WebSocket web terminal — there is no duplicate logic.
+`Shell` is a unified command-line interface. The same command handlers run for both the serial terminal and the WebSocket web terminal - there is no duplicate logic.
 
 **Transport wiring:**
 - Serial: `main.cpp` reads characters, calls `Shell::execute(line, serialOut)` on newline
@@ -210,8 +210,8 @@ Paths prefixed with `/sd/` are routed to SD_MMC; all others go to LittleFS.
 Lua 5.3 runtime via the [ESP-Arduino-Lua](https://github.com/sfranzyshen/ESP-Arduino-Lua) library (GPL-3.0).
 
 **Scripts on LittleFS:**
-- `/scripts/main.lua` — runs once at boot (setup tasks, one-time subscriptions)
-- `/scripts/rules.lua` — event-driven rules, hot-reloadable without restart
+- `/scripts/main.lua` - runs once at boot (setup tasks, one-time subscriptions)
+- `/scripts/rules.lua` - event-driven rules, hot-reloadable without restart
 
 **Lua API:**
 
@@ -250,22 +250,22 @@ end)
 
 ## Power Manager (PowerManager)
 
-`PowerManager` manages the AXP2101 PMU on every boot — VBUS power acceptance, battery charging, ADC enable — and drives the AXP2101 CHGLED (blue LED) as a heartbeat or charge indicator.
+`PowerManager` manages the AXP2101 PMU on every boot - VBUS power acceptance, battery charging, ADC enable - and drives the AXP2101 CHGLED (blue LED) as a heartbeat or charge indicator.
 
-**PMU init — runs unconditionally on every boot:**
+**PMU init - runs unconditionally on every boot:**
 
 | Setting | Value | Reason |
 |---|---|---|
 | `setVbusVoltageLimit` | 4.36V | Accept power from a dumb USB charger (no data lines / D+D- handshake) |
 | `setVbusCurrentLimit` | 1500mA | Allow sufficient input current from wall adapter or solar |
-| `disableTSPinMeasure` | - | TS pin (battery temp sensor) is not connected — floating pin causes the PMU to block charging |
+| `disableTSPinMeasure` | - | TS pin (battery temp sensor) is not connected - floating pin causes the PMU to block charging |
 | `enableCellbatteryCharge` | - | Explicitly enable the main battery charger circuit |
 | `enableBattVoltageMeasure` | - | Required for voltage and percent readings |
 | `enableVbusVoltageMeasure` | - | Required for VBUS voltage reading |
 | `enableSystemVoltageMeasure` | - | Required for system rail voltage reading |
 | `enableBattDetection` | - | Required for `isBatteryConnect()` |
 
-> **Note:** Without `setVbusVoltageLimit` and `setVbusCurrentLimit`, the board will not power on from a wall adapter — only from a PC or powered hub (which negotiate current via USB data lines). This is AXP2101 default behaviour.
+> **Note:** Without `setVbusVoltageLimit` and `setVbusCurrentLimit`, the board will not power on from a wall adapter - only from a PC or powered hub (which negotiate current via USB data lines). This is AXP2101 default behaviour.
 
 > **Note:** `enableCellbatteryCharge()` must be called explicitly. The charger is not auto-enabled after PMU init.
 
@@ -273,11 +273,11 @@ end)
 
 | Method | Returns |
 |---|---|
-| `PowerManager::isPmuOk()` | `bool` — PMU I2C init succeeded |
-| `PowerManager::isBatteryPresent()` | `bool` — battery connected |
-| `PowerManager::getVoltage()` | `float` — battery voltage in V |
-| `PowerManager::getPercent()` | `int` — state of charge 0–100, or -1 |
-| `PowerManager::isCharging()` | `bool` — charger circuit active |
+| `PowerManager::isPmuOk()` | `bool` - PMU I2C init succeeded |
+| `PowerManager::isBatteryPresent()` | `bool` - battery connected |
+| `PowerManager::getVoltage()` | `float` - battery voltage in V |
+| `PowerManager::getPercent()` | `int` - state of charge 0–100, or -1 |
+| `PowerManager::isCharging()` | `bool` - charger circuit active |
 
 **LED modes** (`device` section of `config.json`):
 
@@ -287,7 +287,7 @@ end)
 | `-1` | `true` (default) | Hardware-driven charge indicator (on while charging) |
 | `-1` | `false` | Always off |
 
-**Implementation:** Uses `Wire1` (SDA=15 SCL=7) — independent of `Wire` (I2C bus 0, used by ADS1115). No RTOS tasks or timers; LED state is managed in `loop()`.
+**Implementation:** Uses `Wire1` (SDA=15 SCL=7) - independent of `Wire` (I2C bus 0, used by ADS1115). No RTOS tasks or timers; LED state is managed in `loop()`.
 
 ```json
 "device": {
@@ -317,7 +317,7 @@ HTTP(S) pull-based OTA. The device fetches a JSON manifest, compares semver, and
 **Triggers:**
 1. Periodic interval check (default 6 h, configurable via `ota.check_interval_s`)
 2. First check runs 30 seconds after boot
-3. MQTT message to `ota.cmd_topic` (any payload) — defaults to `<topic_prefix>/cmd/ota`
+3. MQTT message to `ota.cmd_topic` (any payload) - defaults to `<topic_prefix>/cmd/ota`
 
 Trigger manually from the shell without an external MQTT client:
 ```
@@ -357,9 +357,9 @@ Modules and Lua scripts can add further subscriptions via `MQTTClient::subscribe
 
 The `TelegramModule` subscribes to `temperature` and `battery` events and fires alerts when readings cross configured thresholds. Alerts are delivered via three independent channels:
 
-1. **MQTT** — `MQTTClient` subscribes to the `alert` EventBus event and publishes to `<topic_prefix>/alert` as `{ "value": "..." }`
-2. **Telegram Bot API** — optional direct HTTPS call if `telegram.bot_token` and `telegram.chat_ids` are set. Sends to all chat IDs in the array.
-3. **HTTP webhook** — optional POST to `webhook.url` with configurable message template
+1. **MQTT** - `MQTTClient` subscribes to the `alert` EventBus event and publishes to `<topic_prefix>/alert` as `{ "value": "..." }`
+2. **Telegram Bot API** - optional direct HTTPS call if `telegram.bot_token` and `telegram.chat_ids` are set. Sends to all chat IDs in the array.
+3. **HTTP webhook** - optional POST to `webhook.url` with configurable message template
 
 All three channels fire independently. If `bot_token` or `chat_ids` are empty, the Telegram API call is skipped. If `webhook.url` is empty, the webhook is skipped. MQTT alerts always fire.
 
@@ -386,12 +386,12 @@ All three channels fire independently. If `bot_token` or `chat_ids` are empty, t
 - Each rule has an independent enable toggle
 - `temp_high_c` fires when **any** sensor exceeds the threshold
 - `temp_low_c` fires when **any** sensor drops below the threshold
-- **Hysteresis**: alert fires only on state transition — no repeated messages
+- **Hysteresis**: alert fires only on state transition - no repeated messages
 - **Low battery**: fires when battery percent drops below `battery.low_pct` (default 20%) while not charging
 
 Alert state per `ruleName:sensorName`: `0` = normal, `1` = high, `-1` = low.
 
-Message format: `[overheat] barn_supply: 42.10°C — OVERHEAT (>= 40.0°C)`
+Message format: `[overheat] barn_supply: 42.10°C - OVERHEAT (>= 40.0°C)`
 
 **MQTT alerting via Lua (alternative):** alerts can also be published from Lua scripts without the TelegramModule:
 ```lua
@@ -448,8 +448,8 @@ automation:
 No certificate is compiled in. Place a CA cert PEM bundle as `data/ca.crt` and upload to LittleFS (`pio run --target uploadfs`). Multiple certs can be concatenated in one file. Both WiFi MQTT and the OTA HTTPS client load it at boot. If absent, TLS connects without certificate verification and a warning is logged.
 
 The production bundle contains two roots:
-- **ISRG Root X1** — covers Let's Encrypt (MQTT broker, release-assets.githubusercontent.com)
-- **USERTrust ECC Certification Authority** — covers github.com (OTA manifest fetch)
+- **ISRG Root X1** - covers Let's Encrypt (MQTT broker, release-assets.githubusercontent.com)
+- **USERTrust ECC Certification Authority** - covers github.com (OTA manifest fetch)
 
 You can also upload `ca.crt` at runtime via `POST /api/file?path=/ca.crt&source=littlefs` without reflashing the filesystem.
 
@@ -510,7 +510,7 @@ See `data/config.json.example` for all fields. Key sections:
 
 ## Web Interface
 
-Accessible at `http://[device-ip]/` — requires login (credentials from `web` config).
+Accessible at `http://[device-ip]/` - requires login (credentials from `web` config).
 
 | Route | Method | Auth | Description |
 |---|---|---|---|
@@ -524,13 +524,13 @@ Accessible at `http://[device-ip]/` — requires login (credentials from `web` c
 | `/api/restart` | POST | yes | Reboot device |
 | `/api/ws/token` | GET | yes | Issue a 30 s IP-bound WS auth grant (required before opening WebSocket) |
 | `/ota` | POST | yes | Upload firmware `.bin` (push OTA, page auto-refreshes after 10s) |
-| `/ws/serial` | WS | token | Bidirectional terminal — log stream + all Shell commands |
+| `/ws/serial` | WS | token | Bidirectional terminal - log stream + all Shell commands |
 
-**Dashboard** — public read-only view:
+**Dashboard** - public read-only view:
 - Sensor table polls `/api/state` every 5 s
 - MQTT status bar: green/red dot, connected state, last publish timestamp (from `_mqtt` key in `/api/state`)
 
-**Admin terminal** — auth-gated WebSocket terminal:
+**Admin terminal** - auth-gated WebSocket terminal:
 - Streams all firmware log lines in real time
 - Log level filter: ALL / INF / WRN / ERR / DBG (client-side, 500-line ring buffer)
 - Clear button; auto-reconnects on disconnect
@@ -557,12 +557,12 @@ Timestamp is ISO 8601 UTC (`2026-03-22T14:32:00Z`) when NTP is synced; falls bac
   "max_file_kb": 1024
 }
 ```
-- `max_file_kb: 1024` — rotate to the next file when current exceeds 1 MB
-- `max_file_kb: 0` — no size limit (file grows indefinitely until next boot)
+- `max_file_kb: 1024` - rotate to the next file when current exceeds 1 MB
+- `max_file_kb: 0` - no size limit (file grows indefinitely until next boot)
 
 When a rotation happens the log shows:
 ```
-[INF][SD] Rotating — /log001.csv full
+[INF][SD] Rotating - /log001.csv full
 [INF][SD] Logging to /log002.csv
 ```
 
@@ -575,16 +575,16 @@ Config backup via `/api/backup` copies `config.json` to `/config_backup.json` on
 
 All `Log::info/warn/error` calls write to:
 1. **Serial** (USB CDC, 115200 baud)
-2. **WebSocket** `/ws/serial` — all connected terminal clients receive each log line
+2. **WebSocket** `/ws/serial` - all connected terminal clients receive each log line
 
-**Format — before NTP sync:**
+**Format - before NTP sync:**
 ```
 [INF][TAG] message
 [WRN][TAG] message
 [ERR][TAG] message
 ```
 
-**Format — after NTP sync** (epoch > 1700000000):
+**Format - after NTP sync** (epoch > 1700000000):
 ```
 [INF][2026-03-22T14:32:00Z][TAG] message
 ```
@@ -625,7 +625,7 @@ No other files touched.
 4. WS_EVT_CONNECT: server checks remoteIP against grant table → allow or close
 ```
 
-Unauthenticated WebSocket connections (e.g. direct curl or wscat) are accepted at TCP level (101 Switching Protocols) then immediately closed with a WS close frame. The rejection is logged as `[WRN][WebServer] WS: rejected — not pre-authorized`.
+Unauthenticated WebSocket connections (e.g. direct curl or wscat) are accepted at TCP level (101 Switching Protocols) then immediately closed with a WS close frame. The rejection is logged as `[WRN][WebServer] WS: rejected - not pre-authorized`.
 
 **Note:** The web interface uses HTTP, not HTTPS. Admin credentials transit in cleartext on the LAN. For internet-exposed deployments, put the device behind a reverse proxy with TLS termination.
 

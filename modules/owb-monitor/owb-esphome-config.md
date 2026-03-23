@@ -5,7 +5,7 @@ nav_order: 2
 description: "ESPHome YAML configuration for the OWB monitor node (obsolete -- OWB now runs thesada-fw custom firmware)."
 ---
 
-# OWB Monitor — ESPHome Config
+# OWB Monitor - ESPHome Config
 
 {: .warning }
 > This configuration is not actively developed. The OWB monitor runs [custom firmware (thesada-fw)](../../firmware/fw-architecture.md) instead.
@@ -22,7 +22,7 @@ Location in repo: [`thesada-cfg/esphome/thesada-owb.yaml`](https://github.com/Th
 
 ## secrets.yaml
 
-The config references secrets that must be present in `secrets.yaml` in the ESPHome dashboard. Never commit this file — only [`secrets.yaml.example`](https://github.com/Thesada/thesada-cfg/blob/main/esphome/secrets.yaml.example) is tracked in the repo.
+The config references secrets that must be present in `secrets.yaml` in the ESPHome dashboard. Never commit this file - only [`secrets.yaml.example`](https://github.com/Thesada/thesada-cfg/blob/main/esphome/secrets.yaml.example) is tracked in the repo.
 
 ---
 
@@ -37,10 +37,10 @@ All four DS18B20 sensors share a single GPIO pin using the 1-Wire protocol. Each
 **DS18B20 addresses**
 > **TODO:** Run a 1-Wire scan after sensors arrive to get the actual addresses. Replace the placeholder `0x000000000000000X` values in the config before flashing.
 
-To run the scan, flash the node with `logger: level: DEBUG` and read the boot log — ESPHome will print all detected 1-Wire addresses.
+To run the scan, flash the node with `logger: level: DEBUG` and read the boot log - ESPHome will print all detected 1-Wire addresses.
 
 **`ads1115:`**
-The ADS1115 runs at I2C address `0x48` (default — ADDR pin to GND). Two differential channels are used: `A0_A1` for the house pump and `A2_A3` for the barn pump.
+The ADS1115 runs at I2C address `0x48` (default - ADDR pin to GND). Two differential channels are used: `A0_A1` for the house pump and `A2_A3` for the barn pump.
 
 **Collection vs publish interval**
 Sensors collect every 60 seconds. The `sliding_window_moving_average` filter accumulates 60 readings and publishes once per hour. This reduces MQTT traffic while preserving local data resolution.
@@ -53,7 +53,7 @@ filters:
 ```
 
 **`web_server:`**
-The node runs a lightweight web server on port 80. This provides a local dashboard accessible on the same network showing all sensor readings in real time — no Home Assistant or MQTT required. Useful for on-site diagnostics.
+The node runs a lightweight web server on port 80. This provides a local dashboard accessible on the same network showing all sensor readings in real time - no Home Assistant or MQTT required. Useful for on-site diagnostics.
 
 ```yaml
 web_server:
@@ -70,12 +70,12 @@ Required format as of ESPHome 2026.x. Once the device is online, all subsequent 
 
 ## SD Card Logging
 
-> **TODO:** Implement local CSV logging to MicroSD. The LILYGO T-SIM7080-S3 has a MicroSD slot. ESPHome does not have native CSV logging — this requires a custom lambda component.
+> **TODO:** Implement local CSV logging to MicroSD. The LILYGO T-SIM7080-S3 has a MicroSD slot. ESPHome does not have native CSV logging - this requires a custom lambda component.
 
 Draft approach:
 
 ```yaml
-# Draft — not yet validated
+# Draft - not yet validated
 esphome:
   on_boot:
     then:

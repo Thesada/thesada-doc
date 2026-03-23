@@ -2,7 +2,7 @@
 title: Firmware
 nav_order: 5
 has_children: true
-description: "thesada-fw — custom ESP32-S3 firmware with MQTT over TLS, cellular fallback, OTA updates, Lua scripting, battery monitoring, and a unified shell CLI."
+description: "thesada-fw - custom ESP32-S3 firmware with MQTT over TLS, cellular fallback, OTA updates, Lua scripting, battery monitoring, and a unified shell CLI."
 ---
 
 # Firmware
@@ -11,7 +11,7 @@ Thesada nodes run one of two firmware approaches depending on the use case:
 
 **ESPHome** is used for simpler sensor nodes where its built-in components cover the requirements. Configuration lives in `thesada-cfg/esphome/`. See the [Getting Started](../getting-started/esphome.md) guide and each module's ESPHome Config page.
 
-**Custom firmware** (`thesada-fw`) is used where ESPHome lacks coverage — cellular fallback, Lua scripting, complex inter-module logic, or full control over the build. This section documents the custom firmware.
+**Custom firmware** (`thesada-fw`) is used where ESPHome lacks coverage - cellular fallback, Lua scripting, complex inter-module logic, or full control over the build. This section documents the custom firmware.
 
 ---
 
@@ -21,7 +21,7 @@ Thesada nodes run one of two firmware approaches depending on the use case:
 |---|---|
 | [Architecture](fw-architecture.md) | Module design, boot sequence, Shell, Lua, OTA, connectivity |
 | [Testing](fw-testing.md) | Test script, manual checks, section-by-section verification |
-| [Source](https://github.com/thesada/thesada-fw) | GitHub — GPL-3.0-only |
+| [Source](https://github.com/thesada/thesada-fw) | GitHub - GPL-3.0-only |
 
 ---
 
@@ -38,8 +38,8 @@ Thesada nodes run one of two firmware approaches depending on the use case:
 | SD card logging | CSV, per-boot files, configurable max file size with auto-rotation |
 | Lua scripting | Lua 5.3 runtime; hot-reloadable rules, EventBus + MQTT bindings |
 | Shell CLI | Commands over serial, WebSocket (`/ws/serial`), and HTTP (`POST /api/cmd`) |
-| OTA — push | Upload `.bin` via web dashboard or curl |
-| OTA — pull | Fetch manifest from GitHub Releases, SHA256 verify, auto-install |
+| OTA - push | Upload `.bin` via web dashboard or curl |
+| OTA - pull | Fetch manifest from GitHub Releases, SHA256 verify, auto-install |
 | PowerManager LED | Blue CHGLED: heartbeat pulse, hardware charge indicator, or off |
 | NTP log timestamps | ISO 8601 UTC in log lines once clock is synced |
 | Temperature alerts | Threshold rules with hysteresis, MQTT + HTTP webhook |

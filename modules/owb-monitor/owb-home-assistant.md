@@ -4,9 +4,9 @@ parent: OWB Monitor
 nav_order: 3
 ---
 
-# OWB Monitor — Home Assistant
+# OWB Monitor - Home Assistant
 
-The OWB monitor publishes sensor data via MQTT. Home Assistant auto-discovers all entities via MQTT discovery — no manual entity configuration needed.
+The OWB monitor publishes sensor data via MQTT. Home Assistant auto-discovers all entities via MQTT discovery - no manual entity configuration needed.
 
 ---
 
@@ -53,7 +53,7 @@ Replace `notify.YOUR_NOTIFY_ENTITY` with your actual Telegram notify entity ID.
 
 ### Supply Temperature Low
 
-Fires when the boiler supply temperature drops below 40°C — boiler going out or not heating.
+Fires when the boiler supply temperature drops below 40°C - boiler going out or not heating.
 
 ```yaml
 alias: OWB Supply Temp Low
@@ -67,14 +67,14 @@ action:
     data:
       message: |-
         Thesada OWB Alert:
-        Supply temp low — {{ states('sensor.house_loop_supply_temp') | round(1) }}°C
+        Supply temp low - {{ states('sensor.house_loop_supply_temp') | round(1) }}°C
         Check fire.
 mode: single
 ```
 
 ### Loop Delta Collapsed
 
-Fires when the difference between supply and return temperature drops below 5°C — possible flow blockage or pump issue.
+Fires when the difference between supply and return temperature drops below 5°C - possible flow blockage or pump issue.
 
 ```yaml
 alias: OWB Loop Delta Low
@@ -98,7 +98,7 @@ mode: single
 
 ### Pump Current Zero
 
-Fires when a pump stops drawing current while the system is actively heating — supply temperature above 25°C during the heating season (September–May).
+Fires when a pump stops drawing current while the system is actively heating - supply temperature above 25°C during the heating season (September–May).
 
 ```yaml
 alias: OWB Pump Current Zero
@@ -150,7 +150,7 @@ action:
   - action: notify.YOUR_NOTIFY_ENTITY
     data:
       message: |-
-        Thesada OWB — Current Readings:
+        Thesada OWB - Current Readings:
 
         House loop
           Supply:  {{ states('sensor.house_loop_supply_temp') | round(1) }}°C

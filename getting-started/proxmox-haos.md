@@ -1,11 +1,11 @@
 ---
-title: Proxmox — HAOS Install
+title: Proxmox - HAOS Install
 parent: Getting Started
 nav_order: 1
 description: "Install Home Assistant OS as a VM on Proxmox VE with dedicated networking and USB passthrough."
 ---
 
-# Home Assistant OS on Proxmox VE 9 — Install & Initial Config
+# Home Assistant OS on Proxmox VE 9 - Install & Initial Config
 
 Personal reference. Manual install, no helper scripts.
 
@@ -135,7 +135,7 @@ If it booted correctly you'll see the HAOS shell prompt with the local IP printe
 Home Assistant login:
 ```
 
-Note the IP address shown — you'll need it for web access and CLI config.
+Note the IP address shown - you'll need it for web access and CLI config.
 
 ---
 
@@ -208,6 +208,6 @@ The onboarding wizard will walk through:
 | Symptom | Fix |
 |---|---|
 | No boot, BIOS access denied | Disable Secure Boot in the VM's OVMF BIOS |
-| `non-existent or non-regular file` on `qm importdisk` | Check spelling — extension is `.qcow2` not `.gcow2` |
+| `non-existent or non-regular file` on `qm importdisk` | Check spelling - extension is `.qcow2` not `.gcow2` |
 | Port 8123 not reachable after first boot | Delete VM and redo from step 2; known to resolve config.yaml issues |
 | QEMU agent connected but CPU/RAM missing in PVE | Known HAOS limitation; network stats still work |

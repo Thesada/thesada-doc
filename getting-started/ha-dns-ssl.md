@@ -6,13 +6,13 @@ nav_order: 2
 
 # Home Assistant DNS & SSL
 
-This guide covers setting up Cloudflare DDNS, obtaining a Let's Encrypt TLS certificate, and enabling HTTPS on Home Assistant. The same certificate is reused by Mosquitto and ESPHome — no additional certificate work is needed for those services.
+This guide covers setting up Cloudflare DDNS, obtaining a Let's Encrypt TLS certificate, and enabling HTTPS on Home Assistant. The same certificate is reused by Mosquitto and ESPHome - no additional certificate work is needed for those services.
 
 ---
 
 ## Prerequisites
 
-- Home Assistant running and accessible (see [Proxmox — HAOS Install](proxmox-haos.md))
+- Home Assistant running and accessible (see [Proxmox - HAOS Install](proxmox-haos.md))
 - A Cloudflare account managing your domain
 
 ---
@@ -22,9 +22,9 @@ This guide covers setting up Cloudflare DDNS, obtaining a Let's Encrypt TLS cert
 1. Cloudflare dashboard → **My Profile → API Tokens**
 2. Click **Create Token**
 3. Use the **Edit zone DNS** template
-4. The template includes `Zone:DNS:Edit` — manually add `Zone:DNS:Read` as an additional permission
+4. The template includes `Zone:DNS:Edit` - manually add `Zone:DNS:Read` as an additional permission
 5. Scope both permissions to your specific zone (domain)
-6. Copy the token — you will need it below
+6. Copy the token - you will need it below
 
 ---
 
@@ -40,7 +40,7 @@ Since your home IP is likely dynamic, you need a DNS record that updates automat
    - Type: `A`
    - Name: `mqtt` (resolves to `mqtt.yourdomain.com`)
    - IPv4: your current public IP (find it at [ifconfig.me](https://ifconfig.me))
-   - Proxy: **OFF** (grey cloud — DNS only) — MQTT is TCP, Cloudflare proxy does not support it
+   - Proxy: **OFF** (grey cloud - DNS only) - MQTT is TCP, Cloudflare proxy does not support it
 
 ### Install Cloudflare DDNS integration
 
@@ -56,7 +56,7 @@ The integration checks your public IP periodically and updates the Cloudflare A 
 
 ## 3. Obtain a Let's Encrypt Certificate
 
-The certificate is obtained via the Cloudflare DNS challenge — no port 80 or port forwarding required.
+The certificate is obtained via the Cloudflare DNS challenge - no port 80 or port forwarding required.
 
 1. In Home Assistant go to **Settings → Apps**
 2. Open the **Let's Encrypt** app (install from the App Store if not present)
@@ -85,7 +85,7 @@ The app will obtain a certificate and store it at:
 
 ## 4. Auto-Renewal
 
-Let's Encrypt certificates expire every 90 days. The app does **not** auto-renew — set up an automation to restart it every 60 days.
+Let's Encrypt certificates expire every 90 days. The app does **not** auto-renew - set up an automation to restart it every 60 days.
 
 **Settings → Automations → Create Automation → Edit in YAML:**
 
@@ -133,11 +133,11 @@ Home Assistant should now be accessible at:
 https://YOUR_DOMAIN:8123
 ```
 
-**Use your domain name, not the IP address.** The Let's Encrypt certificate is issued to your domain — accessing HA by IP will show a certificate warning in the browser.
+**Use your domain name, not the IP address.** The Let's Encrypt certificate is issued to your domain - accessing HA by IP will show a certificate warning in the browser.
 
 ### Internal DNS override
 
-Keep Home Assistant off the public internet — do not expose port 8123 externally. To reach HA by domain name inside your network, set up a local DNS override on your router or internal DNS server:
+Keep Home Assistant off the public internet - do not expose port 8123 externally. To reach HA by domain name inside your network, set up a local DNS override on your router or internal DNS server:
 
 - Point `yourdomain.com` → `YOUR_HA_IP`
 
@@ -154,4 +154,4 @@ Once the override is in place, `https://yourdomain.com:8123` will load with a va
 1. **Settings → Apps → ESPHome Device Builder → Open Web UI**
 2. Confirm the browser shows `https://` with a valid padlock
 
-The ESPHome app uses the same certificate — no additional configuration needed there beyond what is covered in the [ESPHome Setup](esphome.md) guide.
+The ESPHome app uses the same certificate - no additional configuration needed there beyond what is covered in the [ESPHome Setup](esphome.md) guide.
