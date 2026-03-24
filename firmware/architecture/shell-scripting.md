@@ -50,7 +50,7 @@ Shell::registerCommand("name", "one-line help text", [](int argc, char** argv, S
 | `config.dump` | Print full config JSON |
 | `ifconfig` | SSID, IP, gateway, DNS, RSSI, MAC |
 | `ping <host>` | DNS resolve test (echoes resolved IP) |
-| `ntp` | Sync status, UTC time, epoch, server, offset |
+| `ntp` | Sync status, UTC time, epoch, server, offset. `ntp set <epoch>` or `ntp set <ISO8601>` to set manually. |
 | `mqtt` | Connected/disconnected, broker, port, prefix |
 | `module.list` | Compiled modules with [x]/[ ] toggles |
 | `module.status` | Runtime state per module (sensor counts, intervals, pins, SD mount, Telegram direct) |

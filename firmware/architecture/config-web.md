@@ -83,7 +83,8 @@ Accessible at `http://[device-ip]/` - requires login (credentials from `web` con
 - Battery rows color-coded: green when charging, red when below 20%
 
 **Admin terminal** - auth-gated WebSocket terminal:
-- Streams all firmware log lines in real time
+- Replays last 50 log lines on connect (server-side ring buffer) - terminal is never blank
+- Streams all firmware log lines in real time after replay
 - Log level filter: ALL / INF / WRN / ERR / DBG (client-side, 500-line ring buffer)
 - Clear button; auto-reconnects on disconnect
 - WebSocket auth: JS fetches `/api/ws/token` (Basic Auth) before opening the socket; the server grants the caller IP 30 s access; `WS_EVT_CONNECT` verifies and closes unauthenticated connections immediately
