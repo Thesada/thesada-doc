@@ -55,6 +55,8 @@ Built-in subscriptions registered at boot:
 |---|---|
 | `<prefix>/cmd/ota` | Trigger OTA manifest check |
 | `<prefix>/cmd/lua/reload` | Hot-reload Lua scripts |
+| `<prefix>/cmd/config/set` | Set single config key. Payload: `{"path": "telegram.cooldown_s", "value": "600"}` |
+| `<prefix>/cmd/config/push` | Replace full config.json. Payload: entire JSON config. Max 4 KB. |
 
 Modules and Lua scripts can add further subscriptions via `MQTTClient::subscribe()` or `MQTT.publish()` / `EventBus.subscribe()`.
 

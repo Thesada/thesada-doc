@@ -55,16 +55,51 @@ curl http://172.16.1.212/api/info
 
 ## 11. Temperature Alerts
 
-Set `temp_high_c` just below current room temperature to trigger immediately.
+Set an alert rule with `function: "gte"` and `value` just below current room temperature to trigger immediately.
 
 | Check | Expected |
 |---|---|
 | Enable one alert rule, save + restart | `Ready - 1 alert rule(s) enabled` |
-| Temperature exceeds `temp_high_c` | `[overheat] sensor: XX.XXC - OVERHEAT...` |
+| Reading crosses threshold (function/value) | `[overheat] sensor: XX.XX C - OVERHEAT (>= YY.Y C)` |
 | MQTT monitor receives `<prefix>/alert` | `{"value":"[overheat] ..."}` |
 | Alert fires only once | Hysteresis - second reading doesn't re-trigger |
-| Temperature drops below threshold | `back to normal`; alert fires again on next cross |
+| Reading returns to normal | `back to normal`; alert fires again on next cross |
+| Cooldown: re-trigger within `cooldown_s` | Alert suppressed until cooldown expires |
+| Recovery: back to normal during cooldown | Recovery always sends immediately |
+| `sensors: ["temp_1"]` filter | Only temp_1 triggers, other sensors ignored |
+| `sensors: []` (empty) | All sensors trigger (default) |
+| Custom `message` field | Alert label matches config value |
 | Set `enabled: false` | No alerts fire |
+
+## 11a. MQTT Config Set/Push
+
+| Check | Expected |
+|---|---|
+| Publish `{"path":"telegram.cooldown_s","value":"600"}` to `<prefix>/cmd/config/set` | Config updated, saved to disk, reloaded |
+| Verify via API: `GET /api/file?path=/config.json&source=littlefs` | Value changed |
+| Publish full config JSON to `<prefix>/cmd/config/push` | Config replaced, saved, reloaded |
+| Push invalid JSON | Error logged, config rolls back to file on disk |
+| Set non-existent path | Error logged, no crash |
+
+## 11b. Fallback AP
+
+| Check | Expected |
+|---|---|
+| Set WiFi SSID to invalid, restart | AP appears: `<device.name>-setup` |
+| Connect phone to AP SSID | Captive portal redirects to dashboard |
+| Dashboard loads at 192.168.4.1 | Sensor table, config editor, terminal all functional |
+| `ap_password` set (min 8 chars) | AP is WPA2 protected |
+| `ap_timeout_s` expires | AP stops, WiFi scan retries |
+| Fix WiFi SSID via config editor in AP mode | Node connects to WiFi on next cycle |
+
+## 11c. NTP Manual Time Set
+
+| Check | Expected |
+|---|---|
+| `ntp set 1774674000` | `Time set to 2026-03-28T05:00:00Z (epoch 1774674000)` |
+| `ntp set 2026-03-28T05:00:00Z` | Same result via ISO 8601 |
+| `ntp set 0` | `Invalid time` error |
+| `ntp` (no args) | Shows current UTC time, server, offset |
 
 ---
 
