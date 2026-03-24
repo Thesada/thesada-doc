@@ -70,9 +70,29 @@ Modules and Lua scripts can add further subscriptions via `MQTTClient::subscribe
 
 ---
 
+## Fallback AP (captive portal)
+
+When no configured WiFi network is reachable (or none are configured), the node starts a SoftAP for local configuration:
+
+- **SSID:** `<device.name>-setup` (e.g. `thesada-owb-setup`)
+- **Password:** from `wifi.ap_password` (min 8 chars for WPA2; open if empty or shorter)
+- **Captive portal:** all DNS queries redirect to `192.168.4.1`, and unknown HTTP requests redirect to the dashboard. Phones and laptops auto-open the config page on connect.
+- **Timeout:** after `wifi.ap_timeout_s` (default 300s) the AP stops and WiFi scan retries. This cycles until WiFi connects.
+
+The web interface is fully functional in AP mode - you can view sensors, edit config, and upload firmware.
+
+```json
+"wifi": {
+  "ap_password":  "my-setup-pass",
+  "ap_timeout_s": 300
+}
+```
+
+---
+
 ## Cellular Fallback (LTE-M/NB-IoT)
 
-- Activates when all WiFi networks fail
+- Activates when all WiFi networks fail (in parallel with fallback AP)
 - SIM7080G modem-native MQTT over TLS via AT+SM* commands
 - Periodic WiFi recheck every 15 min (configurable); reverts to WiFi when available
 - If `/ca.crt` is present, the modem uses it for TLS verification (AT+SMSSL). If absent, the AT+SMSSL and AT+CSSLCFG CONVERT commands are skipped entirely - the modem connects without CA verification and a warning is logged.

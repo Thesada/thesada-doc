@@ -39,7 +39,7 @@ See `data/config.json.example` for all fields. Key sections:
 {
   "device":      { "name": "thesada-node", "friendly_name": "Thesada Node", "heartbeat_s": -1, "charging_led": true },
   "web":         { "user": "admin", "password": "changeme" },
-  "wifi":        { "networks": [...], "timeout_per_ssid_s": 10, "wifi_check_interval_s": 900 },
+  "wifi":        { "networks": [...], "timeout_per_ssid_s": 10, "wifi_check_interval_s": 900, "ap_password": "", "ap_timeout_s": 300 },
   "ntp":         { "server": "pool.ntp.org", "tz_offset_s": 3600 },
   "mqtt":        { "broker": "...", "port": 8883, "user": "...", "password": "...",
                    "topic_prefix": "thesada/node", "send_interval_s": 0 },
