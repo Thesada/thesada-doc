@@ -1,6 +1,6 @@
 ---
 title: Firmware
-nav_order: 5
+nav_order: 3
 has_children: true
 description: "thesada-fw - custom ESP32-S3 firmware with MQTT over TLS, cellular fallback, OTA updates, Lua scripting, battery monitoring, and a unified shell CLI."
 ---
@@ -9,9 +9,11 @@ description: "thesada-fw - custom ESP32-S3 firmware with MQTT over TLS, cellular
 
 Thesada nodes run one of two firmware approaches depending on the use case:
 
-**ESPHome** is used for simpler sensor nodes where its built-in components cover the requirements. Configuration lives in `thesada-cfg/esphome/`. See the [Getting Started](../getting-started/esphome.md) guide and each module's ESPHome Config page.
+**ESPHome** is used for simpler sensor nodes where its built-in components cover the requirements. Configuration lives in `thesada-cfg/esphome/`. See the [Home Assistant](../home-assistant/esphome.md) guide and each module's ESPHome Config page.
 
 **Custom firmware** (`thesada-fw`) is used where ESPHome lacks coverage - cellular fallback, Lua scripting, complex inter-module logic, or full control over the build. This section documents the custom firmware.
+
+![Sensor dashboard]({{ site.baseurl }}/assets/img/firmware/dashboard-sensors.png)
 
 ---
 

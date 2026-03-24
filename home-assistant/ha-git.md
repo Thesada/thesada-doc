@@ -1,6 +1,6 @@
 ---
 title: HA Git Sync (Optional)
-parent: Getting Started
+parent: Home Assistant
 nav_order: 6
 description: "Version-control Home Assistant config with Git -- private repo, deploy key, one-way sync from GitHub."
 ---

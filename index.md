@@ -20,6 +20,6 @@ Every build on [Foothills Builds](https://youtube.com/@FoothillsBuilds) gets ful
 
 ## Where to start
 
-- New to Thesada? Start with [Getting Started](getting-started/overview.md)
+- New to Thesada? Start with [Home Assistant](home-assistant/overview.md)
 - Looking for a specific module? See [Modules](modules/)
 - Want the firmware source? See [GitHub](https://github.com/Thesada/thesada-fw)

@@ -44,7 +44,7 @@ ESPHome's platform name for the SHT31 and SHT35 family. Uses I2C address `0x44` 
 
 ## First Flash
 
-See [ESPHome Setup](../../getting-started/esphome.md) for the full first-flash process via CLI. OTA handles all subsequent updates.
+See [ESPHome Setup](../../home-assistant/esphome.md) for the full first-flash process via CLI. OTA handles all subsequent updates.
 
 ---
 

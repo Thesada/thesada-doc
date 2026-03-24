@@ -1,7 +1,7 @@
 ---
 title: Well Pump Monitor
 parent: Modules
-nav_order: 2
+nav_order: 3
 description: "Well pump monitoring system -- current draw, pressure tank, short-cycle detection, freeze risk alerting."
 has_children: true
 ---

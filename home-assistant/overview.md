@@ -1,6 +1,6 @@
 ---
-title: Getting Started
-nav_order: 2
+title: Home Assistant
+nav_order: 4
 description: "Step-by-step setup guides for the Thesada property monitoring stack -- Proxmox, Home Assistant, MQTT, ESPHome, Telegram."
 has_children: true
 ---

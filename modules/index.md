@@ -1,6 +1,6 @@
 ---
 title: Modules
-nav_order: 3
+nav_order: 2
 description: "Thesada sensor modules -- OWB monitor, SHT31 monitor, well pump monitor. Wiring, BOM, and configuration for each."
 has_children: true
 ---

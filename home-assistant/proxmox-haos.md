@@ -1,6 +1,6 @@
 ---
 title: Proxmox - HAOS Install
-parent: Getting Started
+parent: Home Assistant
 nav_order: 1
 description: "Install Home Assistant OS as a VM on Proxmox VE with dedicated networking and USB passthrough."
 ---
@@ -143,7 +143,7 @@ Note the IP address shown - you'll need it for web access and CLI config.
 
 Access the HA CLI from the VM console (no login needed on HAOS):
 
-![HA Onboarding]({{ site.baseurl }}/assets/img/getting-started/ha_ready.png)
+![HA Onboarding]({{ site.baseurl }}/assets/img/home-assistant/ha_ready.png)
 
 ```bash
 ha network info
@@ -193,7 +193,7 @@ Navigate to:
 ```
 http://<IP>:8123
 ```
-![HA Onboarding]({{ site.baseurl }}/assets/img/getting-started/ha_onboarding.png)
+![HA Onboarding]({{ site.baseurl }}/assets/img/home-assistant/ha_onboarding.png)
 
 The onboarding wizard will walk through:
 

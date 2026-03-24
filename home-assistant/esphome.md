@@ -1,6 +1,6 @@
 ---
 title: ESPHome Setup in HA
-parent: Getting Started
+parent: Home Assistant
 nav_order: 4
 description: "Set up ESPHome in Home Assistant for compiling and flashing firmware to ESP32 sensor nodes."
 ---

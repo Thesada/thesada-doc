@@ -13,7 +13,7 @@ Once the SHT31 node is flashed and online, Home Assistant auto-discovers it via 
 ## Prerequisites
 
 - SHT31 node flashed and online
-- Telegram bot set up in Home Assistant (see [Telegram](../../getting-started/telegram.md))
+- Telegram bot set up in Home Assistant (see [Telegram](../../home-assistant/telegram.md))
 
 ---
 

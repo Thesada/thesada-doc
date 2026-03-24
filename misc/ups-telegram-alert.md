@@ -1,7 +1,7 @@
 ---
 title: UPS On-Battery Telegram Alert
-parent: Reference
-nav_order: 3
+parent: Misc
+nav_order: 2
 description: "Send Telegram alerts when UPS switches to battery power using NUT and Home Assistant automations."
 ---
 
@@ -19,7 +19,7 @@ Uses the NUT integration in HA to monitor UPS status on the Proxmox host.
 - Host firewall rule restricting port 3493 to the HA IP only
 - NUT integration added in HA via the GUI
 - Telegram integration configured
-  (see [Telegram Integration](../getting-started/telegram))
+  (see [Telegram Integration](../home-assistant/telegram))
 - Router firewall rule allowing DMZ -> LAN on port 3493
   (HA in DMZ needs to reach Proxmox upsd on the main LAN)
 

@@ -1,6 +1,6 @@
 ---
-title: Telegram
-parent: Getting Started
+title: Telegram HA Integration
+parent: Home Assistant
 nav_order: 5
 ---
 

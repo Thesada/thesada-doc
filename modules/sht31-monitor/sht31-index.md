@@ -1,7 +1,7 @@
 ---
 title: SHT31 Monitor
 parent: Modules
-nav_order: 2
+nav_order: 1
 description: "SHT31 indoor temperature and humidity monitor -- ESPHome on Freenove ESP32-S3."
 has_children: true
 ---

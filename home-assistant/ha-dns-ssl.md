@@ -1,6 +1,6 @@
 ---
 title: Home Assistant DNS & SSL
-parent: Getting Started
+parent: Home Assistant
 nav_order: 2
 ---
 

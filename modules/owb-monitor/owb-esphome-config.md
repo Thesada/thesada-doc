@@ -115,7 +115,7 @@ This provides local data recovery if MQTT connectivity is lost. The SD card can 
 
 ## First Flash
 
-See [ESPHome Setup](../../getting-started/esphome.md) for the full first-flash process via CLI. OTA handles all subsequent updates.
+See [ESPHome Setup](../../home-assistant/esphome.md) for the full first-flash process via CLI. OTA handles all subsequent updates.
 
 ---
 

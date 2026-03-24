@@ -13,8 +13,8 @@ The OWB monitor publishes sensor data via MQTT. Home Assistant auto-discovers al
 ## Prerequisites
 
 - OWB node flashed and online
-- Mosquitto MQTT broker running (see [Mosquitto MQTT Broker](../../getting-started/mosquitto.md))
-- Telegram bot set up in Home Assistant (see [Telegram](../../getting-started/telegram.md))
+- Mosquitto MQTT broker running (see [Mosquitto MQTT Broker](../../home-assistant/mosquitto.md))
+- Telegram bot set up in Home Assistant (see [Telegram](../../home-assistant/telegram.md))
 
 ---
 
