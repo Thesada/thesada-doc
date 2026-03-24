@@ -61,6 +61,34 @@ pio run -e esp32-s3-dev --target uploadfs
 
 If `ca.crt` is absent or wrong, TLS still connects but logs `[WRN][MQTT] No CA cert - insecure`. MQTT and OTA will work but without certificate verification.
 
+### Runtime ca.crt Upload (deployed devices)
+
+If the device is already flashed and accessible over the network, upload `ca.crt` via the file API without reflashing:
+
+```bash
+# Upload ca.crt to LittleFS
+curl -u admin:changeme -X POST \
+  'http://[ip]/api/file?path=/ca.crt&source=littlefs' \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary @base/data/ca.crt
+
+# Restart to apply
+curl -u admin:changeme -X POST \
+  'http://[ip]/api/cmd' \
+  -H 'Content-Type: application/json' \
+  -d '{"cmd":"restart"}'
+```
+
+Verify after reboot:
+```bash
+curl -u admin:changeme -X POST \
+  'http://[ip]/api/cmd' \
+  -H 'Content-Type: application/json' \
+  -d '{"cmd":"cat /ca.crt"}'
+```
+
+The PEM bundle should contain ISRG Root X1 (for Let's Encrypt / GitHub OTA) and USERTrust ECC (for github.com). Both are needed for end-to-end GitHub OTA. For cellular MQTT, the modem uses the same `/ca.crt` file - if absent, it connects without CA verification and logs a warning.
+
 ---
 
 ## 1. Boot + Config

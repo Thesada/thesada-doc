@@ -414,6 +414,7 @@ All three channels fire independently. If `bot_token` or `chat_ids` are empty, t
 "telegram": {
   "bot_token": "",
   "chat_ids": [],
+  "cooldown_s": 300,
   "alerts": [
     { "enabled": true,  "name": "overheat", "temp_high_c": 40.0 },
     { "enabled": true,  "name": "freeze",   "temp_low_c":  2.0  },
@@ -426,12 +427,14 @@ All three channels fire independently. If `bot_token` or `chat_ids` are empty, t
 |---|---|
 | `bot_token` | Telegram Bot API token (from @BotFather). Empty = skip direct Telegram. |
 | `chat_ids` | Array of Telegram chat ID strings. Supports users and groups (negative IDs). |
+| `cooldown_s` | Minimum seconds between repeated alerts for the same sensor+rule (default 300). Recovery alerts always send immediately. |
 | `alerts` | Array of threshold rules (see below) |
 
 - Each rule has an independent enable toggle
 - `temp_high_c` fires when **any** sensor exceeds the threshold
 - `temp_low_c` fires when **any** sensor drops below the threshold
 - **Hysteresis**: alert fires only on state transition - no repeated messages
+- **Cooldown**: if a sensor oscillates around a threshold, the same alert will not re-fire until `cooldown_s` has elapsed. Recovery ("back to normal") always sends immediately and resets the cooldown.
 - **Low battery**: fires when battery percent drops below `battery.low_pct` (default 20%) while not charging
 
 Alert state per `ruleName:sensorName`: `0` = normal, `1` = high, `-1` = low.
@@ -488,6 +491,7 @@ automation:
 - Activates when all WiFi networks fail
 - SIM7080G modem-native MQTT over TLS via AT+SM* commands
 - Periodic WiFi recheck every 15 min (configurable); reverts to WiFi when available
+- If `/ca.crt` is present, the modem uses it for TLS verification (AT+SMSSL). If absent, the AT+SMSSL and AT+CSSLCFG CONVERT commands are skipped entirely - the modem connects without CA verification and a warning is logged.
 
 ### CA certificate
 No certificate is compiled in. Place a CA cert PEM bundle as `data/ca.crt` and upload to LittleFS (`pio run --target uploadfs`). Multiple certs can be concatenated in one file. Both WiFi MQTT and the OTA HTTPS client load it at boot. If absent, TLS connects without certificate verification and a warning is logged.
