@@ -10,7 +10,7 @@ description: "AXP2101 PMU management, battery charging config, heartbeat LED, an
 
 ## Power Manager (PowerManager)
 
-`PowerManager` manages the AXP2101 PMU on every boot - VBUS power acceptance, battery charging, ADC enable - and drives the AXP2101 CHGLED (blue LED) as a heartbeat or charge indicator.
+`PowerManager` manages the AXP2101 PMU on every boot - VBUS power acceptance, battery charging, ADC enable. Requires `ENABLE_PMU` in config.h. Boards without an AXP2101 (bare ESP32-S3 devkits) can disable this module entirely.
 
 **PMU init - runs unconditionally on every boot:**
 
@@ -39,23 +39,31 @@ description: "AXP2101 PMU management, battery charging config, heartbeat LED, an
 | `PowerManager::getPercent()` | `int` - state of charge 0-100, or -1 |
 | `PowerManager::isCharging()` | `bool` - charger circuit active |
 
-**LED modes** (`device` section of `config.json`):
+## Heartbeat LED (HeartbeatLED - core)
 
-| `heartbeat_s` | `charging_led` | LED behaviour |
-|---|---|---|
-| `>= 5` | any | Heartbeat pulse every N seconds |
-| `-1` | `true` (default) | Hardware-driven charge indicator (on while charging) |
-| `-1` | `false` | Always off |
+The heartbeat LED is always available (core, not a module). It supports two backends:
 
-**Implementation:** Uses `Wire1` (SDA=15 SCL=7) - independent of `Wire` (I2C bus 0, used by ADS1115). No RTOS tasks or timers; LED state is managed in `loop()`.
+- **AXP2101 CHGLED** - used automatically when `ENABLE_PMU` is active and PMU init succeeds
+- **GPIO pin** - used when PMU is unavailable. Set `heartbeat_pin` in config.json. Negative value = active-low (e.g. `-2` = GPIO2, active low)
+
+| `heartbeat_s` | `heartbeat_pin` | `charging_led` | Behaviour |
+|---|---|---|---|
+| `>= 5` | any | any | Heartbeat pulse every N seconds (AXP2101 or GPIO) |
+| `-1` | any | `true` (default) | AXP2101: hardware charge indicator. GPIO: off |
+| `-1` | any | `false` | Always off |
+
+**Pin convention:** positive = active high, negative = active low. `"heartbeat_pin": -2` means GPIO2 where LOW = LED on.
 
 ```json
 "device": {
   "name":         "thesada-node",
-  "heartbeat_s":  -1,
+  "heartbeat_s":  5,
+  "heartbeat_pin": -2,
   "charging_led": true
 }
 ```
+
+**Implementation:** `HeartbeatLED` lives in `src/core/` (always compiled). Uses `Wire1` (SDA=15 SCL=7) for AXP2101 path - independent of `Wire` (I2C bus 0, used by ADS1115). No RTOS tasks or timers; LED state is managed in `loop()`.
 
 Reference: [Xinyuan-LilyGO/LilyGo-T-SIM7080G](https://github.com/Xinyuan-LilyGO/LilyGo-T-SIM7080G) examples (MIT licence).
 

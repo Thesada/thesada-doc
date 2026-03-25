@@ -83,6 +83,8 @@ Lua 5.3 runtime via the [ESP-Arduino-Lua](https://github.com/sfranzyshen/ESP-Ard
 | `Node.restart()` | Reboot the device |
 | `Node.version()` | Returns firmware version string |
 | `Node.uptime()` | Returns `millis()` as number |
+| `Node.ip()` | Returns WiFi IP as string |
+| `Node.setTimeout(ms, fn)` | Call `fn` after `ms` milliseconds (max 8 pending timers) |
 
 **Hot reload:**
 `ScriptEngine::reload()` bumps a generation counter, destroys the Lua state, creates a fresh one, and re-executes both scripts. Stale EventBus callbacks check the generation counter and silently skip. Reload is triggered by:

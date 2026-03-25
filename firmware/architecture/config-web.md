@@ -37,14 +37,14 @@ See `data/config.json.example` for all fields. Key sections:
 
 ```json
 {
-  "device":      { "name": "thesada-node", "friendly_name": "Thesada Node", "heartbeat_s": -1, "charging_led": true },
+  "device":      { "name": "thesada-node", "friendly_name": "Thesada Node", "heartbeat_s": -1, "heartbeat_pin": -1, "charging_led": true },
   "web":         { "user": "admin", "password": "changeme" },
   "wifi":        { "networks": [...], "timeout_per_ssid_s": 10, "wifi_check_interval_s": 900, "ap_password": "", "ap_timeout_s": 300 },
   "ntp":         { "server": "pool.ntp.org", "tz_offset_s": 3600 },
   "mqtt":        { "broker": "...", "port": 8883, "user": "...", "password": "...",
                    "topic_prefix": "thesada/node", "send_interval_s": 0,
                    "ha_discovery": true },
-  "temperature": { "pin": 12, "interval_s": 60, "auto_discover": true, "conversion_wait_ms": 750, "sensors": [] },
+  "temperature": { "pin": 12, "interval_s": 60, "auto_discover": true, "conversion_wait_ms": 750, "unit": "C", "sensors": [] },
   "ads1115":     { "i2c_sda": 1, "i2c_scl": 2, "address": 72, "interval_s": 60, "channels": [...] },
   "cellular":    { "apn": "OSC", "sim_pin": "", "rf_settle_ms": 15000, "reg_timeout_ms": 180000 },
   "sd":          { "enabled": true, "pin_clk": 38, "pin_cmd": 39, "pin_data": 40 },

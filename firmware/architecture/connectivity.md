@@ -54,14 +54,14 @@ lua.exec MQTT.publish("thesada/node/cmd/ota", "check")
 The primary interface for remote management. Subscribe to `<prefix>/cli/#` - the topic is the command, the payload is the arguments. Response published to `<prefix>/cli/response` as JSON.
 
 ```
-thesada/owb/cli/sensors          payload: ""              -> all sensors
-thesada/owb/cli/sensors          payload: "temp_1"        -> specific sensor
-thesada/owb/cli/config.set       payload: "mqtt.ha_discovery true"
-thesada/owb/cli/config.reload    payload: ""
-thesada/owb/cli/ota.check        payload: ""
-thesada/owb/cli/restart          payload: ""
-thesada/owb/cli/battery          payload: ""
-thesada/owb/cli/version          payload: ""
+thesada/node/cli/sensors          payload: ""              -> all sensors
+thesada/node/cli/sensors          payload: "temp_1"        -> specific sensor
+thesada/node/cli/config.set       payload: "mqtt.ha_discovery true"
+thesada/node/cli/config.reload    payload: ""
+thesada/node/cli/ota.check        payload: ""
+thesada/node/cli/restart          payload: ""
+thesada/node/cli/battery          payload: ""
+thesada/node/cli/version          payload: ""
 ```
 
 Response format:
@@ -70,6 +70,15 @@ Response format:
 ```
 
 Any shell command works - same 30+ commands available over serial, WebSocket, HTTP, and now MQTT.
+
+Special command: `cli/file.write` - payload is `<path>\n<content>`. Use `mosquitto_pub -s` with stdin pipe (not `-m` or `-f`):
+```bash
+printf '/scripts/alerts.lua\n' | cat - alerts.lua | mosquitto_pub ... -t '<prefix>/cli/file.write' -s
+```
+
+**Known issues:**
+- `config.set` via MQTT CLI does not return a response (the config reload disconnects MQTT before the response is sent). The value is still saved - verify with `config.get` after reconnect.
+- `file.write` via `mosquitto_pub -m` or `-f` writes 0 bytes. Use stdin pipe (`-s`) as shown above.
 
 ### Legacy cmd/* topics (deprecated, will be removed)
 
