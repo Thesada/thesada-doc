@@ -2,145 +2,156 @@
 title: Home Assistant
 parent: OWB Monitor
 nav_order: 3
+description: "MQTT sensor configuration for the OWB monitor in Home Assistant - temperature, current, battery, alerts, and Telegram commands."
 ---
 
 # OWB Monitor - Home Assistant
 
-The OWB monitor publishes sensor data via MQTT. Home Assistant auto-discovers all entities via MQTT discovery - no manual entity configuration needed.
+The OWB monitor publishes sensor data via MQTT. Home Assistant requires manual MQTT sensor configuration to pick up the entities.
+
+The full YAML config is maintained in the [thesada-cfg repo](https://github.com/Thesada/thesada-cfg/blob/main/ha/mqtt/owb-sensors.yaml).
 
 ---
 
 ## Prerequisites
 
-- OWB node flashed and online
-- Mosquitto MQTT broker running (see [Mosquitto MQTT Broker](../../home-assistant/mosquitto.md))
-- Telegram bot set up in Home Assistant (see [Telegram](../../home-assistant/telegram.md))
+- OWB node flashed and online (thesada-fw v1.0.16+)
+- Mosquitto MQTT broker running (see [MQTT Integration](../../home-assistant/mosquitto.md))
+- Telegram bot set up in Home Assistant (see [Telegram HA Integration](../../home-assistant/telegram.md))
 
 ---
 
-## 1. Verify MQTT Entities
+## 1. MQTT Sensor Config
 
-Once the node is online and publishing, entities will appear automatically in Home Assistant.
+Copy [ha/mqtt/owb-sensors.yaml](https://github.com/Thesada/thesada-cfg/blob/main/ha/mqtt/owb-sensors.yaml) to your HA config directory and include it:
 
-**Settings → Devices & Services → MQTT**
+```yaml
+# configuration.yaml
+mqtt: !include ha/mqtt/owb-sensors.yaml
+```
 
-You should see six entities:
+This creates 12 entities:
 
-| Entity | Description |
-|---|---|
-| `sensor.house_loop_supply_temp` | House loop supply temperature (°C) |
-| `sensor.house_loop_return_temp` | House loop return temperature (°C) |
-| `sensor.barn_loop_supply_temp` | Barn loop supply temperature (°C) |
-| `sensor.barn_loop_return_temp` | Barn loop return temperature (°C) |
-| `sensor.house_pump_current` | House loop pump current draw (A) |
-| `sensor.barn_pump_current` | Barn loop pump current draw (A) |
+| Entity | Type | Description |
+|---|---|---|
+| `sensor.owb_house_supply` | temperature | House loop supply (C) |
+| `sensor.owb_house_return` | temperature | House loop return (C) |
+| `sensor.owb_barn_supply` | temperature | Barn loop supply (C) |
+| `sensor.owb_barn_return` | temperature | Barn loop return (C) |
+| `sensor.owb_house_pump_current` | measurement | House pump CT voltage (V) |
+| `sensor.owb_barn_pump_current` | measurement | Barn pump CT voltage (V) |
+| `sensor.owb_battery_voltage` | voltage | Battery voltage (V) |
+| `sensor.owb_battery_percent` | battery | Battery level (%) |
+| `sensor.owb_battery_charging` | text | Charging / Discharging |
+| `binary_sensor.owb_house_pump_running` | running | House pump on/off |
+| `binary_sensor.owb_barn_pump_running` | running | Barn pump on/off |
+| `binary_sensor.owb_battery_present` | battery | Battery detected |
 
-If entities do not appear, confirm the node is publishing by subscribing to the MQTT topic:
+Verify the node is publishing:
 
 ```bash
-mosquitto_sub -h YOUR_HA_IP -p 1883 \
+mosquitto_sub -h YOUR_BROKER -p 8883 \
   -u mqtt-user -P YOUR_PASSWORD \
+  --capath /etc/ssl/certs \
   -t 'thesada/owb/#' -v
 ```
 
 ---
 
-## 2. Alert Automations
+## 2. Firmware Alerts vs HA Automations
 
-Three automations cover the critical failure conditions. Create each via **Settings → Automations → Create Automation → Edit in YAML**.
+The firmware (v1.0.16+) sends alerts directly to Telegram via the Bot API when configured with `bot_token` and `chat_ids`. These use the generic alert rules in config.json (`function: gte/lte`, `value`, `message`, optional `sensors` filter).
 
-Replace `notify.YOUR_NOTIFY_ENTITY` with your actual Telegram notify entity ID.
+HA automations are a second layer - useful for:
+- Cross-sensor logic (e.g. supply/return delta)
+- Time-based conditions (heating season only)
+- Telegram `/temp` command responses
+
+Both can run simultaneously.
+
+---
+
+## 3. Alert Automations (HA)
+
+Three automations cover conditions the firmware alerts don't handle well (cross-sensor, time-based). Create each via **Settings - Automations - Create Automation - Edit in YAML**.
+
+Replace `notify.YOUR_NOTIFY_ENTITY` with your Telegram notify entity.
 
 ### Supply Temperature Low
 
-Fires when the boiler supply temperature drops below 40°C - boiler going out or not heating.
-
 ```yaml
 alias: OWB Supply Temp Low
-description: Alert when boiler supply temperature drops below 40°C
+description: Alert when boiler supply drops below 40C
 trigger:
   - platform: numeric_state
-    entity_id: sensor.house_loop_supply_temp
+    entity_id: sensor.owb_house_supply
     below: 40
 action:
   - action: notify.YOUR_NOTIFY_ENTITY
     data:
-      message: |-
-        Thesada OWB Alert:
-        Supply temp low - {{ states('sensor.house_loop_supply_temp') | round(1) }}°C
-        Check fire.
+      message: >-
+        OWB Alert: Supply temp low -
+        {% raw %}{{ states('sensor.owb_house_supply') | round(1) }}{% endraw %}C. Check fire.
 mode: single
 ```
 
 ### Loop Delta Collapsed
 
-Fires when the difference between supply and return temperature drops below 5°C - possible flow blockage or pump issue.
-
 ```yaml
 alias: OWB Loop Delta Low
-description: Alert when supply/return delta collapses below 5°C
+description: Alert when supply/return delta collapses below 5C
 trigger:
   - platform: template
     value_template: >
-      {{ (states('sensor.house_loop_supply_temp') | float -
-          states('sensor.house_loop_return_temp') | float) < 5 }}
+      {% raw %}{{ (states('sensor.owb_house_supply') | float -
+          states('sensor.owb_house_return') | float) < 5 }}{% endraw %}
     for: "00:05:00"
 action:
   - action: notify.YOUR_NOTIFY_ENTITY
     data:
-      message: |-
-        Thesada OWB Alert:
-        House loop delta low.
-        Supply: {{ states('sensor.house_loop_supply_temp') | round(1) }}°C
-        Return: {{ states('sensor.house_loop_return_temp') | round(1) }}°C
+      message: >-
+        OWB Alert: House loop delta low.
+        Supply: {% raw %}{{ states('sensor.owb_house_supply') | round(1) }}{% endraw %}C
+        Return: {% raw %}{{ states('sensor.owb_house_return') | round(1) }}{% endraw %}C
 mode: single
 ```
 
 ### Pump Current Zero
 
-Fires when a pump stops drawing current while the system is actively heating - supply temperature above 25°C during the heating season (September–May).
-
 ```yaml
 alias: OWB Pump Current Zero
-description: Alert when pump current drops to zero during heating season
+description: Alert when pump stops during heating season
 trigger:
-  - platform: numeric_state
-    entity_id: sensor.house_pump_current
-    below: 0.1
-  - platform: numeric_state
-    entity_id: sensor.barn_pump_current
-    below: 0.1
+  - platform: state
+    entity_id: binary_sensor.owb_house_pump_running
+    to: "off"
+  - platform: state
+    entity_id: binary_sensor.owb_barn_pump_running
+    to: "off"
 condition:
   - condition: numeric_state
-    entity_id: sensor.house_loop_supply_temp
+    entity_id: sensor.owb_house_supply
     above: 25
   - condition: template
     value_template: >
-      {{ now().month >= 9 or now().month <= 5 }}
+      {% raw %}{{ now().month >= 9 or now().month <= 5 }}{% endraw %}
 action:
   - action: notify.YOUR_NOTIFY_ENTITY
     data:
-      message: |-
-        Thesada OWB Alert:
-        {{ trigger.to_state.attributes.friendly_name }} not drawing current.
-        Supply temp: {{ states('sensor.house_loop_supply_temp') | round(1) }}°C
+      message: >-
+        OWB Alert: {% raw %}{{ trigger.to_state.attributes.friendly_name }}{% endraw %} stopped.
+        Supply: {% raw %}{{ states('sensor.owb_house_supply') | round(1) }}{% endraw %}C.
         Possible pump failure.
 mode: single
 ```
 
 ---
 
-## 3. Telegram Bot Commands
-
-The Telegram polling integration fires a `telegram_command` event when the bot receives a command. This automation listens for `/temp` and replies with all current OWB readings.
-
-Create via **Settings → Automations → Create Automation → Edit in YAML**.
-
-Replace `notify.YOUR_NOTIFY_ENTITY` with your actual notify entity.
+## 4. Telegram Bot Commands
 
 ```yaml
 alias: OWB Telegram /temp
-description: Reply to /temp with current OWB sensor readings
+description: Reply to /temp with current OWB readings
 trigger:
   - platform: event
     event_type: telegram_command
@@ -149,27 +160,17 @@ trigger:
 action:
   - action: notify.YOUR_NOTIFY_ENTITY
     data:
-      message: |-
-        Thesada OWB - Current Readings:
+      message: >-
+        OWB Readings:
 
-        House loop
-          Supply:  {{ states('sensor.house_loop_supply_temp') | round(1) }}°C
-          Return:  {{ states('sensor.house_loop_return_temp') | round(1) }}°C
-          Delta:   {{ (states('sensor.house_loop_supply_temp') | float - states('sensor.house_loop_return_temp') | float) | round(1) }}°C
-          Pump:    {{ states('sensor.house_pump_current') | round(2) }} A
-
-        Barn loop
-          Supply:  {{ states('sensor.barn_loop_supply_temp') | round(1) }}°C
-          Return:  {{ states('sensor.barn_loop_return_temp') | round(1) }}°C
-          Delta:   {{ (states('sensor.barn_loop_supply_temp') | float - states('sensor.barn_loop_return_temp') | float) | round(1) }}°C
-          Pump:    {{ states('sensor.barn_pump_current') | round(2) }} A
+        House: {% raw %}{{ states('sensor.owb_house_supply') | round(1) }}{% endraw %} / {% raw %}{{ states('sensor.owb_house_return') | round(1) }}{% endraw %}C
+        Barn:  {% raw %}{{ states('sensor.owb_barn_supply') | round(1) }}{% endraw %} / {% raw %}{{ states('sensor.owb_barn_return') | round(1) }}{% endraw %}C
+        Battery: {% raw %}{{ states('sensor.owb_battery_percent') }}{% endraw %}% {% raw %}{{ states('sensor.owb_battery_charging') }}{% endraw %}
 mode: single
 ```
 
-The delta is calculated inline so you get a quick picture of loop health without needing a separate sensor entity.
-
 ---
 
-## 4. Dashboard
+## 5. Dashboard
 
 > **TODO:** OWB dashboard YAML to be added after first real data is collected on site.
