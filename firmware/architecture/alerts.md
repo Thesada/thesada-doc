@@ -8,6 +8,23 @@ description: "Lua-driven alerting with sustain, cooldown, and three output chann
 
 # Alerts & Webhook
 
+```mermaid
+flowchart TD
+    A[Sensor Read] --> B[EventBus publish]
+    B --> C[rules.lua callback]
+    C --> D{Threshold crossed?}
+    D -->|No| E[Clear sustain counter]
+    D -->|Yes| F[Increment sustain]
+    F --> G{N readings OR T minutes?}
+    G -->|Not yet| H[Wait for next read]
+    G -->|Yes| I{Cooldown expired?}
+    I -->|No| H
+    I -->|Yes| J[notify]
+    J --> K[Log.warn]
+    J --> L[Telegram.broadcast]
+    J --> M[MQTT publish alert]
+```
+
 ## Lua Alert Engine
 
 Alert logic lives in `/scripts/rules.lua` on LittleFS - hot-reloadable without recompiling. The firmware provides the bindings; the script defines the rules.

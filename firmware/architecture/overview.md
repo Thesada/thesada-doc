@@ -69,32 +69,30 @@ thesada-fw/base/
 
 ## Boot Sequence
 
-```
-setup()
-  Config::load()          -> mounts LittleFS, parses config.json
-  WiFiManager::begin()    -> scans, ranks by RSSI, connects, starts NTP
-  if WiFi ok:
-    MQTTClient::begin()   -> TLS MQTT to broker; registers cmd/ota subscription
-    OTAUpdate::begin()    -> registers MQTT cmd/ota handler, optional periodic check
-  else:
-    Cellular::begin()     -> PMU, modem, SIM, network, modem-MQTT [ENABLE_CELLULAR]
-  WebServer::begin()      -> HTTP dashboard + WebSocket terminal [ENABLE_WEBSERVER]
-  PowerManager::begin()   -> AXP2101 init (VBUS limits, TS pin, battery ADC, charger enable) [ENABLE_PMU]
-  Shell::begin()          -> registers all built-in commands
-  ScriptEngine::begin()   -> Lua state, executes main.lua + rules.lua [ENABLE_SCRIPTENGINE]
-                            registers MQTT cmd/lua/reload handler
-  ModuleRegistry::begin() -> begin() on all enabled modules
-  SleepManager::begin()   -> reads sleep config, sets wake deadline, inits RTC data
+```mermaid
+flowchart TD
+    A[Power On] --> B[Config::load]
+    B --> C[WiFiManager::begin]
+    C --> D{WiFi connected?}
+    D -->|Yes| E[MQTTClient::begin]
+    E --> F[OTAUpdate::begin]
+    D -->|No| G[Cellular::begin]
+    F --> H[Shell::begin]
+    G --> H
+    H --> I[WebServer::begin]
+    I --> J[ScriptEngine::begin]
+    J --> K[PowerManager::begin]
+    K --> L[HeartbeatLED::begin]
+    L --> M[ModuleRegistry::begin]
+    M --> N[SleepManager::begin]
+    N --> O[Ready]
 
-loop()
-  Serial shell            -> reads characters, executes line on newline via Shell::execute()
-  WiFiManager::loop()     -> reconnect / recheck
-  MQTTClient::loop() or Cellular::loop()
-  OTAUpdate::loop()       -> periodic interval check (WiFi only)
-  WebServer::loop()       -> handle deferred restarts
-  ModuleRegistry::loop()  -> loop() on all enabled modules
-  SleepManager::loop()    -> checks wake deadline, triggers graceful shutdown + deep sleep
+    style D fill:#445,stroke:#888
+    style O fill:#363,stroke:#6a6
+    style G fill:#553,stroke:#aa6
 ```
+
+Dashed boxes are guarded by `ENABLE_*` flags - they compile out when disabled.
 
 ---
 

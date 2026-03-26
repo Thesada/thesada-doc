@@ -20,6 +20,8 @@ remote_theme: just-the-docs/just-the-docs
 search_enabled: true
 heading_anchors: true
 color_scheme: dark
+mermaid:
+  version: "10.9.0"
 nav_sort: case_insensitive
 
 footer_content: "Thesada - CERN-OHL-P-2.0 / GPL-3.0-only / CC BY 4.0"

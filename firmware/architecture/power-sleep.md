@@ -71,6 +71,22 @@ Reference: [Xinyuan-LilyGO/LilyGo-T-SIM7080G](https://github.com/Xinyuan-LilyGO/
 
 ## Deep Sleep (SleepManager)
 
+```mermaid
+stateDiagram-v2
+    [*] --> Boot: power on / wake
+    Boot --> Awake: setup() complete
+    Awake --> Publish: sensor read
+    Publish --> OTACheck: periodic / MQTT trigger
+    OTACheck --> Awake: no update
+    OTACheck --> Flash: update available
+    Flash --> Boot: reboot
+    Awake --> Shutdown: wake_s expired
+    Shutdown --> Sleep: MQTT flush, LWT, WiFi off
+    Sleep --> Boot: sleep_s timer fires
+
+    note right of Sleep: RTC memory persists boot count + OTA time
+```
+
 `SleepManager` orchestrates a wake/sleep cycle for battery-powered deployments. When enabled, the device stays awake for `wake_s` seconds (takes readings, publishes to MQTT, handles OTA), then enters ESP32 deep sleep for `sleep_s` seconds. Deep sleep resets the CPU - on wake, the full boot sequence runs from `setup()`.
 
 **Config:**
