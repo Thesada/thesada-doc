@@ -25,16 +25,28 @@ No other files touched.
 
 | Control | Implementation |
 |---|---|
-| Dashboard + `/api/state` | Public (read-only sensor data) |
-| All admin endpoints | HTTP Basic Auth (credentials from `web.user` / `web.password` in `config.json`) |
-| Rate limiting | `/api/auth/check`: 5 failed attempts per source IP triggers a 30 s lockout (returns 429) |
-| WebSocket terminal | Requires prior `GET /api/ws/token` (auth-gated); server records caller IP as authorized for 30 s (one-time use); `WS_EVT_CONNECT` rejects connections without a valid grant |
+| Dashboard + `/api/state` + `/api/info` | Public (read-only sensor data) |
+| All admin endpoints | Bearer token or HTTP Basic Auth (backwards compatible) |
+| Token auth | `POST /api/login` with Basic Auth returns a 1-hour Bearer token (max 4 concurrent tokens) |
+| Rate limiting | `/api/login` and `/api/auth/check`: 5 failed attempts per source IP triggers a 30 s lockout (returns 429) |
+| WebSocket terminal | Requires prior `GET /api/ws/token` (auth-gated); server records caller IP as authorized for 30 s (one-time use) |
 | TLS | All MQTT and OTA HTTPS uses the CA cert from `/ca.crt` on LittleFS; `setInsecure()` fallback logs a warning |
+
+**Token auth flow (v1.2.4+):**
+
+```
+1. POST /api/login  (Authorization: Basic base64(user:pass))
+   -> {"ok":true, "token":"<32-char-hex>", "expires_in":3600}
+2. All admin requests: Authorization: Bearer <token>
+3. Token stored in sessionStorage (persists across page refresh, cleared on tab close)
+4. On device reboot, stale tokens are detected and login is re-prompted
+5. Basic Auth still accepted on all admin endpoints (for curl, scripts, backwards compat)
+```
 
 **WebSocket auth flow:**
 
 ```
-1. JS calls GET /api/ws/token  (Authorization: Basic ...)
+1. JS calls GET /api/ws/token  (Authorization: Bearer <token>)
 2. Server records remoteIP -> authorized for 30 s
 3. JS opens ws://device/ws/serial  (no credentials in URL)
 4. WS_EVT_CONNECT: server checks remoteIP against grant table -> allow or close
