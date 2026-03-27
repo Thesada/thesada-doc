@@ -106,7 +106,7 @@ Alert logic is in `/scripts/rules.lua` on LittleFS (hot-reloadable, no recompile
 
 ```bash
 cd base
-cp data/config.json.example data/config.json
+cp examples/config.json.example data/config.json
 # edit config.json with your WiFi, MQTT, sensor names
 pio run -e esp32-s3-dev --target upload
 pio run -e esp32-s3-dev --target uploadfs
