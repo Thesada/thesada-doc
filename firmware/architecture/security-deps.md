@@ -58,6 +58,36 @@ Unauthenticated WebSocket connections (e.g. direct curl or wscat) are accepted a
 
 ---
 
+## Hardware Watchdog
+
+The firmware enables the ESP32 Task Watchdog Timer (30s timeout) at boot. If `loop()` fails to feed the watchdog within 30 seconds (hang, infinite loop, memory corruption), the device automatically reboots.
+
+```cpp
+esp_task_wdt_init(30, true);   // 30s timeout, panic on expire
+esp_task_wdt_add(NULL);        // monitor the loopTask
+esp_task_wdt_reset();          // fed every loop() cycle
+```
+
+---
+
+## CI/CD
+
+GitHub Actions pipeline (`.github/workflows/ci.yml`):
+
+- **Every push to `dev` or `main`**: builds full + minimal firmware, uploads as artifacts
+- **Push to `main` with new version**: auto-creates GitHub release with binaries + changelog
+- **Existing version**: skips release (no duplicates)
+
+**Git workflow:**
+1. Develop on `dev` - CI catches compile errors on every push
+2. When ready to release: bump `FIRMWARE_VERSION` in `config.h`, merge dev to main
+3. CI builds and creates the GitHub release automatically
+4. Production nodes pick up the new version via OTA
+
+`release.sh` still works for manual releases (CI skips if release already exists).
+
+---
+
 ## Dependencies
 
 | Library | Version | Purpose |

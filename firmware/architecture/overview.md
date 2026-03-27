@@ -71,7 +71,8 @@ thesada-fw/base/
 
 ```mermaid
 flowchart TD
-    A[Power On] --> B[Config::load]
+    A[Power On] --> WDT[Watchdog init 30s]
+    WDT --> B[Config::load]
     B --> C[WiFiManager::begin]
     C --> D{WiFi connected?}
     D -->|Yes| E[MQTTClient::begin]
