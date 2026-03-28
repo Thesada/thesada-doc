@@ -12,7 +12,7 @@ description: "Setting up the Spotify integration in Home Assistant with a custom
 
 - Spotify Premium account
 - Home Assistant with MQTT broker (Mosquitto)
-- HA accessible via custom domain (e.g. `ha.thesada.app`) with HTTPS
+- HA accessible via custom domain (e.g. `ha.example.com`) with HTTPS
 
 ## Setup
 
@@ -31,7 +31,7 @@ description: "Setting up the Spotify integration in Home Assistant with a custom
 
 1. Open [https://my.home-assistant.io](https://my.home-assistant.io) in your browser
 2. It will ask for your Home Assistant URL
-3. Enter your public URL (e.g. `https://ha.thesada.app`)
+3. Enter your public URL (e.g. `https://ha.example.com`)
 4. Save
 
 This is required because HA uses `my.home-assistant.io` as the OAuth relay. Spotify sends the auth token there, and the relay redirects it back to your HA instance.
@@ -44,7 +44,7 @@ In HA, verify these are set (Settings > System > Network, or `configuration.yaml
 
 ```yaml
 homeassistant:
-  external_url: "https://ha.thesada.app"
+  external_url: "https://ha.example.com"
   internal_url: "http://192.168.66.20:8123"
 ```
 
@@ -69,7 +69,7 @@ https://my.home-assistant.io/redirect/oauth
 
 1. **Wrong URL in my.home-assistant.io** - Browse to `https://my.home-assistant.io` and verify/update your HA URL. If it was set to an old or wrong URL previously, clear it and re-enter.
 
-2. **HA not reachable from internet** - `my.home-assistant.io` needs to redirect to your HA's `external_url`. Verify `ha.thesada.app` (or your domain) is publicly accessible on port 443.
+2. **HA not reachable from internet** - `my.home-assistant.io` needs to redirect to your HA's `external_url`. Verify `ha.example.com` (or your domain) is publicly accessible on port 443.
 
 3. **HAProxy not forwarding** - If HA is behind HAProxy, verify the HTTPS frontend forwards to the HA backend. Check HAProxy logs:
    ```bash
