@@ -151,8 +151,8 @@ Each sensor publishes on its own topic with a simple value (no JSON parsing need
 <prefix>/sensor/battery/voltage      -> "4.19"
 <prefix>/sensor/battery/charging     -> "Charging"
 <prefix>/sensor/wifi/rssi            -> "-52"
-<prefix>/sensor/wifi/ssid            -> "RebelIOT"
-<prefix>/sensor/wifi/ip              -> "192.168.1.15"
+<prefix>/sensor/wifi/ssid            -> "MyNetwork"
+<prefix>/sensor/wifi/ip              -> "172.16.0.100"
 <prefix>/status                      -> "online" / "offline" (LWT)
 ```
 
@@ -163,6 +163,20 @@ Combined JSON payloads are still published on the original topics for backwards 
 All entities are grouped under a single HA device (device name from `device.friendly_name`, manufacturer "Thesada", model "Base Node", sw_version from firmware).
 
 A manual YAML config is maintained in [thesada-cfg/ha/mqtt/owb-sensors.yaml](https://github.com/Thesada/thesada-cfg/blob/main/ha/mqtt/owb-sensors.yaml) as a reference/fallback.
+
+---
+
+## MQTT Connection Reliability (v1.2.7+)
+
+Three mechanisms prevent connection drops after extended uptime:
+
+**Connection watchdog** (10 min) - if no successful `_client.loop()` or publish in 10 minutes, the client force-disconnects and reconnects. Catches half-open TCP sockets that PubSubClient reports as connected.
+
+**TCP keepalive** - enabled on the MQTT socket after connect via `setsockopt()`. Sends OS-level TCP probes after 30s of silence, every 10s, and declares dead after 3 failed probes. Detects NAT table timeouts and router reboots faster than MQTT-level keepalive.
+
+**Telegram HTTPS timeout** - all outbound HTTPS requests (Telegram Bot API, webhooks) are capped at 10 seconds. Without this, a slow DNS lookup or TLS handshake can block `loop()` long enough for the MQTT keepalive (60s) to expire.
+
+Connection uptime is logged on disconnect to help diagnose patterns (consistent ~3600s = NAT timeout, random = WiFi instability).
 
 ---
 
