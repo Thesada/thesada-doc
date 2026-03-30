@@ -113,8 +113,8 @@ or a local proxy -- not directly from the node.
 
 | Hostname | Device | Sensors |
 |---|---|---|
-| thesada-owb.local | LILYGO T-SIM7080-S3 | DS18B20 x4, ADS1115 |
-| thesada-sht31.local | Freenove ESP32-S3 | SHT31 temp/humidity |
+| sensor-node-1.local | LILYGO T-SIM7080-S3 | DS18B20 x4, ADS1115 |
+| sensor-node-2.local | Freenove ESP32-S3 | SHT31 temp/humidity |
 
 ### DMZ VLAN - 192.168.2.0/24
 
@@ -125,8 +125,8 @@ Home Assistant lives here because it has external access via port forwarding.
 |---|---|
 | Subnet | 192.168.2.0/24 |
 | Gateway | 192.168.2.1 (router) |
-| VLAN ID | 666 |
-| Interface | br-lan.666 |
+| VLAN ID | 100 |
+| Interface | br-lan.100 |
 | DHCP | None - static only |
 | Internet | Yes (outbound) |
 | Firewall zone | DMZ |
@@ -136,7 +136,7 @@ Home Assistant lives here because it has external access via port forwarding.
 | IP | Device | Notes |
 |---|---|---|
 | 192.168.2.1 | Router | Gateway for DMZ |
-| 192.168.2.20 | Home Assistant OS VM | Static in VM. Proxmox vmbr on VLAN 666. |
+| 192.168.2.20 | Home Assistant OS VM | Static in VM. Proxmox vmbr on VLAN 100. |
 
 **Port forwards (WAN -> DMZ):**
 
@@ -190,7 +190,7 @@ Guest WiFi. Internet access only. No access to any other subnet.
 | untagged (10) | Main LAN | 10.0.0.0/24 | br-lan | lan |
 | 20 | IoT | 172.16.0.0/24 | br-lan.20 | IOT |
 | 40 | Guest | 192.168.128.0/24 | br-lan.40 | guest |
-| 666 | DMZ | 192.168.2.0/24 | br-lan.666 | DMZ |
+| 100 | DMZ | 192.168.2.0/24 | br-lan.100 | DMZ |
 
 ---
 
@@ -222,7 +222,7 @@ To add a new subnet:
 | 17-32 | IoT / sensors | 20 = IoT |
 | 33-48 | Guest / untrusted | 40 = Guest |
 | 49-665 | Future expansion | - |
-| 666 | DMZ | 666 = DMZ |
+| 100 | DMZ | 100 = DMZ |
 | 667+ | Future use | - |
 
 ---
@@ -347,7 +347,7 @@ Dashboard shows new version
 ```
 ESPHome add-on (192.168.2.20, DMZ)
     |
-    | mDNS query: thesada-sht31.local
+    | mDNS query: sensor-node-2.local
     | Bridged by: mdns-repeater (DMZ <-> IoT)
     |
     | ESPHome OTA push (port 3232)
