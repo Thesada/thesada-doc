@@ -27,6 +27,14 @@ The board, ADS1115, and wiring all fit inside a standard IP65 enclosure. Sensor 
 
 ---
 
+## System diagram
+
+![OWB monitoring system diagram]({{ site.baseurl }}/assets/img/modules/owb-monitor/owb_system_diagram.png)
+
+Four DS18B20 sensors on the 1-Wire bus measure supply and return temperatures on both hydronic loops. Two SCT-013-030 CT clamps feed the ADS1115 ADC for pump current. The ESP32-S3 publishes over MQTT/TLS to the broker, with LTE-M cellular as fallback. Alerts go through Home Assistant automations and direct Telegram Bot API.
+
+---
+
 ## What it measures
 
 - Supply and return temperature - house loop
