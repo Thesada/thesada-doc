@@ -11,9 +11,9 @@ description: "Design principles, repository structure, boot sequence, module bas
 ## Design Principles
 
 - **Modular** - each sensor or peripheral is a self-contained module
-- **Config-driven** - compile-time enables via `config.h`, runtime values via `config.json` on LittleFS
+- **Config-driven** - compile-time enables via `thesada_config.h`, runtime values via `config.json` on LittleFS
 - **Event-driven** - modules communicate via an internal Event Bus, not direct calls
-- **Pluggable** - adding a new module requires creating one folder and one line in `config.h`
+- **Self-registering** - adding a module means creating files and a `MODULE_REGISTER()` line - nothing else changes
 - **Resilient** - automatic WiFi to cellular fallback; MQTT queue survives short disconnects
 - **Scriptable** - Lua 5.3 runtime with hot-reloadable rules; no recompile needed for logic changes
 
@@ -24,25 +24,25 @@ description: "Design principles, repository structure, boot sequence, module bas
 ```
 thesada-fw/base/
 ├── platformio.ini                  <- build targets + library deps
-├── config.h                        <- compile-time module enables + version
 ├── scripts/
 │   ├── generate_manifest.py        <- post-build: build/firmware.json with SHA256 + version
 │   └── copy_firmware.py            <- post-build: copies .bin to build/
 ├── tests/
 │   └── test_firmware.py            <- automated + manual test suite (pyserial)
-├── lib/
-│   └── AsyncTCP/                   <- vendored AsyncTCP v3.3.2 (null-PCB crash fixes)
+├── src/
+│   ├── main.cpp                    <- zero module includes, just beginAll()/loopAll()
+│   └── thesada_config.h            <- compile-time module enables + version
 ├── data/
 │   ├── config.json                 <- runtime config (LittleFS)
 │   ├── ca.crt                      <- TLS CA cert (required for cert verification)
 │   └── scripts/
 │       ├── main.lua                <- Lua boot script (runs once at startup)
 │       └── rules.lua               <- Lua event rules (hot-reloadable)
-└── src/
-    ├── main.cpp
-    ├── core/                           <- always compiled
-    │   ├── Module.h                <- base class for all modules
-    │   ├── ModuleRegistry.h/.cpp   <- instantiates + drives all modules
+└── lib/
+    ├── AsyncTCP/                   <- vendored AsyncTCP v3.3.2 (null-PCB crash fixes)
+    ├── thesada-core/src/               <- always compiled
+    │   ├── Module.h                <- base class (begin/loop/name/status/selftest)
+    │   ├── ModuleRegistry.h/.cpp   <- static array, insertion-sort by priority
     │   ├── EventBus.h/.cpp         <- pub/sub between modules
     │   ├── Config.h/.cpp           <- config.json loader (LittleFS)
     │   ├── Log.h/.cpp              <- serial + WebSocket log relay
@@ -51,19 +51,18 @@ thesada-fw/base/
     │   ├── OTAUpdate.h/.cpp        <- HTTP(S) pull OTA with SHA256 verify
     │   ├── Shell.h/.cpp            <- unified CLI (serial, WS, HTTP, MQTT)
     │   └── SleepManager.h/.cpp     <- deep sleep orchestrator (RTC memory)
-    └── modules/                        <- optional (ENABLE_* guards)
-        ├── temperature/            <- DS18B20 one-wire sensors
-        ├── ads1115/                <- ADS1115 RMS current sensing
-        ├── battery/                <- battery monitoring (requires PMU)
-        ├── powermanager/           <- AXP2101 PMU, charging, heartbeat LED
-        ├── cellular/               <- SIM7080G modem + LTE-M fallback
-        ├── sd/                     <- SD card CSV logger
-        ├── telegram/               <- Telegram Bot API (direct send)
-        ├── webserver/              <- web dashboard, REST API, WS terminal
-        ├── scriptengine/           <- Lua 5.3 scripting engine
-        ├── display/                <- SSD1306 OLED (Lua-driven rendering)
-        ├── tftdisplay/             <- ILI9341 TFT + XPT2046 touch (CYD board)
-        └── pwm/                    <- PWM output
+    ├── thesada-mod-temperature/src/    <- DS18B20 one-wire sensors
+    ├── thesada-mod-ads1115/src/        <- ADS1115 RMS current sensing
+    ├── thesada-mod-battery/src/        <- battery monitoring (requires PMU)
+    ├── thesada-mod-powermanager/src/   <- AXP2101 PMU, charging, heartbeat LED
+    ├── thesada-mod-cellular/src/       <- SIM7080G modem + LTE-M fallback
+    ├── thesada-mod-sd/src/             <- SD card CSV logger
+    ├── thesada-mod-telegram/src/       <- Telegram Bot API (direct send)
+    ├── thesada-mod-httpserver/src/     <- web dashboard, REST API, WS terminal
+    ├── thesada-mod-scriptengine/src/   <- Lua 5.3 scripting engine
+    ├── thesada-mod-display/src/        <- SSD1306 OLED (Lua-driven rendering)
+    ├── thesada-mod-tftdisplay/src/     <- ILI9341 TFT + XPT2046 touch (CYD board)
+    └── thesada-mod-pwm/src/            <- PWM output
 ```
 
 ---
@@ -78,24 +77,15 @@ flowchart TD
     C --> D{WiFi connected?}
     D -->|Yes| E[MQTTClient::begin]
     E --> F[OTAUpdate::begin]
-    D -->|No| G["Cellular::begin *"]
+    D -->|No| G[Cellular fallback]
     F --> H[Shell::begin]
     G --> H
-    H --> I["WebServer::begin *"]
-    I --> J["ScriptEngine::begin *"]
-    J --> K["PowerManager::begin *"]
-    K --> L[HeartbeatLED::begin]
-    L --> M[ModuleRegistry::begin]
-    M --> N[SleepManager::begin]
-    N --> O[Ready]
-
-    style G stroke:#f90,stroke-dasharray: 5,5,stroke-width:3px
-    style I stroke:#f90,stroke-dasharray: 5,5,stroke-width:3px
-    style J stroke:#f90,stroke-dasharray: 5,5,stroke-width:3px
-    style K stroke:#f90,stroke-dasharray: 5,5,stroke-width:3px
+    H --> I["ModuleRegistry::beginAll()"]
+    I --> J[SleepManager::begin]
+    J --> K[Ready]
 ```
 
-Dashed boxes (*) are guarded by `ENABLE_*` flags - they compile out when disabled.
+`ModuleRegistry::beginAll()` iterates the self-registered module list sorted by priority. `main.cpp` has zero module includes - it just calls `beginAll()` at startup and `loopAll()` each cycle.
 
 ---
 
@@ -109,11 +99,33 @@ public:
   virtual void begin() = 0;
   virtual void loop()  = 0;
   virtual const char* name() = 0;
+  virtual void status(ShellOutput out) {}   // for module.status command
+  virtual void selftest(ShellOutput out) {} // for selftest command
   virtual ~Module() {}
 };
 ```
 
-The `ModuleRegistry` calls `begin()` once at startup and `loop()` every cycle. Modules should never block in `loop()`.
+Modules self-register using the `MODULE_REGISTER` macro at the bottom of their `.cpp` file:
+
+```cpp
+MODULE_REGISTER(TemperatureModule, ModulePriority::SENSOR);
+```
+
+**Priority levels** (lower runs first):
+
+| Priority | Value | Examples |
+|---|---|---|
+| POWER | 10 | PowerManager |
+| NETWORK | 20 | Cellular |
+| SERVICE | 30 | HttpServer, ScriptEngine |
+| SCRIPT | 40 | (reserved) |
+| SENSOR | 50 | Temperature, ADS1115, Battery |
+| OUTPUT | 60 | Display, TFT, Telegram, PWM |
+| LAST | 100 | SD logger |
+
+`ModuleRegistry` uses a static array with insertion sort by priority. `main.cpp` has zero module includes - it calls `ModuleRegistry::beginAll()` and `ModuleRegistry::loopAll()`. Adding a new module means creating the source files and adding a `MODULE_REGISTER` line. Nothing else changes.
+
+All includes use angle brackets (`#include <Log.h>`) instead of relative paths.
 
 ---
 

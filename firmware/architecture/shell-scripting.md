@@ -14,15 +14,20 @@ description: "Unified CLI with 30+ commands across serial, WebSocket, and HTTP. 
 
 **Transport wiring:**
 - Serial: `main.cpp` reads characters, calls `Shell::execute(line, serialOut)` on newline
-- WebSocket: `WebServer.cpp` receives WS data, calls `Shell::execute(cmd, [client](line){ client->text(line); })`
+- WebSocket: `HttpServer.cpp` receives WS data, calls `Shell::execute(cmd, [client](line){ client->text(line); })`
 - HTTP: `POST /api/cmd` with `{"cmd":"..."}` collects output lines into a JSON array and returns `{"ok":true,"output":[...]}`
 
-**Registering a command:**
+**Self-registering commands:**
+Modules register their own shell commands in `begin()` via `Shell::registerCommand()`. Shell.cpp has zero module includes - commands are discovered at runtime.
+
 ```cpp
+// In any module's begin():
 Shell::registerCommand("name", "one-line help text", [](int argc, char** argv, ShellOutput out) {
   out("response line");
 });
 ```
+
+The `module.status` and `selftest` commands call `Module::status()` and `Module::selftest()` virtuals on each registered module.
 
 **Built-in commands:**
 
@@ -65,6 +70,8 @@ Paths prefixed with `/sd/` are routed to SD_MMC; all others go to LittleFS.
 ## Lua Scripting (ScriptEngine)
 
 Lua 5.3 runtime via the [ESP-Arduino-Lua](https://github.com/sfranzyshen/ESP-Arduino-Lua) library (GPL-3.0).
+
+**Self-registering Lua bindings:** Modules register their own Lua bindings in `begin()` via `ScriptEngine::addBindings(fn)`. ScriptEngine has zero module includes - Display, TFT, and Telegram Lua bindings live in their respective modules. The registrar list is persistent and survives `lua.reload`. The Lua API table below is unchanged - the same functions are available to scripts.
 
 **Scripts on LittleFS:**
 - `/scripts/main.lua` - runs once at boot (setup tasks, one-time subscriptions)

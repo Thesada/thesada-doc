@@ -176,6 +176,8 @@ Three mechanisms prevent connection drops after extended uptime:
 
 **Telegram HTTPS timeout** - all outbound HTTPS requests (Telegram Bot API, webhooks) are capped at 10 seconds. Without this, a slow DNS lookup or TLS handshake can block `loop()` long enough for the MQTT keepalive (60s) to expire.
 
+**NTP-aware TLS** (v1.3.0+) - on cold boot when NTP hasn't synced yet, the system clock is at epoch (Jan 1970). Certificate validation fails because every cert looks expired. MQTTClient now connects insecure on cold boot, then forces a reconnect with proper cert validation once NTP syncs. This eliminates the ~10 minute initial connect delay that happened when the client retried TLS handshakes with a bad clock.
+
 Connection uptime is logged on disconnect to help diagnose patterns (consistent ~3600s = NAT timeout, random = WiFi instability).
 
 ---
