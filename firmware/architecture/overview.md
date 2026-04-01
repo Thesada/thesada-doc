@@ -59,6 +59,7 @@ thesada-fw/base/
     ├── thesada-mod-sd/src/             <- SD card CSV logger
     ├── thesada-mod-telegram/src/       <- Telegram Bot API (direct send)
     ├── thesada-mod-httpserver/src/     <- web dashboard, REST API, WS terminal
+    ├── thesada-mod-liteserver/src/     <- lightweight HTTP (OTA + config + WiFi setup, CYD)
     ├── thesada-mod-scriptengine/src/   <- Lua 5.3 scripting engine
     ├── thesada-mod-display/src/        <- SSD1306 OLED (Lua-driven rendering)
     ├── thesada-mod-tftdisplay/src/     <- ILI9341 TFT + XPT2046 touch (CYD board)

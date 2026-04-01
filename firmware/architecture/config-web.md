@@ -24,7 +24,7 @@ description: "Compile-time config.h, runtime config.json, web dashboard, SD card
 
 // Board selection (set via PIO build_flags, default is LILYGO)
 // BOARD_WROOM32  - ESP32-WROOM-32 (no cellular/PMU/battery/SD/sensors)
-// BOARD_CYD      - ESP32-2432S028R (TFT touch, no WebServer)
+// BOARD_CYD      - ESP32-2432S028R (TFT touch, LiteServer instead of full HttpServer)
 // BOARD_S3_BARE  - bare ESP32-S3 devkit (no cellular/PMU/battery/SD)
 #define BOARD_LILYGO_T_SIM7080_S3  // default when no board flag set
 

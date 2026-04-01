@@ -56,15 +56,15 @@ CYD touch SPI pins: CS=33, IRQ=36, CLK=25, MOSI=32, MISO=39.
 
 ## SD card init fails with "specified pins are not supported"
 
-**Cause:** The firmware's SD module uses `SD_MMC` (4-bit mode) with LILYGO-specific pins. The CYD uses SPI-mode SD on different pins (CS=5, shared SPI bus).
+**Cause:** The firmware's SD module supports both `SD_MMC` (LILYGO, 4-bit mode) and `SD` (SPI mode). The CYD uses SPI-mode SD on CS=5 (shared SPI bus with TFT).
 
-**Fix:** Disable `ENABLE_SD` for `BOARD_CYD` in config.h. Use `SD.begin(5)` for SPI-mode SD access instead of SD_MMC. A dedicated CYD SPI SD module is planned.
+**Fix:** Set `sd.mode: "spi"` and `sd.pin_cs: 5` in config.json. The SDModule detects the mode at boot and uses the correct driver. ENABLE_SD is enabled for BOARD_CYD by default.
 
 ## OTA upload returns ok but firmware doesn't change
 
 **Cause:** The ESP32 OTA library may silently fail on some partition configurations. The HTTP response is sent before the flash operation completes.
 
-**Fix:** Flash via USB for reliable updates:
+**Fix:** CYD uses LiteServer (`ENABLE_LITESERVER`) for OTA. Browse to the device IP, upload the .bin file via the OTA form. If that fails, flash via USB:
 
 ```bash
 pio run -e esp32-cyd --target upload
