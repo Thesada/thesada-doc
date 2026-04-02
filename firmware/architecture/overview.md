@@ -117,12 +117,13 @@ MODULE_REGISTER(TemperatureModule, ModulePriority::SENSOR);
 | Priority | Value | Examples |
 |---|---|---|
 | POWER | 10 | PowerManager |
+| POWER | 10 | PowerManager |
 | NETWORK | 20 | Cellular |
-| SERVICE | 30 | HttpServer, ScriptEngine |
-| SCRIPT | 40 | (reserved) |
+| SERVICE | 30 | HttpServer/LiteServer, Display, TFT, Telegram (must register Lua bindings before ScriptEngine) |
+| SCRIPT | 40 | ScriptEngine (creates Lua state, calls all registered binding functions) |
 | SENSOR | 50 | Temperature, ADS1115, Battery |
-| OUTPUT | 60 | Display, TFT, Telegram, PWM |
-| LAST | 100 | SD logger |
+| OUTPUT | 60 | SD logger, PWM |
+| LAST | 100 | SleepManager |
 
 `ModuleRegistry` uses a static array with insertion sort by priority. `main.cpp` has zero module includes - it calls `ModuleRegistry::beginAll()` and `ModuleRegistry::loopAll()`. Adding a new module means creating the source files and adding a `MODULE_REGISTER` line. Nothing else changes.
 
