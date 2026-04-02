@@ -63,7 +63,7 @@ The `module.status` and `selftest` commands call `Module::status()` and `Module:
 | `lua.load <path>` | Execute Lua file from LittleFS |
 | `lua.reload` | Hot-reload scripts (echoes which scripts are present) |
 
-Paths prefixed with `/sd/` are routed to SD_MMC; all others go to LittleFS.
+Paths prefixed with `/sd/` are routed to the SD card; all others go to LittleFS. SD card handling (including `fs.df` SD output) is fully in `SDModule` - Shell.cpp has no SD_MMC or SD includes.
 
 ---
 

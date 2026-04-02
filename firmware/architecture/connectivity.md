@@ -31,7 +31,7 @@ stateDiagram-v2
     CellularActive --> WiFiScan: periodic recheck
 ```
 
-WiFi is always tried first. Cellular activates only when all WiFi SSIDs fail. The fallback AP starts a captive portal for local configuration when no network is available.
+WiFi is always tried first. Each SSID is retried up to `wifi.retries` times (default 2) before moving on. If no WiFi network is in range, the fallback AP starts a captive portal for local configuration. Cellular activates in parallel when WiFi fails.
 
 ## OTA Update (OTAUpdate)
 
@@ -178,6 +178,8 @@ Three mechanisms prevent connection drops after extended uptime:
 
 **NTP-aware TLS** (v1.3.0+) - on cold boot when NTP hasn't synced yet, the system clock is at epoch (Jan 1970). Certificate validation fails because every cert looks expired. MQTTClient now connects insecure on cold boot, then forces a reconnect with proper cert validation once NTP syncs. This eliminates the ~10 minute initial connect delay that happened when the client retried TLS handshakes with a bad clock.
 
+**TLS heap guard** - on boards with limited RAM (e.g. CYD/WROOM-32), the cert upgrade is skipped when free heap is below 40KB. WiFiClientSecure's SSL allocation needs a large contiguous block - attempting it on a tight heap causes OOM crashes. The connection stays insecure with a warning logged.
+
 Connection uptime is logged on disconnect to help diagnose patterns (consistent ~3600s = NAT timeout, random = WiFi instability).
 
 ---
@@ -185,16 +187,23 @@ Connection uptime is logged on disconnect to help diagnose patterns (consistent 
 ## WiFi Path (normal)
 
 - Multi-SSID: configure a list of networks; ranked by RSSI at scan time
+- Configurable retries per SSID before fallback: `wifi.retries` (default 2)
 - NTP synced on connect (`pool.ntp.org` by default, configurable)
 - PubSubClient MQTT over TLS (port 8883)
 - Optional minimum send interval: `mqtt.send_interval_s`
 - Optional static IP: `wifi.static_ip` / `gateway` / `subnet` / `dns`
 
+```json
+"wifi": {
+  "retries": 2
+}
+```
+
 ---
 
 ## Fallback AP (captive portal)
 
-When no configured WiFi network is reachable (or none are configured), the node starts a SoftAP for local configuration:
+When no configured WiFi network is in range (or none are configured), the node starts a SoftAP for local configuration. Previously the firmware would skip straight to cellular fallback - now the AP always starts first so you can configure WiFi locally.
 
 - **SSID:** `<device.name>-setup` (e.g. `thesada-owb-setup`)
 - **Password:** from `wifi.ap_password` (min 8 chars for WPA2; open if empty or shorter)
