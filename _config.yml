@@ -1,0 +1,40 @@
+locale: "en-CA"
+title: "Thesada"
+tagline: "Open-source ESP32 Property Monitoring"
+description: "Open-source ESP32 property monitoring platform. Custom C++ firmware with MQTT, TLS, cellular fallback, battery monitoring, and Home Assistant integration. Built for rural and off-grid deployments."
+url: "https://thesada.cloud"
+baseurl: ""
+repository: "thesada/thesada-doc"
+
+twitter:
+  username: FoothillsBuilds
+
+social:
+  name: Thesada
+  links:
+    - https://github.com/Thesada
+    - https://youtube.com/@FoothillsBuilds
+
+remote_theme: just-the-docs/just-the-docs
+
+search_enabled: true
+heading_anchors: true
+color_scheme: dark
+mermaid:
+  version: "10.9.0"
+nav_sort: case_insensitive
+
+footer_content: "Thesada - CERN-OHL-P-2.0 / GPL-3.0-only / CC BY 4.0"
+favicon_ico: "/assets/img/favicon.svg"
+
+aux_links:
+  "GitHub":
+    - "https://github.com/thesada"
+  "YouTube":
+    - "https://youtube.com/@FoothillsBuilds"
+
+aux_links_new_tab: true
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-github-metadata
