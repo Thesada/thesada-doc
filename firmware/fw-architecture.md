@@ -1,7 +1,7 @@
 ---
 title: Architecture
 parent: Firmware
-nav_order: 1
+nav_order: 2
 has_children: true
 description: "thesada-fw firmware architecture - self-registering modules, EventBus, Shell, Lua scripting, MQTT over TLS, multi-board support."
 ---

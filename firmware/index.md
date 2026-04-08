@@ -1,6 +1,6 @@
 ---
 title: Firmware
-nav_order: 3
+nav_order: 1
 has_children: true
 description: "thesada-fw - custom ESP32 firmware with MQTT over TLS, cellular fallback, OTA updates, Lua scripting, TFT/OLED display, and multi-board support."
 ---
