@@ -162,7 +162,7 @@ Combined JSON payloads are still published on the original topics for backwards 
 
 All entities are grouped under a single HA device (device name from `device.friendly_name`, manufacturer "Thesada", model "Base Node", sw_version from firmware).
 
-A manual YAML config is maintained in [thesada-cfg/ha/mqtt/owb-sensors.yaml](https://github.com/Thesada/thesada-cfg/blob/main/ha/mqtt/owb-sensors.yaml) as a reference/fallback.
+No manual YAML sensor config needed - auto-discovery handles everything.
 
 ---
 

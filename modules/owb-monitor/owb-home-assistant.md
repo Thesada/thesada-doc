@@ -11,7 +11,7 @@ description: "MQTT sensor configuration for the OWB monitor in Home Assistant - 
 
 The OWB monitor publishes sensor data via MQTT. From v1.0.17+, entities are auto-discovered by Home Assistant via MQTT discovery - no manual YAML needed. Entities appear automatically under **Settings - Devices & Services - MQTT** after the node connects.
 
-Auto-discovery is enabled by default (`mqtt.ha_discovery: true`). A manual YAML config is maintained in [thesada-cfg/ha/mqtt/owb-sensors.yaml](https://github.com/Thesada/thesada-cfg/blob/main/ha/mqtt/owb-sensors.yaml) as a fallback.
+Auto-discovery is enabled by default (`mqtt.ha_discovery: true`). No manual YAML needed - entities appear automatically.
 
 ---
 
