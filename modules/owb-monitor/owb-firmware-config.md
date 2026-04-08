@@ -7,7 +7,7 @@ description: "thesada-fw configuration for the OWB monitor node - WiFi, MQTT, se
 
 # OWB Monitor - Firmware Config
 
-The OWB monitor runs [thesada-fw](../../firmware/fw-index.md) on a LILYGO T-SIM7080-S3. This page covers the OWB-specific configuration.
+The OWB monitor runs [thesada-fw](../../firmware/index.md) on a LILYGO T-SIM7080-S3. This page covers the OWB-specific configuration.
 
 ## Hardware
 
