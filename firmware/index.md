@@ -17,8 +17,8 @@ Custom firmware (`thesada-fw`) for all Thesada nodes. Supports multiple ESP32 bo
 
 | | |
 |---|---|
-| [Architecture](fw-architecture.md) | Module design, boot sequence, Shell, Lua, OTA, connectivity |
-| [Testing](fw-testing.md) | Test script, manual checks, section-by-section verification |
+| [Architecture]({{ site.baseurl }}/firmware/fw-architecture/) | Module design, boot sequence, Shell, Lua, OTA, connectivity |
+| [Testing]({{ site.baseurl }}/firmware/fw-testing/) | Test script, manual checks, section-by-section verification |
 | [Source](https://github.com/thesada/thesada-fw) | GitHub - GPL-3.0-only |
 
 ---

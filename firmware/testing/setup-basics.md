@@ -29,7 +29,7 @@ The script runs 13 test groups - 6 fully automated (parses serial output), 7 man
 
 ## Test Environment
 
-- Device: any supported board (see [Hardware](../index.md#hardware) for board targets)
+- Device: any supported board (see [Hardware]({{ site.baseurl }}/firmware/#hardware) for board targets)
 - Serial monitor: 115200 baud (`pio device monitor` from a real terminal - not VSCode integrated terminal)
 - Web dashboard: `http://[device-ip]/`
 - MQTT monitor: `mosquitto_sub -h <broker> -p 8883 --cafile ca.crt -u <user> -P <pass> -t 'thesada/node/#' -v`
