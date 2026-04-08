@@ -44,8 +44,6 @@ Four DS18B20 sensors on the 1-Wire bus measure supply and return temperatures on
 
 **Collection interval:** 60s (temperature), 60s (current)
 
-**Publish interval:** Every 60 readings (once per hour)
-
 ---
 
 ## Enclosure
