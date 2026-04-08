@@ -1,0 +1,22 @@
+---
+title: Modules
+nav_order: 2
+description: "Thesada sensor modules -- OWB monitor, SHT31 monitor, well pump monitor. Wiring, BOM, and configuration for each."
+has_children: true
+---
+
+# Modules
+
+Each Thesada module monitors a specific system on the property. Select a module below for wiring diagrams, BOM, and config.
+
+---
+
+## OWB Monitor
+
+Outdoor wood boiler monitor. Tracks supply and return temperatures on two loops, pump current draw, and sends alerts when the boiler requires attention.
+
+---
+
+## SHT31 Monitor
+
+Temperature and humidity sensor module based on the Sensirion SHT31. Suitable for indoor and sheltered outdoor use.

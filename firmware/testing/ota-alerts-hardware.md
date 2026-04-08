@@ -35,7 +35,7 @@ description: "OTA update testing (pull and push), temperature alerts, webhook, S
 
 ```bash
 # Build first
-~/.platformio/penv/bin/pio run -e esp32-s3-dev
+~/.platformio/penv/bin/pio run -e esp32-owb
 
 # Upload (prompts for password, does not echo it)
 python3 scripts/ota_upload.py 172.16.1.212
@@ -178,7 +178,6 @@ Both files should appear in `fs.ls /sd/`. Reset `max_file_kb` to `1024` when don
 ## Known Limitations (not bugs)
 
 - **Serial input in VSCode** - use `pio device monitor` from a real terminal, not the VSCode integrated terminal. Input may not reach the device.
-- **WebSocket terminal** - no auth; accessible to anyone on the local network. Acceptable for LAN-only devices.
 - **ADS1115 near-zero readings** - expected when no load is connected to the current clamp.
 - **NTP on first boot** - `pool.ntp.org` can take more than 15 s on slow networks; first sensor read may log `ms/<millis>` timestamp.
 - **Cellular + WiFi simultaneous** - not supported. Cellular activates only when all WiFi networks fail.

@@ -8,7 +8,7 @@ description: "Compile-time config.h, runtime config.json, web dashboard, SD card
 
 # Config & Web UI
 
-## Compile-time config (`config.h`)
+## Compile-time config (`thesada_config.h`)
 
 ```cpp
 #define FIRMWARE_VERSION "1.x"
@@ -49,7 +49,7 @@ See `examples/config.json.example` for all fields. Key sections:
                    "ha_discovery": true },
   "temperature": { "pin": 12, "interval_s": 60, "auto_discover": true, "conversion_wait_ms": 750, "unit": "C", "sensors": [] },
   "ads1115":     { "i2c_sda": 1, "i2c_scl": 2, "address": 72, "interval_s": 60, "channels": [...] },
-  "cellular":    { "apn": "OSC", "sim_pin": "", "rf_settle_ms": 15000, "reg_timeout_ms": 180000 },
+  "cellular":    { "apn": "APN", "sim_pin": "", "rf_settle_ms": 15000, "reg_timeout_ms": 180000 },
   "sd":          { "enabled": true, "pin_clk": 38, "pin_cmd": 39, "pin_data": 40 },
   "telegram":    { "bot_token": "", "chat_ids": [], "cooldown_s": 300, "alerts": [...] },
   "webhook":     { "url": "", "message_template": "..." },

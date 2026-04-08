@@ -1,0 +1,32 @@
+// Inline code - no background, just subtle border
+:not(pre, figure) > code {
+  padding: 0.2em 0.15em;
+  font-weight: 400;
+  background-color: transparent;
+  border: 1px solid #44434d;
+  border-radius: 4px;
+}
+
+// Fenced code blocks
+div.highlighter-rouge,
+figure.highlight {
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  margin: 1em 0;
+}
+
+pre.highlight {
+  background-color: #0d1117;
+  padding: 14px 18px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+pre.highlight code {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  color: #e6edf3;
+  font-size: 0.85em;
+}

@@ -47,19 +47,19 @@ Alert logic lives in `/scripts/rules.lua` on LittleFS - hot-reloadable without r
 ```json
 "telegram": {
   "bot_token": "your-bot-token",
-  "chat_ids": ["123456789", "-100987654321"]
+  "chat_ids": ["12345678910", "-10987654321"]
 }
 ```
 
 Both array and object format supported for `chat_ids`:
 ```json
-"chat_ids": {"daniel": "123456789", "family": "-100987654321"}
+"chat_ids": {"user1": "12345678910", "user2": "-10987654321"}
 ```
 
 Object format enables per-recipient routing in Lua:
 ```lua
-local daniel = Config.get("telegram.chat_ids.daniel")
-Telegram.send(daniel, "critical alert")
+local user1 = Config.get("telegram.chat_ids.user1")
+Telegram.send(user1, "critical alert")
 ```
 
 ## Example rules.lua
@@ -139,7 +139,7 @@ Optional HTTP POST fired from Lua or TelegramModule on every alert:
 
 ```json
 "webhook": {
-  "url": "http://homeassistant.local:8123/api/webhook/thesada-alert",
+  "url": "http://homeassistant.local:8123/api/webhook/module-alert",
   "message_template": "{% raw %}{{value}}{% endraw %}"
 }
 ```

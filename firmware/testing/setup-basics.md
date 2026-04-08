@@ -29,7 +29,7 @@ The script runs 13 test groups - 6 fully automated (parses serial output), 7 man
 
 ## Test Environment
 
-- Device: LILYGO T-SIM7080-S3
+- Device: any supported board (see [Hardware](../fw-index.html#hardware) for board targets)
 - Serial monitor: 115200 baud (`pio device monitor` from a real terminal - not VSCode integrated terminal)
 - Web dashboard: `http://[device-ip]/`
 - MQTT monitor: `mosquitto_sub -h <broker> -p 8883 --cafile ca.crt -u <user> -P <pass> -t 'thesada/node/#' -v`
@@ -38,7 +38,7 @@ The script runs 13 test groups - 6 fully automated (parses serial output), 7 man
 
 ## 0. Pre-flight: CA Certificate + First Flash
 
-Before first flash, ensure `data/ca.crt` contains the correct root CA. For Let's Encrypt brokers (including `mqtt.thesada.app`) and GitHub OTA, the ISRG Root X1 covers both:
+Before first flash, ensure `data/ca.crt` contains the correct root CA. For Let's Encrypt encrypted brokers and GitHub OTA, the ISRG Root X1 covers both (but check before, could change anytime):
 
 ```bash
 curl -s https://letsencrypt.org/certs/isrgrootx1.pem -o base/data/ca.crt
@@ -53,7 +53,7 @@ openssl x509 -in base/data/ca.crt -noout -subject -issuer
 
 Upload filesystem (includes `ca.crt` and `config.json`):
 ```bash
-pio run -e esp32-s3-dev --target uploadfs
+pio run -e esp32-owb --target uploadfs
 ```
 
 If `ca.crt` is absent or wrong, TLS still connects but logs `[WRN][MQTT] No CA cert - insecure`. MQTT and OTA will work but without certificate verification.
@@ -92,7 +92,7 @@ The PEM bundle should contain ISRG Root X1 (for Let's Encrypt / GitHub OTA) and 
 
 | Check | Expected |
 |---|---|
-| Serial shows `thesada-fw vX.Y.Z` | Version matches `config.h` |
+| Serial shows `thesada-fw vX.Y.Z` | Version matches `thesada_config.h` |
 | Serial shows `[INF][Config]` (no error) | `config.json` parsed OK |
 | Serial shows `[INF][WiFi] Connected to <ssid>` | WiFi connects to strongest configured SSID |
 | Serial shows `[INF][MQTT] Connected` | MQTT broker reachable |

@@ -54,9 +54,10 @@ Custom firmware (`thesada-fw`) for all Thesada nodes. Supports multiple ESP32 bo
 
 | Board | PIO environment | Notes |
 |---|---|---|
-| LILYGO T-SIM7080-S3 | `esp32-s3-dev` | Primary target - all modules, cellular + PMU |
+| LILYGO T-SIM7080-S3 | `esp32-owb` | Primary target - all modules, cellular + PMU |
 | ESP32-S3 bare devkit | `esp32-s3-debug` | USB CDC serial, no LILYGO hardware |
 | ESP32-WROOM-32 | `esp32-wroom` | No cellular/PMU/SD - OLED display, WiFi, MQTT |
 | CYD (ESP32-2432S028R) | `esp32-cyd` | 2.8" TFT touch, LiteServer (OTA + config + WiFi setup) |
+| WT32-ETH01 | `esp32-eth` | LAN8720A Ethernet, WiFi fallback |
 
-Board-specific module overrides are in `thesada_config.h` (e.g. `BOARD_CYD` replaces the full HttpServer with LiteServer to fit in WROOM-32 memory).
+Board-specific module overrides are in `thesada_config.h`. Each board auto-enables/disables modules to match its hardware.

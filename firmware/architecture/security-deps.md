@@ -13,7 +13,7 @@ description: "HTTP auth, rate limiting, WebSocket auth flow, adding new modules,
 1. Create `src/modules/newmodule/NewModule.h` and `NewModule.cpp`
 2. Inherit from `Module`, implement `begin()`, `loop()`, `name()`
 3. Use `EventBus::publish()` to emit data, `EventBus::subscribe()` to react
-4. Add `#define ENABLE_NEWMODULE` to `config.h`
+4. Add `#define ENABLE_NEWMODULE` to `thesada_config.h`
 5. Add config block to `data/config.json` if needed
 6. Add one `#ifdef ENABLE_NEWMODULE` block to `ModuleRegistry.cpp`
 
@@ -80,7 +80,7 @@ GitHub Actions pipeline (`.github/workflows/ci.yml`):
 
 **Git workflow:**
 1. Develop on `dev` - CI catches compile errors on every push
-2. When ready to release: bump `FIRMWARE_VERSION` in `config.h`, merge dev to main
+2. When ready to release: bump `FIRMWARE_VERSION` in `thesada_config.h`, merge dev to main
 3. CI builds and creates the GitHub release automatically
 4. Production nodes pick up the new version via OTA
 

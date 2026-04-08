@@ -126,10 +126,10 @@ Config.get("mqtt.broker")               -- regular nested key
 **Telegram chat_ids format:**
 Both array and object formats are supported:
 ```json
-"chat_ids": ["123456789", "-100987654321"]
-"chat_ids": {"daniel": "123456789", "family": "-100987654321"}
+"chat_ids": ["123456789", "-10987654321"]
+"chat_ids": {"user1": "123456789", "user2": "-10987654321"}
 ```
-Object format allows `Telegram.send(Config.get("telegram.chat_ids.daniel"), msg)` for per-recipient alerts.
+Object format allows `Telegram.send(Config.get("telegram.chat_ids.user1"), msg)` for per-recipient alerts.
 
 **Script loading:**
 ScriptEngine loads two files at boot (and on `lua.reload`):

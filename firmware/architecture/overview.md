@@ -57,6 +57,7 @@ thesada-fw/base/
     ├── thesada-mod-battery/src/        <- battery monitoring (requires PMU)
     ├── thesada-mod-powermanager/src/   <- AXP2101 PMU, charging, heartbeat LED
     ├── thesada-mod-cellular/src/       <- SIM7080G modem + LTE-M fallback
+    ├── thesada-mod-eth/src/            <- LAN8720A Ethernet (WT32-ETH01)
     ├── thesada-mod-sd/src/             <- SD card CSV logger
     ├── thesada-mod-telegram/src/       <- Telegram Bot API (direct send)
     ├── thesada-mod-httpserver/src/     <- web dashboard, REST API, WS terminal
