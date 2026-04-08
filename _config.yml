@@ -29,9 +29,8 @@ favicon_ico: "/assets/img/favicon.svg"
 
 aux_links:
   "GitHub":
-    - "https://github.com/thesada"
+    - "https://github.com/Thesada"
   "YouTube":
     - "https://youtube.com/@FoothillsBuilds"
 
 aux_links_new_tab: true
-
