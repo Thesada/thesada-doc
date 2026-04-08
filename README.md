@@ -1,6 +1,6 @@
 # thesada-doc
 
-Documentation source for [thesada.cloud](https://thesada.cloud).
+Documentation source for [thesada.io](https://thesada.io).
 
 Built with [Just the Docs](https://just-the-docs.com/) and hosted on GitHub Pages.
 

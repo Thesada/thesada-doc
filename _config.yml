@@ -2,7 +2,7 @@ locale: "en-CA"
 title: "Thesada"
 tagline: "Open-source ESP32 Property Monitoring"
 description: "Open-source ESP32 property monitoring platform. Custom C++ firmware with MQTT, TLS, cellular fallback, battery monitoring, and Home Assistant integration. Built for rural and off-grid deployments."
-url: "https://thesada.cloud"
+url: "https://thesada.io"
 baseurl: ""
 repository: "thesada/thesada-doc"
 
