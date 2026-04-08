@@ -1,4 +1,5 @@
 ---
+layout: home
 title: Home
 nav_order: 1
 description: "Open-source ESP32 property monitoring platform - firmware, MQTT, cellular fallback, Lua scripting, and hardware documentation."

@@ -34,3 +34,9 @@ aux_links:
     - "https://youtube.com/@FoothillsBuilds"
 
 aux_links_new_tab: true
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
