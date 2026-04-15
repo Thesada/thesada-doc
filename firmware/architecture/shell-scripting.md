@@ -3,19 +3,33 @@ title: Shell & Scripting
 parent: Architecture
 grand_parent: Firmware
 nav_order: 2
-description: "Unified CLI with 30+ commands across serial, WebSocket, and HTTP. Lua 5.3 scripting with hot-reloadable event rules."
+description: "Unified CLI with 30+ commands across serial, WebSocket, HTTP, and MQTT. Lua 5.3 scripting with hot-reloadable event rules."
 ---
 
 # Shell & Scripting
 
 ## Shell (CLI)
 
-`Shell` is a unified command-line interface. The same command handlers run for both the serial terminal and the WebSocket web terminal - there is no duplicate logic.
+`Shell` is a unified command-line interface. The same command handlers run across every transport - there is no duplicate logic.
 
 **Transport wiring:**
 - Serial: `main.cpp` reads characters, calls `Shell::execute(line, serialOut)` on newline
 - WebSocket: `HttpServer.cpp` receives WS data, calls `Shell::execute(cmd, [client](line){ client->text(line); })`
 - HTTP: `POST /api/cmd` with `{"cmd":"..."}` collects output lines into a JSON array and returns `{"ok":true,"output":[...]}`
+- MQTT: publish the command to `thesada/<device>/cli/<cmd>` (payload is the argument string, empty payload for argless commands). `MQTTClient.cpp` subscribes to `thesada/<device>/cli/#`, parses the suffix as the command name, and calls `Shell::execute("<cmd> <payload>", out)` where `out` collects lines into a JSON array published back on `thesada/<device>/cli/response` as `{"cmd":"...","ok":true,"output":["..."]}`. This is the primary remote-debug path for devices with no serial access.
+
+Example MQTT usage:
+
+```bash
+# trigger an OTA check with force flag
+mosquitto_pub -t thesada/owb/cli/ota.check -m '--force'
+
+# dump chip info
+mosquitto_pub -t thesada/owb/cli/chip.info -m ''
+
+# subscribe to the response topic before sending for round-trip visibility
+mosquitto_sub -t 'thesada/owb/cli/response' -v
+```
 
 **Self-registering commands:**
 Modules register their own shell commands in `begin()` via `Shell::registerCommand()`. Shell.cpp has zero module includes - commands are discovered at runtime.
