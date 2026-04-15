@@ -13,11 +13,23 @@ description: "OTA update testing (pull and push), temperature alerts, webhook, S
 | Check | Expected |
 |---|---|
 | `config.get ota.manifest_url` returns empty | `[WRN][OTA] No manifest_url` logged at boot |
-| Set `ota.manifest_url` to a valid URL, restart | `[INF][OTA] Ready - checking every 6h` |
-| Publish any payload to `<prefix>/cmd/ota` | `[INF][OTA]` check logged; fetches manifest |
-| Manifest version matches current | `[INF][OTA] Already at latest` |
+| Set `ota.manifest_url` to a valid URL, restart | `[INF][OTA] Enabled - check every 21600s` |
+| Publish any payload to `<prefix>/cmd/ota` | `[INF][OTA] MQTT OTA trigger received`; fetches manifest (requires `ota.cmd_topic` set) |
+| Publish empty to `<prefix>/cli/ota.check` | Version-checked OTA via config manifest_url |
+| Publish `--force` to `<prefix>/cli/ota.check` | Flashes whatever the manifest points at, regardless of version. Useful for dev iteration without version bumps |
+| Publish `--force <url>` to `<prefix>/cli/ota.check` | Force flash from an override URL (one-off manifest, not touching config) |
+| Manifest version matches current, normal mode | `[INF][OTA] Already up to date`; no flash |
+| Manifest version matches current, force mode | `[WRN][OTA] Force flag set - re-flashing same or older version` then flash |
 | Manifest version is newer | Download + verify + install + reboot |
 | Manifest SHA256 mismatch | `[ERR][OTA] SHA256 mismatch` - no flash |
+
+### 9a. Debug CLI (partition + chip + MQTT state)
+
+| Check | Expected |
+|---|---|
+| `cli/ota.status` payload `""` | Running / boot / next partition labels + addresses + rollback state (`valid`, `pending_verify`, etc) + running firmware version |
+| `cli/chip.info` payload `""` | Chip model (ESP32-S3), revision, cores, flash size, PSRAM size + free (if `BOARD_HAS_PSRAM`), CPU frequency |
+| `cli/net.mqtt` payload `""` | Connection state, broker, prefix, subscription table with active flags, RX ring of recent incoming topics with age |
 
 ---
 

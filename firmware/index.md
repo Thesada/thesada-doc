@@ -42,7 +42,11 @@ Custom firmware (`thesada-fw`) for all Thesada nodes. Supports multiple ESP32 bo
 | ILI9341 TFT + touch | CYD board (ESP32-2432S028R), XPT2046 IRQ-driven touch, Lua Display.* [ENABLE_TFT] |
 | Shell CLI | Commands over serial, WebSocket, HTTP (`POST /api/cmd`), and MQTT (`cli/#`) |
 | OTA - push | Upload `.bin` via web dashboard or curl |
-| OTA - pull | Fetch manifest from GitHub Releases, SHA256 verify, auto-install |
+| OTA - pull | Fetch manifest, SHA256 verify, auto-install. Watchdog-safe download loop tolerates flaky wireless links without panicking mid-flash |
+| OTA force mode | `ota.check --force` bypasses version check - dev iteration without version bumps, and recovery of stuck devices |
+| PSRAM support | Optional 8 MB external PSRAM on ESP32-S3 targets via `memory_type=qio_opi`; heap-hungry modules (Lua, TLS buffers) can route to PSRAM |
+| Heap + PSRAM telemetry | Free / min free / max alloc block / PSRAM free published to MQTT every 5 min with HA auto-discovery for each metric |
+| Debug CLI | `ota.status` (partition + rollback state), `chip.info` (rev, flash, PSRAM, CPU freq), `net.mqtt` (subscription table + RX ring), `module.list`, `module.status` |
 | PowerManager LED | Blue CHGLED: heartbeat pulse, hardware charge indicator, or off |
 | NTP log timestamps | ISO 8601 UTC in log lines once clock is synced |
 | Temperature alerts | Threshold rules with hysteresis, MQTT + HTTP webhook |
