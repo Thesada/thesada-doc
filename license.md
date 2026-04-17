@@ -17,9 +17,9 @@ Source: [github.com/Thesada/thesada-fw](https://github.com/Thesada/thesada-fw)
 
 ## Documentation
 
-All text and images on this documentation site are licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)](https://creativecommons.org/licenses/by-nc-nd/4.0/).
+All text and images on this documentation site are licensed under [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
-You may share the material with appropriate credit, but you may not use it for commercial purposes or create derivative works.
+You may share and adapt the material with appropriate credit, but you may not use it for commercial purposes. Any adaptations must be shared under the same license.
 
 ## Hardware (future)
 
@@ -30,5 +30,5 @@ Hardware designs (schematics, PCB layouts) will be released under the [CERN Open
 | Content | License |
 |:---|:---|
 | Firmware source code | GPL-3.0-only |
-| Documentation text and images | CC BY-NC-ND 4.0 |
+| Documentation text and images | CC BY-NC-SA 4.0 |
 | Hardware designs (future) | CERN-OHL-P-2.0 |
