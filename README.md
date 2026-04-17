@@ -2,7 +2,7 @@
 
 Documentation source for [thesada.io](https://thesada.io).
 
-Built with [Just the Docs](https://just-the-docs.com/) and hosted on GitHub Pages.
+Built with [Just the Docs](https://just-the-docs.com/) and hosted on Cloudflare.
 
 SPDX-License-Identifier: CC-BY-4.0
 
