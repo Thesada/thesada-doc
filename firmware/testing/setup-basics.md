@@ -41,12 +41,12 @@ The script runs 13 test groups - 6 fully automated (parses serial output), 7 man
 Before first flash, ensure `data/ca.crt` contains the correct root CA. For Let's Encrypt encrypted brokers and GitHub OTA, the ISRG Root X1 covers both (but check before, could change anytime):
 
 ```bash
-curl -s https://letsencrypt.org/certs/isrgrootx1.pem -o base/data/ca.crt
+curl -s https://letsencrypt.org/certs/isrgrootx1.pem -o data/ca.crt
 ```
 
 Verify:
 ```bash
-openssl x509 -in base/data/ca.crt -noout -subject -issuer
+openssl x509 -in data/ca.crt -noout -subject -issuer
 # subject=CN=ISRG Root X1
 # issuer=CN=ISRG Root X1  (self-signed root - correct)
 ```
@@ -67,7 +67,7 @@ If the device is already flashed and accessible over the network, upload `ca.crt
 curl -u admin:changeme -X POST \
   'http://[ip]/api/file?path=/ca.crt&source=littlefs' \
   -H 'Content-Type: application/octet-stream' \
-  --data-binary @base/data/ca.crt
+  --data-binary @data/ca.crt
 
 # Restart to apply
 curl -u admin:changeme -X POST \

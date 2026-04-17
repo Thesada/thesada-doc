@@ -22,7 +22,7 @@ description: "Design principles, repository structure, boot sequence, module bas
 ## Repository Structure
 
 ```
-thesada-fw/base/
+thesada-fw/
 ├── platformio.ini                  <- build targets + library deps
 ├── scripts/
 │   ├── generate_manifest.py        <- post-build: build/firmware.json with SHA256 + version

@@ -43,7 +43,7 @@ description: "OTA update testing (pull and push), temperature alerts, webhook, S
 
 **Using the upload script (recommended for development):**
 
-`scripts/ota_upload.py` handles access check, password prompt, and upload in one step. Run from `base/`:
+`scripts/ota_upload.py` handles access check, password prompt, and upload in one step. Run from the repo root:
 
 ```bash
 # Build first
