@@ -57,20 +57,29 @@ The `module.status` and `selftest` commands call `Module::status()` and `Module:
 | `sleep` | Sleep enabled/disabled, boot count, wake/sleep times, last OTA check |
 | `selftest` | 10-point check with pass/fail/warn per item |
 | `fs.ls [path]` | Directory listing with file sizes |
-| `fs.cat <path>` | Print file contents |
+| `fs.cat <path>` | Print file contents (line-by-line) |
+| `fs.cat <path> <offset> <len>` | Chunked read with metadata (total, offset, length, done, data) |
 | `fs.rm <path>` | Remove file (echoes path) |
-| `write <path> <content>` | Write content to file (echoes bytes written) |
+| `fs.write <path> <content>` | Write content to file - truncates (echoes bytes written) |
+| `fs.append <path> <content>` | Append content to file (echoes bytes appended) |
 | `fs.mv <src> <dst>` | Rename/move (echoes src -> dst) |
 | `fs.df` | LittleFS + SD usage in bytes/MB |
 | `config.get <key>` | Read config value by dot notation |
-| `config.set <key> <value>` | Set + save + reload (echoes key = value) |
+| `config.set <key> <value>` | Set + save to flash + reload in-memory (echoes key = value) |
 | `config.save` | Save to flash (echoes bytes written) |
-| `config.reload` | Reload from flash (echoes device name) |
+| `config.reload` | Reload from flash, reconnect MQTT if network keys changed |
 | `config.dump` | Print full config JSON |
 | `net.ip` | SSID, IP, gateway, DNS, RSSI, MAC |
 | `net.ping <host>` | DNS resolve test (echoes resolved IP) |
 | `net.ntp` | Sync status, UTC time, epoch, server, offset. `net.ntp set <epoch>` or `net.ntp set <ISO8601>` to set manually. |
-| `mqtt` | Connected/disconnected, broker, port, prefix |
+| `net.mqtt` | MQTT connection status, subscription table, recent RX ring |
+| `ota.check` | Trigger OTA update check |
+| `ota.check --force [url]` | Force OTA bypassing version check, optional custom URL |
+| `ota.status` | Partition table + rollback state |
+| `boot.info` | Last reset reason + uptime |
+| `partitions` | Full partition table dump |
+| `chip.info` | Chip revision, flash size, PSRAM, CPU frequency |
+| `sdkconfig` | Selected CONFIG_* values relevant to OTA/boot |
 | `module.list` | Compiled modules with [x]/[ ] toggles |
 | `module.status` | Runtime state per module (sensor counts, intervals, pins, SD mount, Telegram direct) |
 | `lua.exec <code>` | Execute inline Lua, show return value |
@@ -78,6 +87,31 @@ The `module.status` and `selftest` commands call `Module::status()` and `Module:
 | `lua.reload` | Hot-reload scripts (echoes which scripts are present) |
 
 Paths prefixed with `/sd/` are routed to the SD card; all others go to LittleFS. SD card handling (including `fs.df` SD output) is fully in `SDModule` - Shell.cpp has no SD_MMC or SD includes.
+
+### Chunked file I/O
+
+For files larger than the MQTT response buffer (4096 bytes default), use the chunked read protocol:
+
+```bash
+# Read first 2048 bytes
+mosquitto_pub -t '<prefix>/cli/fs.cat' -m '/scripts/rules.lua 0 2048'
+# Response: {"cmd":"fs.cat","ok":true,"total":3858,"offset":0,"length":2048,"done":false,"data":"..."}
+
+# Continue from offset 2048
+mosquitto_pub -t '<prefix>/cli/fs.cat' -m '/scripts/rules.lua 2048 2048'
+# Response: {"cmd":"fs.cat","ok":true,"total":3858,"offset":2048,"length":1810,"done":true,"data":"..."}
+```
+
+For writes, `fs.write` and `fs.append` use a binary payload format via MQTT (path + newline + content). These bypass the Shell's 256-byte parse buffer:
+
+```bash
+# Build payload file: first line is path, rest is content
+printf '/scripts/rules.lua\n' > /tmp/payload.bin
+cat rules.lua >> /tmp/payload.bin
+mosquitto_pub -t '<prefix>/cli/fs.write' -f /tmp/payload.bin
+```
+
+For multi-chunk writes: first `fs.write` (truncates), then `fs.append` for remaining chunks.
 
 ---
 
@@ -101,6 +135,8 @@ Lua 5.3 runtime via the [ESP-Arduino-Lua](https://github.com/sfranzyshen/ESP-Ard
 | `EventBus.subscribe(event, func)` | Subscribe to named event; func receives a table |
 | `MQTT.publish(topic, payload)` | Publish a message to MQTT |
 | `MQTT.subscribe(topic, fn)` | Subscribe to MQTT topic; fn(topic, payload) called on message |
+| `Telegram.broadcast(msg)` | Send message to all configured Telegram chat IDs. Returns true/false. |
+| `Telegram.send(chatID, msg)` | Send message to a specific chat ID. Returns true/false. |
 | `JSON.decode(str)` | Parse JSON string into a Lua table |
 | `Config.get(key)` | Read config value by dot-notation key (e.g. `"mqtt.broker"`) |
 | `Node.restart()` | Reboot the device |
