@@ -169,7 +169,7 @@ On the OLED module, TFT-specific functions are not available. On the TFT module,
 `Config.get` supports both object keys and array indices via dot notation:
 ```lua
 Config.get("telegram.chat_ids.0")       -- first element of array
-Config.get("telegram.chat_ids.daniel")  -- named key in object
+Config.get("telegram.chat_ids.user1")   -- named key in object
 Config.get("mqtt.broker")               -- regular nested key
 ```
 
