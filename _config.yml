@@ -24,7 +24,7 @@ mermaid:
   version: "10.9.0"
 nav_sort: case_insensitive
 
-footer_content: "Thesada - GPL-3.0-only (firmware) / CC BY-NC-SA 4.0 (docs) - <a href='/license/'>License</a>"
+footer_content: "Thesada - GPL-3.0-only (firmware) / CC BY-NC-SA 4.0 (docs) - <a href='/legal/license/'>License</a>"
 favicon_ico: "/assets/img/favicon.svg"
 
 aux_links:
