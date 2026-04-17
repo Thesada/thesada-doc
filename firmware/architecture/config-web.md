@@ -22,11 +22,13 @@ description: "Compile-time config.h, runtime config.json, web dashboard, SD card
 #define ENABLE_TELEGRAM
 // #define ENABLE_PWM
 
-// Board selection (set via PIO build_flags, default is LILYGO)
+// Board selection (set via PIO build_flags in platformio.ini)
 // BOARD_WROOM32  - ESP32-WROOM-32 (no cellular/PMU/battery/SD/sensors)
 // BOARD_CYD      - ESP32-2432S028R (TFT touch, LiteServer instead of full HttpServer)
+// BOARD_ETH      - WT32-ETH01 (Ethernet primary, WiFi fallback)
 // BOARD_S3_BARE  - bare ESP32-S3 devkit (no cellular/PMU/battery/SD)
-#define BOARD_LILYGO_T_SIM7080_S3  // default when no board flag set
+// BOARD_OWB_RESCUE - stripped rescue build for OTA recovery
+// Default (no flag): LILYGO T-SIM7080-S3 with all modules
 
 // MQTT TLS (port comes from config.json)
 #define MQTT_TLS true
@@ -75,6 +77,10 @@ Accessible at `http://[device-ip]/` - requires login (credentials from `web` con
 | `/api/config` | GET | yes | Read `config.json` |
 | `/api/config` | POST | yes | Write `config.json`, restart device (page auto-refreshes after 10s) |
 | `/api/backup` | POST | yes | Copy `config.json` to SD card |
+| `/api/files` | GET | yes | List files (`?source=sd\|littlefs\|scripts`) |
+| `/api/file` | GET | yes | Read file (`?path=...&source=sd\|littlefs\|scripts`, max 64 KB) |
+| `/api/file` | POST | yes | Write file (`?path=...&source=...`, body = file content) |
+| `/api/file` | DELETE | yes | Delete file (`?path=...&source=...`) |
 | `/api/cmd` | POST | yes | Run any Shell command, get JSON output |
 | `/api/restart` | POST | yes | Reboot device |
 | `/api/ws/token` | GET | yes | Issue a 30 s IP-bound WS auth grant (required before opening WebSocket) |

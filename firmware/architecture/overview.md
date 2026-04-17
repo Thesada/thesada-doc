@@ -39,7 +39,6 @@ thesada-fw/
 │       ├── main.lua                <- Lua boot script (runs once at startup)
 │       └── rules.lua               <- Lua event rules (hot-reloadable)
 └── lib/
-    ├── AsyncTCP/                   <- vendored AsyncTCP v3.3.2 (null-PCB crash fixes)
     ├── thesada-core/src/               <- always compiled
     │   ├── Module.h                <- base class (begin/loop/name/status/selftest)
     │   ├── ModuleRegistry.h/.cpp   <- static array, insertion-sort by priority
