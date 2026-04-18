@@ -262,6 +262,6 @@ You can also upload `ca.crt` at runtime via `POST /api/file?path=/ca.crt&source=
 
 ---
 
-## AsyncTCP (vendored)
+## AsyncTCP
 
-AsyncTCP v3.3.2 is vendored in `lib/AsyncTCP/` with null-pointer guards added to `_accept`, `_s_accept`, and `_s_accepted`. These prevent `LoadProhibited` crashes (EXCVADDR 0x00000030) when lwIP calls TCP callbacks with a null PCB or freed server pointer.
+AsyncTCP is not vendored - it is pulled in transitively by `ESP32Async/ESPAsyncWebServer` via PlatformIO's lib deps (see `platformio.ini`). The pinned upstream version is whatever ESPAsyncWebServer resolves at build time. There are no local source patches applied.
