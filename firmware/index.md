@@ -18,6 +18,11 @@ Custom firmware (`thesada-fw`) for all Thesada nodes. Supports multiple ESP32 bo
 | | |
 |---|---|
 | [Architecture]({{ site.baseurl }}/firmware/fw-architecture/) | Module design, boot sequence, Shell, Lua, OTA, connectivity |
+| [CLI Reference]({{ site.baseurl }}/firmware/cli-reference/) | Every shell command across serial, WebSocket, and MQTT |
+| [MQTT Topics]({{ site.baseurl }}/firmware/mqtt-topics/) | Every topic the firmware publishes or subscribes to |
+| [Chunked File I/O]({{ site.baseurl }}/firmware/chunked-io/) | Read and write device files larger than the MQTT buffer |
+| [Lua Scripting]({{ site.baseurl }}/firmware/lua-scripting/) | Lua 5.3 runtime, EventBus, alert patterns, hot-reload |
+| [Config Management]({{ site.baseurl }}/firmware/config/) | config.json shape, save/reload, drift hashes, recovery |
 | [Testing]({{ site.baseurl }}/firmware/fw-testing/) | Test script, manual checks, section-by-section verification |
 | [Source](https://github.com/thesada/thesada-fw) | GitHub - GPL-3.0-only |
 
