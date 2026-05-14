@@ -7,7 +7,22 @@ description: "Protocol for reading and writing device files larger than the MQTT
 
 # Chunked File I/O
 
-Device files (config, Lua scripts) routinely exceed the MQTT buffer size (typically 4096 bytes). The CLI bridge defines a chunked-transfer contract for reading and writing files in slices that fit a single MQTT publish.
+Device files (config, Lua scripts, SD-card log files) routinely exceed the MQTT buffer size (typically 4096 bytes). The CLI bridge defines a chunked-transfer contract for reading and writing files in slices that fit a single MQTT publish.
+
+## Paths across filesystems
+
+Every path in this document is resolved by the firmware's mount-prefix dispatch: the default backing is LittleFS, and any path whose first segment matches a registered prefix routes to that filesystem instead. The SD module registers `/sd` at boot, so:
+
+```text
+/scripts/rules.lua        -> LittleFS
+/config.json              -> LittleFS
+/sd/log042.csv            -> SD card
+/sd/                      -> SD card root
+```
+
+Path validation runs before resolution. `..` or `//` anywhere in the path is rejected on every transport, including the binary `fs.write` / `fs.append` paths described below.
+
+The chunked protocol itself is filesystem-agnostic - same wire format works whether the path lands on LittleFS or SD.
 
 ## Buffer limits
 
@@ -35,11 +50,28 @@ Example - read the first 2 KiB of a Lua script:
 Payload: /scripts/rules.lua 0 2048
 ```
 
+Or read the first 2 KiB of a CSV file off the SD card:
+
+```text
+Payload: /sd/log042.csv 0 2048
+```
+
+### Request, envelope form (firmware v1.4.5+)
+
+When multiple CLI commands are in flight against the same device, wrap the payload in a correlation envelope:
+
+```json
+{"req_id": "abc-123", "args": "/sd/log042.csv 0 2048"}
+```
+
+The firmware extracts `req_id` and echoes it back on the response, and unwraps `args` so the chunked-read handler parses `"<path> <byte_offset> <byte_length>"` exactly as it would for the plain form. See the [CLI Reference - Request correlation](cli-reference.html#request-correlation-firmware-v145) for the full envelope semantics.
+
 ### Response
 
 ```json
 {
   "cmd": "fs.cat",
+  "req_id": "abc-123",
   "ok": true,
   "total": 3858,
   "offset": 0,
@@ -48,6 +80,8 @@ Payload: /scripts/rules.lua 0 2048
   "data": "-- owb alerts - hot-reload..."
 }
 ```
+
+`req_id` appears only when the inbound request used the envelope form.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -75,6 +109,8 @@ loop:
 `fs.cat <path>` without offset / length still works on the line-mode path: it returns the file line-by-line in the `output` JSON array of the response envelope. That mode silently truncates for files that exceed the response buffer, so the chunked path is the right choice for anything beyond a few KB.
 
 ## Chunked write
+
+`fs.write` / `fs.append` use a binary payload (path, newline, content) that the firmware reads byte-for-byte. They do NOT accept the JSON envelope form - the binary handlers run before the envelope unwrap and would try to parse `{"req_id":...}` as the path. Use the plain form here, and rely on per-device client-side serialization to keep concurrent calls in order; see [Concurrency](#concurrency) below.
 
 ### First chunk (truncate)
 
@@ -183,11 +219,25 @@ mosquitto_pub -h $BROKER -u $USER -P "$PASS" \
   -t $PREFIX/cli/lua.reload -m ''
 ```
 
+## Concurrency
+
+The firmware's CLI dispatcher serialises per-device: every `cli/<cmd>` arrival deferred-enqueues onto a small ring, drained one slot at a time on the main loop task. Two writers cannot race inside the firmware. But the shared `cli/response` topic means a client that issues two requests without waiting for the first response cannot tell which response matches which request just from the topic.
+
+Two defences at the client side:
+
+1. **Serialise per device.** Hold one in-flight CLI per `<prefix>`. Next call waits for the previous response (or its timeout) before publishing.
+2. **Correlate by `req_id`.** Use the envelope form for every read; firmware v1.4.5+ echoes `req_id` on each response so a late or replay message from a previous call cannot be mistaken for the current one.
+
+Both together are belt-and-suspenders. The mutex alone is sufficient when one client owns every CLI emission for a device. The `req_id` filter alone catches retained replays and out-of-order delivery edge cases.
+
+For binary writes (`fs.write` / `fs.append`), only path 1 applies - the envelope is not available on those handlers.
+
 ## Failure modes
 
 - **Buffer overflow on write**: if `path + '\n' + chunk` exceeds `buffer_in`, the firmware drops the message at the broker subscription path and the response never arrives. Always size chunks against the device's actual `mqtt.buffer_in` (read it via `config.get mqtt.buffer_in`).
 - **Out-of-range read**: if `offset >= total`, the response returns `length=0`, `done=true`, `data=""`. Loop should treat that as a clean end-of-file.
-- **Concurrent writes**: the firmware does not lock files. A second writer mid-stream interleaves bytes. Single-writer discipline is the operator's job.
+- **Concurrent writes**: the firmware serialises CLI on its side, but a misbehaved client that fires `fs.write` + `fs.append` without waiting for the per-call response can still interleave content. Single-writer discipline at the client is the operator's job; see [Concurrency](#concurrency) above for the two defence layers.
 - **Broker disconnect mid-stream**: the file is left in whatever state the partial writes produced. Re-run the whole loop from `fs.write` (truncate) to recover.
+- **Invalid path**: `..` or `//` anywhere in the path returns `"Invalid path"` and aborts before any filesystem call. Same policy on every transport. A path like `/sd/../config.json` is rejected on the `..` rule regardless of which prefix it would have routed to.
 
 See also: [CLI Reference - Filesystem](cli-reference.html#filesystem) for the line-mode commands and full argument shape.

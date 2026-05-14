@@ -56,11 +56,11 @@ offline
 
 ### `<prefix>/info`
 
-Retained JSON blob describing the device. Published once per successful connect; the retained record gives a fresh subscriber the full device metadata immediately.
+Retained JSON blob describing the device. Published once per successful connect, and re-emitted after any operation that mutates the configuration (`config.reload`, `cert.apply`, etc) so subscribers see the new state in the same round trip.
 
 ```json
 {
-  "firmware_version": "1.3.11",
+  "firmware_version": "1.4.5",
   "hardware_type": "esp32-s3",
   "board": "s3-bare",
   "chip_model": "esp32-s3",
@@ -68,14 +68,16 @@ Retained JSON blob describing the device. Published once per successful connect;
   "chip_cores": 2,
   "mac": "48:27:e2:e8:b4:34",
   "psram": true,
-  "build_time": "Apr 30 2026 14:45:01",
+  "build_time": "May 13 2026 14:50:39",
   "config_hash": "a3b1...e2",
   "scripts_main_hash": "c4d2...8f",
   "scripts_rules_hash": "0000...00"
 }
 ```
 
-The three hash fields are SHA-256 of the live config and the Lua scripts. Use them for drift detection: if the hash you see on the broker disagrees with what your management database expects, the device is running a different config or script set than you think.
+The three hash fields are SHA-256 of the on-disk file bytes - `config_hash` over `/config.json`, `scripts_main_hash` over `/scripts/main.lua`, `scripts_rules_hash` over `/scripts/rules.lua`. Use them for drift detection: if the hash you see on the broker disagrees with what your management database expects, the device is running a different config or script set than you think.
+
+Hashing the on-disk file (not the re-serialised in-memory object) keeps the value byte-for-byte comparable with what a `fs.cat` of the same path would return. A management process can pull the file, sha256 it locally, and compare without worrying about whitespace, key ordering, or numeric formatting drift.
 
 ### `<prefix>/info/retained_topics`
 
@@ -109,9 +111,6 @@ The point: when a device is decommissioned, the retained payloads it owns persis
 | `<prefix>/sensor/wifi/rssi` | (singleton) | `-54` |
 | `<prefix>/sensor/wifi/ssid` | (singleton) | `MyWiFi` |
 | `<prefix>/sensor/wifi/ip` | (singleton) | `192.168.1.50` |
-| `<prefix>/sensor/eth/ip` | (singleton, ETH boards) | `10.0.0.42` |
-| `<prefix>/sensor/eth/speed` | (singleton, ETH boards) | `100` |
-| `<prefix>/sensor/eth/mac` | (singleton, ETH boards) | `8c:4f:00:11:22:33` |
 | `<prefix>/sensor/heap/free` | (singleton) | `123456` |
 | `<prefix>/sensor/heap/min_free` | (singleton) | `89012` |
 | `<prefix>/sensor/heap/max_alloc_block` | (singleton) | `38400` |
@@ -157,7 +156,7 @@ Plain-string OTA progress events.
 checking
 downloading
 verifying
-applied: 1.3.11
+applied: 1.4.5
 failed: connection_lost
 ```
 
@@ -169,13 +168,24 @@ The firmware subscribes to `<prefix>/cli/#` so any topic under it is treated as 
 
 ### Inbound: `<prefix>/cli/<command>`
 
+Plain payload form (works on every firmware version):
+
 ```bash
 mosquitto_pub -t 'thesada/owb/cli/chip.info' -m ''
 mosquitto_pub -t 'thesada/owb/cli/ota.check' -m '--force'
 mosquitto_pub -t 'thesada/owb/cli/config.set' -m 'sleep.deep_sleep_minutes 15'
 ```
 
-Some commands take multi-line payloads (`fs.write`, `fs.append`, `cert.set`); see the [CLI Reference](cli-reference.html) for the wire contracts.
+Envelope form (firmware v1.4.5+), useful when multiple CLI commands are in flight against the same device:
+
+```bash
+mosquitto_pub -t 'thesada/owb/cli/chip.info' -m '{"req_id":"abc-123"}'
+mosquitto_pub -t 'thesada/owb/cli/ota.check' -m '{"req_id":"x42","args":"--force"}'
+```
+
+The firmware extracts `req_id` and echoes it back on every response message, and unwraps `args` so downstream handlers see the raw payload they did before envelopes existed. Older firmware that does not understand the envelope ignores `req_id` silently; correlation degrades to "match by command name + serialise per device at the client."
+
+Some commands take multi-line payloads (`fs.write`, `fs.append`, `cert.set`) and are not envelope-compatible because the binary protocol reads the raw payload directly. See the [CLI Reference](cli-reference.html) for the per-command wire contracts.
 
 ### Outbound: `<prefix>/cli/response`
 
@@ -184,6 +194,7 @@ JSON envelope with the original command, success flag, and one entry per output 
 ```json
 {
   "cmd": "chip.info",
+  "req_id": "abc-123",
   "ok": true,
   "output": [
     "ESP32-S3 rev 0  cores=2  flash=8 MB",
@@ -192,7 +203,7 @@ JSON envelope with the original command, success flag, and one entry per output 
 }
 ```
 
-Subscribe before publishing to avoid missing the response (it is QoS 0 + not retained).
+`req_id` appears only when the inbound payload carried one (firmware v1.4.5+). Subscribe before publishing to avoid missing the response (it is QoS 0 + not retained).
 
 ### `<prefix>/cmd/lua/reload`
 
@@ -223,12 +234,12 @@ Each config payload references the sensor's state topic from the table above and
     "ids": "sht31",
     "name": "SHT31 Test Node",
     "mf": "Thesada",
-    "sw": "1.3.11"
+    "sw": "1.4.5"
   }
 }
 ```
 
-The firmware emits one of these per active sensor on connect: temperature, humidity, current, power, battery (percent / voltage / charging), wifi (rssi / ssid / ip), eth (ip / speed / mac), heap (free / min / max_alloc / psram), uptime. Disabling a module via build flags removes its discovery configs from the published set.
+The firmware emits one of these per active sensor on connect: temperature, humidity, current, power, battery (percent / voltage / charging), wifi (rssi / ssid / ip), heap (free / min / max_alloc / psram), uptime, cellular (rssi). Disabling a module via build flags removes its discovery configs from the published set.
 
 ## Authentication and ACLs
 

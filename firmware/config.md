@@ -153,26 +153,40 @@ After a `fs.write` that overwrote `/config.json` directly, you must `config.relo
 
 ## Drift detection
 
-Every connect, the firmware publishes a JSON blob to `<prefix>/info` (retained) that includes three SHA-256 hashes:
+The firmware publishes a JSON blob to `<prefix>/info` (retained) on every successful MQTT connect AND re-emits it after any operation that mutates the live state - `config.reload`, `cert.apply`, or anything else that drives `MQTTClient::publishDeviceInfo`. Three SHA-256 hashes accompany the device metadata:
 
 ```json
 {
-  "firmware_version": "1.3.11",
+  "firmware_version": "1.4.5",
   "config_hash":        "a3b1d9...",
   "scripts_main_hash":  "c4d2e8...",
   "scripts_rules_hash": "0000...00"
 }
 ```
 
-Each hash covers the full file content - `config_hash` over the JSON-serialized live tree, `scripts_main_hash` over `/scripts/main.lua`, `scripts_rules_hash` over `/scripts/rules.lua`. Files that do not exist hash to a placeholder (zero-length string SHA, then by convention `0000...00`).
+Each hash covers the on-disk file bytes:
 
-This is the simplest possible drift signal: a management process keeps a known-good hash for each device and watches `<prefix>/info`. If the hash drifts, either:
+- `config_hash` over the bytes of `/config.json` as the file lives on LittleFS.
+- `scripts_main_hash` over `/scripts/main.lua`.
+- `scripts_rules_hash` over `/scripts/rules.lua`.
+
+Hashing the file bytes (rather than re-serialising the in-memory tree) means the value is byte-for-byte comparable with what `fs.cat /config.json` returns. A management process can pull the file, sha256 it locally, and compare without worrying about JSON whitespace, key ordering, or numeric formatting drift.
+
+Files that do not exist hash to a placeholder (zero-length string SHA, then by convention `0000...00`).
+
+This is the simplest possible drift signal: a management process keeps a known-good hash for each device and watches `<prefix>/info`. The retained publish means a fresh subscriber catches up to the latest state on connect without waiting for the next emit. If the hash drifts, either:
 
 - Someone pushed a config or script directly without going through the management process. Investigate.
 - The file was corrupted or partially written. Recover by re-pushing the known-good content.
 - The known-good hash was updated upstream but the device has not pulled yet.
 
 The hashes are not authentication - a device can publish whatever it computes. Treat the signal as observability, not enforcement.
+
+### Forced republish after a config push
+
+When a management process pushes a new `/config.json` via the chunked-write path and follows up with `config.reload`, the firmware re-emits `<prefix>/info` immediately after the reload completes. Subscribers see the new hash in the same round trip; no need to wait for the next regular publish or to disconnect/reconnect.
+
+A `config.reload` issued without preceding writes also re-emits `/info`. This is the cheapest way to ask a device "what is your current hash" when the retained payload may have gone stale because of a broker restart that lost retained state.
 
 ## Recovery patterns
 
@@ -202,18 +216,29 @@ printf '/config.json\n' > /tmp/payload.bin
 cat new-config.json     >> /tmp/payload.bin
 mosquitto_pub -t '<prefix>/cli/fs.write' -f /tmp/payload.bin
 
-# 3. Trigger reload
+# 3. Trigger reload (firmware v1.4.5+ republishes /info on completion)
 mosquitto_pub -t '<prefix>/cli/config.reload' -m ''
 
-# 4. Verify the next info publish has the expected hash
-mosquitto_sub -t '<prefix>/info' -W 30 -C 1 | jq '.config_hash'
+# 4. Verify the freshly republished info has the expected hash
+mosquitto_sub -t '<prefix>/info' -W 5 -C 1 | jq '.config_hash'
 ```
+
+On firmware v1.4.5+ the `config.reload` triggers an immediate `/info` republish, so the verify step returns within a second of the reload landing. On older firmware, `/info` only republishes on reconnect; the verify subscriber waits for the next periodic emit.
 
 If the new hash does not match, the device either did not pick up the file (writer failure) or the file failed to parse (logged error, live config untouched). Re-push and retry.
 
+For clients using the v1.4.5 envelope correlation, wrap the `fs.write` payload as a JSON-encoded path/content tuple is not supported - binary write handlers read the raw payload directly. Wrap the `config.reload` request instead so a follow-up `/info` confirmation can be matched to this push:
+
+```json
+Topic:   <prefix>/cli/config.reload
+Payload: {"req_id":"<uuid>"}
+```
+
+See [CLI Reference - Request correlation](cli-reference.html#request-correlation-firmware-v145).
+
 ## Common pitfalls
 
-- **Forgetting `config.reload` after `fs.write`**: the file on flash is new but the in-memory tree is old. Drift hash will eventually show the change after the next reload triggers, not on the spot.
+- **Forgetting `config.reload` after `fs.write`**: the file on flash is new but the in-memory tree is old, so the device keeps running with the previous values. The retained `<prefix>/info` on the broker also still shows the previous `config_hash` because `/info` only republishes on connect or after a `config.reload` (firmware v1.4.5+). Always follow `fs.write /config.json` with `config.reload` so both the live config and the public hash advance together.
 - **Quoting in `config.set`**: values are parsed as JSON. `config.set device.name foo` writes the string `foo` as JSON-parsed (works because bare-word JSON is permissive in some parsers, but rely on quoting for safety). Always quote string values.
 - **Whole-tree replacement via `config.set`**: not supported. `config.set` is scalar-only. Use `fs.write` + `config.reload` for sub-trees.
 - **Secrets in `config.json`**: WiFi passwords, MQTT credentials, Telegram bot tokens, and the web admin password all live in plain JSON on LittleFS. Treat the file as a secret. NVS-only storage is reserved for the per-device mTLS client cert + key.

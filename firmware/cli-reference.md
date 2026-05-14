@@ -50,14 +50,47 @@ Response shape:
 
 A command line longer than the MQTT 256-char buffer should be sent over the WebSocket terminal instead. The chunked file I/O commands (`fs.cat` with offset, `fs.write`) have their own MQTT contract so the wire payload stays small; see [Chunked I/O](#chunked-file-io) below.
 
+### Request correlation (firmware v1.4.5+)
+
+Multiple in-flight CLI commands share the single `cli/response` topic. To match a response to the request that issued it, wrap the published payload in a JSON envelope with a caller-supplied `req_id`:
+
+```json
+{"req_id": "abc-123", "args": "/sd/log042.csv 0 256"}
+```
+
+The firmware unwraps `args` and dispatches the command with that as the raw payload, then echoes `req_id` back on every response message:
+
+```json
+{
+  "cmd": "fs.cat",
+  "req_id": "abc-123",
+  "ok": true,
+  "total": 22,
+  "offset": 0,
+  "length": 22,
+  "done": true,
+  "data": "timestamp,sensor,data\n"
+}
+```
+
+Envelope rules:
+
+- `req_id` may be a string or a number.
+- `args` may be omitted, an empty string, or a string. With no `args` (or `args=""`), the command runs as if invoked argless.
+- Any other top-level field is ignored.
+- A payload that is not JSON, or JSON without `req_id`/`args`, is treated as the literal command argument (the pre-v1.4.5 contract). Older firmware that does not unwrap also keeps working - the receiver sees the JSON envelope as the arg string.
+
+Binary protocols (`fs.write`, `fs.append`, `cert.set`) read the raw payload directly and do not accept the JSON envelope. Use them without wrapping; correlation in those cases relies on per-device serialization at the client.
+
 ## Command groups
 
 - [Core](#core) - help, version, restart, heap, uptime, sensors, selftest, sleep
 - [Filesystem](#filesystem) - fs.ls, fs.cat, fs.rm, fs.write, fs.append, fs.mv, fs.df, fs.format
 - [Config](#config) - config.get, config.set, config.save, config.reload, config.dump
-- [Network](#network) - net.ip, net.ping, net.ntp, net.mqtt, net.eth
+- [Network](#network) - net.ip, net.ping, net.ntp, net.mqtt
 - [OTA](#ota) - ota.check, ota.status
 - [Certificates](#certificates) - cert.info, cert.apply, cert.clear
+- [Cellular](#cellular) - cell.at, cell.reset, cell.cert.test, cell.cert.dump, cell.smconn.test, cell.http
 - [Boot and system](#boot-and-system) - boot.info, partitions, chip.info, sdkconfig
 - [Modules](#modules) - module.list, module.status
 - [Lua](#lua) - lua.exec, lua.load, lua.reload
@@ -106,7 +139,16 @@ Inspect the SleepManager state: configured deep-sleep schedule, boot count since
 
 ## Filesystem
 
-All paths are LittleFS-rooted unless prefixed with `/sd/`, in which case they go to the SD card via the SD module.
+Filesystem commands resolve the backing filesystem from a path prefix. The default backing is LittleFS; the SD module registers `/sd` at boot so paths starting with `/sd/` (or the bare prefix `/sd`) route to the SD card.
+
+```text
+fs.ls /             # LittleFS root
+fs.ls /sd           # SD card root
+fs.cat /config.json
+fs.cat /sd/log042.csv
+```
+
+Path validation runs before resolution. Any path containing `..` or `//` is rejected on every transport, so `/sd/../config.json` is refused before the prefix is even considered. The same policy is enforced for the MQTT binary handlers (`fs.write`, `fs.cat` chunked).
 
 ### fs.ls
 
@@ -115,6 +157,7 @@ List a directory.
 ```text
 fs.ls                # list /
 fs.ls /scripts       # list a subdirectory
+fs.ls /sd            # SD card root
 ```
 
 ### fs.cat
@@ -122,7 +165,7 @@ fs.ls /scripts       # list a subdirectory
 Print a text file. Two modes:
 
 - **Line-by-line** (serial / WebSocket): `fs.cat <path>` prints the whole file, one line per output frame.
-- **Chunked** (MQTT only): `fs.cat <path> <offset> <length>` returns a JSON envelope with `offset`, `length`, `total`, `done`, and `data` fields. Use this from any client that needs to read a file larger than the MQTT response buffer; loop until `done=true`.
+- **Chunked** (MQTT only): `fs.cat <path> <offset> <length>` returns a JSON envelope with `offset`, `length`, `total`, `done`, and `data` fields. Use this from any client that needs to read a file larger than the MQTT response buffer; loop until `done=true`. Works against both `/` (LittleFS) and `/sd/` (SD card) paths.
 
 ### fs.rm
 
@@ -145,7 +188,7 @@ Rename or move a file. `fs.mv <src> <dst>`.
 
 ### fs.df
 
-Print LittleFS used / total / free in bytes, plus per-mountpoint stats for SD when the SD module is enabled.
+Print LittleFS used / total / free in bytes. SD card capacity is reported separately by the SD module via `module.status`.
 
 ### fs.format
 
@@ -213,10 +256,6 @@ Manual sets are intended for bench setup before the network is up; the regular N
 
 Print the live MQTT state: broker, port, connection state, last publish timestamp, queue depth, and every active subscription (topic + ring-buffer latest received).
 
-### net.eth
-
-Available only when the firmware was built for an Ethernet board (`-DENABLE_ETH`). Prints PHY init state, link speed, IP, gateway, and last ETH-specific log line.
-
 ## OTA
 
 ### ota.check
@@ -251,6 +290,54 @@ If both halves of the cert+key are present in NVS, schedules a deferred reboot ~
 ### cert.clear
 
 Erase the stored cert + key from NVS. Connection falls back to password auth on the next reconnect.
+
+## Cellular
+
+Available only when the firmware was built with the cellular module enabled (`-DENABLE_CELLULAR`). The cell module talks AT to a SIM7080G modem over UART; commands here are operator-facing diagnostics, not the runtime publish path.
+
+### cell.at
+
+Send a raw AT command to the modem and capture the response lines.
+
+```text
+cell.at AT+CSQ          # signal quality
+cell.at AT+COPS?        # current operator
+cell.at AT+CGNSPWR=1    # enable GNSS power
+```
+
+Each invocation acquires the modem AT bus mutex for the duration, so a long-running AT command blocks runtime telemetry briefly. Use sparingly when the device is actively publishing.
+
+### cell.reset
+
+Power-cycle the modem via its DC3 enable pin (200 ms gap to drain the bulk caps; without the delay the modem latches state across the toggle). Equivalent to pulling the modem from the board and reseating it. Use after a failed PDP activation or when the modem stops responding to AT.
+
+### cell.cert.test
+
+Verify that the device's mTLS client certificate + private key are present in NVS and that the PEM round-trips through the modem's file-system upload path. Reads NVS, writes the PEM to the modem at `/customer/client.crt` + `/customer/client.key`, reads back, compares.
+
+Cellular-debug command. Will be gated behind a `THESADA_CELL_DEBUG` build flag in v1.4.6.
+
+### cell.cert.dump
+
+Print the PEM stored in NVS for `client_cert` and `client_key`. Returns full PEM payload over MQTT cli response.
+
+Cellular-debug command. Will be gated behind a `THESADA_CELL_DEBUG` build flag in v1.4.6.
+
+### cell.smconn.test
+
+Force a modem-native MQTT (SMCONN) connect attempt against the broker configured in `mqtt.broker` / `mqtt.port`, using the mTLS cert pair already written to the modem. Reports connect result + the modem's `+SMSTATE` register value. Use to isolate "cellular up, modem AT happy, but MQTT not connecting" from broader transport-layer faults.
+
+Cellular-debug command. Will be gated behind a `THESADA_CELL_DEBUG` build flag in v1.4.6.
+
+### cell.http
+
+Issue an HTTPS GET via the modem's CAOPEN / CASEND / CARECV socket layer. Routes through `Cellular::httpsGet` - the same path the OTA cellular fallback uses for manifest + binary fetch.
+
+```text
+cell.http https://example.com/test.txt
+```
+
+Returns the HTTP status + response body. Used to confirm cellular-side HTTPS works end-to-end when the WiFi OTA path is hidden.
 
 ## Boot and system
 
