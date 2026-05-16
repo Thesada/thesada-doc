@@ -2,8 +2,8 @@
 title: SHT31 Monitor
 parent: Modules
 nav_order: 1
-description: "SHT31 indoor temperature and humidity monitor - thesada-fw on Freenove ESP32-S3."
 has_children: true
+description: "SHT31 indoor temperature and humidity monitor - thesada-fw on Freenove ESP32-S3."
 ---
 
 # SHT31 Monitor

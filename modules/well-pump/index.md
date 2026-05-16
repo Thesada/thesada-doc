@@ -2,13 +2,12 @@
 title: Well Pump Monitor
 parent: Modules
 nav_order: 3
-description: "Well pump monitoring system -- current draw, pressure tank, short-cycle detection, freeze risk alerting."
-has_children: true
+description: "Well pump monitoring system - current draw, pressure tank, short-cycle detection, freeze risk alerting."
 ---
 
 # Well Pump Monitor
 
-> **Work in progress** -- This module is in the design phase. Hardware has not been built or tested yet. Specifications and BOM may change.
+> **Work in progress.** This module is in the design phase. Hardware has not been built or tested yet. Specifications and BOM may change.
 {: .warning }
 
 Monitors a submersible well pump system - pump current draw, pressure tank pressure, short-cycle detection, and freeze risk alerting.
@@ -195,7 +194,7 @@ Order the pressure transducer early - AliExpress lead time is 2-4 weeks. Verify 
 
 - [ ] Verify pump rated current draw at 240V (sets the alert threshold)
 - [ ] Confirm 1/4" NPT thread on existing gauge port
-- [ ] Decide: standalone node or shared with OWB monitor (depends on
-      physical distance between boiler room and pump house)
+- [ ] Decide: standalone node or shared with another module's node (depends on
+      physical distance between the deployment sites)
 - [ ] Determine short-cycle threshold (starts per hour) from baseline
       data after deployment

@@ -1,7 +1,8 @@
 ---
 title: Home Assistant
 parent: OWB Monitor
-nav_order: 3
+grand_parent: Modules
+nav_order: 4
 description: "MQTT sensor configuration for the OWB monitor in Home Assistant - temperature, current, battery, alerts, and Telegram commands."
 ---
 
@@ -9,15 +10,13 @@ description: "MQTT sensor configuration for the OWB monitor in Home Assistant - 
 
 ![OWB in Home Assistant]({{ site.baseurl }}/assets/img/home-assistant/owb-ha-dashboard.png)
 
-The OWB monitor publishes sensor data via MQTT. From v1.0.17+, entities are auto-discovered by Home Assistant via MQTT discovery - no manual YAML needed. Entities appear automatically under **Settings - Devices & Services - MQTT** after the node connects.
-
-Auto-discovery is enabled by default (`mqtt.ha_discovery: true`). No manual YAML needed - entities appear automatically.
+The OWB monitor publishes sensor data via MQTT. Home Assistant auto-discovers entities via MQTT discovery when `mqtt.ha_discovery: true` (the default) - no manual YAML required. Entities appear under **Settings - Devices & Services - MQTT** after the node connects.
 
 ---
 
 ## Prerequisites
 
-- OWB node flashed and online (thesada-fw v1.1.0+)
+- OWB node flashed and online
 - Mosquitto MQTT broker running
 - Telegram bot configured (optional, for alerts)
 
@@ -25,7 +24,7 @@ Auto-discovery is enabled by default (`mqtt.ha_discovery: true`). No manual YAML
 
 ## 1. MQTT Sensor Config
 
-Entities auto-discovered (v1.1.0+):
+Auto-discovered entities:
 
 | Entity | Type | Description |
 |---|---|---|

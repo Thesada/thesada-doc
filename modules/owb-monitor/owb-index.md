@@ -3,7 +3,7 @@ title: OWB Monitor
 parent: Modules
 nav_order: 2
 has_children: true
-description: "Outdoor wood boiler monitoring -- supply/return temperatures, pump current, Telegram alerts."
+description: "Outdoor wood boiler monitoring - supply/return temperatures, pump current, Telegram alerts."
 ---
 
 # OWB Monitor

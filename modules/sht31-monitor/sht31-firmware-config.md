@@ -1,6 +1,7 @@
 ---
 title: Firmware Config
 parent: SHT31 Monitor
+grand_parent: Modules
 nav_order: 2
 description: "Firmware configuration for the SHT31 temperature and humidity monitor on thesada-fw."
 ---

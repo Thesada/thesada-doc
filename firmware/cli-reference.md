@@ -50,7 +50,7 @@ Response shape:
 
 A command line longer than the MQTT 256-char buffer should be sent over the WebSocket terminal instead. The chunked file I/O commands (`fs.cat` with offset, `fs.write`) have their own MQTT contract so the wire payload stays small; see [Chunked I/O](#chunked-file-io) below.
 
-### Request correlation (firmware v1.4.5+)
+### Request correlation
 
 Multiple in-flight CLI commands share the single `cli/response` topic. To match a response to the request that issued it, wrap the published payload in a JSON envelope with a caller-supplied `req_id`:
 
@@ -78,7 +78,7 @@ Envelope rules:
 - `req_id` may be a string or a number.
 - `args` may be omitted, an empty string, or a string. With no `args` (or `args=""`), the command runs as if invoked argless.
 - Any other top-level field is ignored.
-- A payload that is not JSON, or JSON without `req_id`/`args`, is treated as the literal command argument (the pre-v1.4.5 contract). Older firmware that does not unwrap also keeps working - the receiver sees the JSON envelope as the arg string.
+- A payload that is not JSON, or JSON without `req_id`/`args`, is treated as the literal command argument. Plain-payload clients keep working unchanged.
 
 Binary protocols (`fs.write`, `fs.append`, `cert.set`) read the raw payload directly and do not accept the JSON envelope. Use them without wrapping; correlation in those cases relies on per-device serialization at the client.
 
@@ -87,10 +87,10 @@ Binary protocols (`fs.write`, `fs.append`, `cert.set`) read the raw payload dire
 - [Core](#core) - help, version, restart, heap, uptime, sensors, selftest, sleep
 - [Filesystem](#filesystem) - fs.ls, fs.cat, fs.rm, fs.write, fs.append, fs.mv, fs.df, fs.format
 - [Config](#config) - config.get, config.set, config.save, config.reload, config.dump
-- [Network](#network) - net.ip, net.ping, net.ntp, net.mqtt
+- [Network](#network) - net.ip, net.ping, net.ntp, net.mqtt, net.http
 - [OTA](#ota) - ota.check, ota.status
 - [Certificates](#certificates) - cert.info, cert.apply, cert.clear
-- [Cellular](#cellular) - cell.at, cell.reset, cell.cert.test, cell.cert.dump, cell.smconn.test, cell.http
+- [Cellular](#cellular) - cell.at, cell.reset, cell.cert.test, cell.cert.dump, cell.smconn.test
 - [Boot and system](#boot-and-system) - boot.info, partitions, chip.info, sdkconfig
 - [Modules](#modules) - module.list, module.status
 - [Lua](#lua) - lua.exec, lua.load, lua.reload
@@ -228,13 +228,15 @@ Print the entire config as pretty-formatted JSON. Useful for a one-shot snapshot
 
 ## Network
 
+The `net.*` commands route by active transport. With WiFi up they use the WiFi stack; with WiFi down and cellular up they fall back to the modem so they keep working on the cellular leg.
+
 ### net.ip
 
-Print every active interface (WiFi, Ethernet if present, cellular if connected). Each entry shows interface name, IP, gateway, DNS, and MAC.
+Print every active transport. The WiFi block shows SSID, IP, gateway, DNS, RSSI, and MAC. When cellular is connected a separate block shows operator, modem IP, signal quality, and IMEI. Both blocks appear when both transports are up - no claim is made about which one the OS routes through.
 
 ### net.ping
 
-Resolve a hostname and report its IP. Pure DNS check; does not actually ICMP-ping (LittleFS firmware does not ship a raw socket layer).
+Resolve a hostname and report its IP. Pure DNS check; does not actually ICMP-ping (LittleFS firmware does not ship a raw socket layer). With WiFi up the resolve goes through the WiFi DNS stack; with WiFi down it uses the cellular modem DNS instead. The output notes which transport carried the resolve.
 
 ```text
 net.ping mqtt.example.com
@@ -248,13 +250,25 @@ Without arguments, prints NTP server pool, last sync time, and clock skew at las
 net.ntp                                 # status
 net.ntp set 1730000000                  # set clock from epoch (test override)
 net.ntp set 2026-04-30T20:00:00Z        # set clock from ISO 8601
+net.ntp sync                            # force a sync now
 ```
 
-Manual sets are intended for bench setup before the network is up; the regular NTP pull will overwrite once the device gets connectivity.
+Manual sets are intended for bench setup before the network is up; the regular NTP pull will overwrite once the device gets connectivity. `net.ntp sync` forces a sync immediately - over WiFi the background SNTP client already handles this, but on a cellular-only boot (WiFi never associated) nothing syncs the clock until the modem is asked, so `net.ntp sync` is the recovery path. The cellular sync timeout is configurable via `ntp.cell_timeout_s` (default 60).
 
 ### net.mqtt
 
-Print the live MQTT state: broker, port, connection state, last publish timestamp, queue depth, and every active subscription (topic + ring-buffer latest received).
+Print the live MQTT state: broker, port, connection state, the transport currently carrying the session (WiFi or cellular), last publish timestamp, queue depth, and every active subscription (topic + ring-buffer latest received).
+
+### net.http
+
+HTTPS GET against a URL, routed by active transport: WiFi up uses `HTTPClient` over `WiFiClientSecure` with the CA loaded from `/ca.crt`; WiFi down with cellular up uses the modem SSL socket. Prints the status code, body length, and the first 1 KB of the body as a preview.
+
+```text
+net.http https://ota.example.com/latest/firmware.json
+net.http --insecure http://192.0.2.10/healthz   # plain HTTP / skip cert check
+```
+
+HTTPS only by default - plain HTTP is refused unless `--insecure` is passed. The cellular path is HTTPS only. This replaces the need to walk an OTA manifest fetch by hand to test an HTTPS endpoint, and is the single HTTPS-GET command - there is no separate cellular variant, `net.http` auto-routes. The WiFi fetch runs on a dedicated task - the TLS handshake needs more stack than the shell's main-loop call path has.
 
 ## OTA
 
@@ -315,29 +329,21 @@ Power-cycle the modem via its DC3 enable pin (200 ms gap to drain the bulk caps;
 
 Verify that the device's mTLS client certificate + private key are present in NVS and that the PEM round-trips through the modem's file-system upload path. Reads NVS, writes the PEM to the modem at `/customer/client.crt` + `/customer/client.key`, reads back, compares.
 
-Cellular-debug command. Will be gated behind a `THESADA_CELL_DEBUG` build flag in v1.4.6.
+Cellular-debug command - only registered in builds with the `THESADA_CELL_DEBUG` flag (the `esp32-owb-debug` bench env). Not present in production builds.
 
 ### cell.cert.dump
 
 Print the PEM stored in NVS for `client_cert` and `client_key`. Returns full PEM payload over MQTT cli response.
 
-Cellular-debug command. Will be gated behind a `THESADA_CELL_DEBUG` build flag in v1.4.6.
+Cellular-debug command - only registered in builds with the `THESADA_CELL_DEBUG` flag (the `esp32-owb-debug` bench env). Not present in production builds.
 
 ### cell.smconn.test
 
 Force a modem-native MQTT (SMCONN) connect attempt against the broker configured in `mqtt.broker` / `mqtt.port`, using the mTLS cert pair already written to the modem. Reports connect result + the modem's `+SMSTATE` register value. Use to isolate "cellular up, modem AT happy, but MQTT not connecting" from broader transport-layer faults.
 
-Cellular-debug command. Will be gated behind a `THESADA_CELL_DEBUG` build flag in v1.4.6.
+Cellular-debug command - only registered in builds with the `THESADA_CELL_DEBUG` flag (the `esp32-owb-debug` bench env). Not present in production builds.
 
-### cell.http
-
-Issue an HTTPS GET via the modem's CAOPEN / CASEND / CARECV socket layer. Routes through `Cellular::httpsGet` - the same path the OTA cellular fallback uses for manifest + binary fetch.
-
-```text
-cell.http https://example.com/test.txt
-```
-
-Returns the HTTP status + response body. Used to confirm cellular-side HTTPS works end-to-end when the WiFi OTA path is hidden.
+There is no `cell.http` command - HTTPS GET over the modem is reached through [net.http](#nethttp), which auto-routes WiFi vs cellular. The modem-side implementation (`Cellular::httpsGet`, CAOPEN / CASEND / CARECV) still backs the OTA cellular fallback and the `net.http` cellular branch.
 
 ## Boot and system
 

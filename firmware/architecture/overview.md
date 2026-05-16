@@ -56,14 +56,10 @@ thesada-fw/
     ├── thesada-mod-battery/src/        <- battery monitoring (requires PMU)
     ├── thesada-mod-powermanager/src/   <- AXP2101 PMU, charging, heartbeat LED
     ├── thesada-mod-cellular/src/       <- SIM7080G modem + LTE-M fallback
-    ├── thesada-mod-eth/src/            <- LAN8720A Ethernet (WT32-ETH01)
     ├── thesada-mod-sd/src/             <- SD card CSV logger
     ├── thesada-mod-telegram/src/       <- Telegram Bot API (direct send)
     ├── thesada-mod-httpserver/src/     <- web dashboard, REST API, WS terminal
-    ├── thesada-mod-liteserver/src/     <- lightweight HTTP (OTA + config + WiFi setup, CYD)
     ├── thesada-mod-scriptengine/src/   <- Lua 5.3 scripting engine
-    ├── thesada-mod-display/src/        <- SSD1306 OLED (Lua-driven rendering)
-    ├── thesada-mod-tftdisplay/src/     <- ILI9341 TFT + XPT2046 touch (CYD board)
     └── thesada-mod-pwm/src/            <- PWM output
 ```
 
@@ -77,14 +73,15 @@ flowchart TD
     WDT --> B[Config::load]
     B --> C[WiFiManager::begin]
     C --> D{WiFi connected?}
-    D -->|Yes| E[MQTTClient::begin]
-    E --> F[OTAUpdate::begin]
-    D -->|No| G[Cellular fallback]
-    F --> H[Shell::begin]
-    G --> H
-    H --> I["ModuleRegistry::beginAll()"]
-    I --> J[SleepManager::begin]
-    J --> K[Ready]
+    D -->|Yes| E[MQTTClient::begin WiFi path]
+    D -->|No| G[CellularModule::begin]
+    G --> H[MQTTClient::begin modem path]
+    E --> I[OTAUpdate::begin]
+    H --> I
+    I --> J[Shell::begin]
+    J --> K["ModuleRegistry::beginAll()"]
+    K --> L[SleepManager::begin]
+    L --> M[Ready]
 ```
 
 `ModuleRegistry::beginAll()` iterates the self-registered module list sorted by priority. `main.cpp` has zero module includes - it just calls `beginAll()` at startup and `loopAll()` each cycle.
@@ -118,11 +115,10 @@ MODULE_REGISTER(TemperatureModule, ModulePriority::SENSOR);
 | Priority | Value | Examples |
 |---|---|---|
 | POWER | 10 | PowerManager |
-| POWER | 10 | PowerManager |
 | NETWORK | 20 | Cellular |
-| SERVICE | 30 | HttpServer/LiteServer, Display, TFT, Telegram (must register Lua bindings before ScriptEngine) |
+| SERVICE | 30 | HttpServer, Telegram (must register Lua bindings before ScriptEngine) |
 | SCRIPT | 40 | ScriptEngine (creates Lua state, calls all registered binding functions) |
-| SENSOR | 50 | Temperature, ADS1115, Battery |
+| SENSOR | 50 | Temperature, ADS1115, Battery, SHT31 |
 | OUTPUT | 60 | SD logger, PWM |
 | LAST | 100 | SleepManager |
 

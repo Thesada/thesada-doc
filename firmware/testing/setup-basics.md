@@ -56,7 +56,7 @@ Upload filesystem (includes `ca.crt` and `config.json`):
 pio run -e esp32-owb --target uploadfs
 ```
 
-If `ca.crt` is absent or wrong, TLS still connects but logs `[WRN][MQTT] No CA cert - insecure`. MQTT and OTA will work but without certificate verification.
+If `ca.crt` is absent, the firmware falls back to a PROGMEM bundle baked into the build (common public TLS roots). MQTT and OTA stay cert-validated as long as the broker chain is covered by one of those roots. The log line is `[INF][MQTT] /ca.crt missing - using baked PROGMEM CA bundle`. If the broker chain is not covered by the bundle, the connection fails - upload the correct `ca.crt`.
 
 ### Runtime ca.crt Upload (deployed devices)
 
@@ -84,7 +84,7 @@ curl -u admin:changeme -X POST \
   -d '{"cmd":"cat /ca.crt"}'
 ```
 
-The PEM bundle should contain ISRG Root X1 (for Let's Encrypt / GitHub OTA) and USERTrust ECC (for github.com). Both are needed for end-to-end GitHub OTA. For cellular MQTT, the modem uses the same `/ca.crt` file - if absent, it connects without CA verification and logs a warning.
+The PEM bundle should contain the roots that cover your broker and your OTA upstream. The PROGMEM fallback ships ISRG X1/X2 (Let's Encrypt), DigiCert Global Root CA/G2/G3, and USERTrust ECC, which covers most public chains; use a flash-resident `/ca.crt` to scope trust tighter or to add a private CA. For cellular MQTT, the modem uploads the same trust source the WiFi path uses (file first, PROGMEM fallback otherwise) before connecting.
 
 ---
 
@@ -140,11 +140,11 @@ The same commands work in both the serial terminal and the web terminal.
 | `net.ip` | `WiFi: connected` + IP, SSID, RSSI, MAC |
 | `net.ping 8.8.8.8` | `8.8.8.8 resolved to 8.8.8.8` |
 | `net.ntp` | `NTP: synced  UTC: 2026-03-22T...` + `log timestamps: active` |
-| `mqtt` | `MQTT: connected  broker: ...:8883` |
+| `net.mqtt` | `MQTT: connected  broker: ...:8883` + subscription table |
 | `module.list` | Lists enabled modules with `[x]` |
 | `fs.ls /` | LittleFS root listing |
 | `fs.cat /config.json` | Config JSON content |
-| `write /test.txt hello` | `Wrote 5 bytes to /test.txt` |
+| `fs.write /test.txt hello` | `Wrote 5 bytes to /test.txt` |
 | `fs.cat /test.txt` | `hello` |
 | `fs.rm /test.txt` | `Removed` |
 | `fs.df` | LittleFS + SD usage |

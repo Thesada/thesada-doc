@@ -78,7 +78,7 @@ curl -u admin:changeme http://[ip]/api/ws/token
 # -> {"ok":true}
 ```
 
-**Bearer token auth (v1.2.4+):**
+**Bearer token auth:**
 
 ```bash
 # Login - exchange Basic Auth for Bearer token

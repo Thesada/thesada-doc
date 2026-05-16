@@ -157,7 +157,7 @@ The firmware publishes a JSON blob to `<prefix>/info` (retained) on every succes
 
 ```json
 {
-  "firmware_version": "1.4.5",
+  "firmware_version":   "x.y.z",
   "config_hash":        "a3b1d9...",
   "scripts_main_hash":  "c4d2e8...",
   "scripts_rules_hash": "0000...00"
@@ -216,29 +216,29 @@ printf '/config.json\n' > /tmp/payload.bin
 cat new-config.json     >> /tmp/payload.bin
 mosquitto_pub -t '<prefix>/cli/fs.write' -f /tmp/payload.bin
 
-# 3. Trigger reload (firmware v1.4.5+ republishes /info on completion)
+# 3. Trigger reload (republishes /info on completion)
 mosquitto_pub -t '<prefix>/cli/config.reload' -m ''
 
 # 4. Verify the freshly republished info has the expected hash
 mosquitto_sub -t '<prefix>/info' -W 5 -C 1 | jq '.config_hash'
 ```
 
-On firmware v1.4.5+ the `config.reload` triggers an immediate `/info` republish, so the verify step returns within a second of the reload landing. On older firmware, `/info` only republishes on reconnect; the verify subscriber waits for the next periodic emit.
+`config.reload` triggers an immediate `/info` republish, so the verify step returns within a second of the reload landing.
 
 If the new hash does not match, the device either did not pick up the file (writer failure) or the file failed to parse (logged error, live config untouched). Re-push and retry.
 
-For clients using the v1.4.5 envelope correlation, wrap the `fs.write` payload as a JSON-encoded path/content tuple is not supported - binary write handlers read the raw payload directly. Wrap the `config.reload` request instead so a follow-up `/info` confirmation can be matched to this push:
+Binary write handlers (`fs.write`, `fs.append`) read the payload raw, so the JSON envelope form is not available there. Wrap the `config.reload` request instead so a follow-up `/info` confirmation can be matched to this push:
 
 ```json
 Topic:   <prefix>/cli/config.reload
 Payload: {"req_id":"<uuid>"}
 ```
 
-See [CLI Reference - Request correlation](cli-reference.html#request-correlation-firmware-v145).
+See [CLI Reference - Request correlation](cli-reference.html#request-correlation).
 
 ## Common pitfalls
 
-- **Forgetting `config.reload` after `fs.write`**: the file on flash is new but the in-memory tree is old, so the device keeps running with the previous values. The retained `<prefix>/info` on the broker also still shows the previous `config_hash` because `/info` only republishes on connect or after a `config.reload` (firmware v1.4.5+). Always follow `fs.write /config.json` with `config.reload` so both the live config and the public hash advance together.
+- **Forgetting `config.reload` after `fs.write`**: the file on flash is new but the in-memory tree is old, so the device keeps running with the previous values. The retained `<prefix>/info` on the broker also still shows the previous `config_hash` because `/info` only republishes on connect or after a `config.reload`. Always follow `fs.write /config.json` with `config.reload` so both the live config and the public hash advance together.
 - **Quoting in `config.set`**: values are parsed as JSON. `config.set device.name foo` writes the string `foo` as JSON-parsed (works because bare-word JSON is permissive in some parsers, but rely on quoting for safety). Always quote string values.
 - **Whole-tree replacement via `config.set`**: not supported. `config.set` is scalar-only. Use `fs.write` + `config.reload` for sub-trees.
 - **Secrets in `config.json`**: WiFi passwords, MQTT credentials, Telegram bot tokens, and the web admin password all live in plain JSON on LittleFS. Treat the file as a secret. NVS-only storage is reserved for the per-device mTLS client cert + key.

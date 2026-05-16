@@ -11,27 +11,26 @@ description: "Compile-time config.h, runtime config.json, web dashboard, SD card
 ## Compile-time config (`thesada_config.h`)
 
 ```cpp
-#define FIRMWARE_VERSION "1.x"
+#define FIRMWARE_VERSION "x.y.z"
 
 // Enable/disable modules
 #define ENABLE_TEMPERATURE
 #define ENABLE_ADS1115
-#define ENABLE_BATTERY       // AXP2101 battery monitoring (requires PowerManager)
+#define ENABLE_PMU           // AXP2101 power management
+#define ENABLE_BATTERY       // battery monitoring (requires ENABLE_PMU)
 #define ENABLE_SD
 #define ENABLE_CELLULAR
 #define ENABLE_TELEGRAM
+#define ENABLE_WEBSERVER
+#define ENABLE_SCRIPTENGINE
 // #define ENABLE_PWM
+// #define ENABLE_SHT31
+// #define ENABLE_GNSS       // SIM7080G GNSS (requires ENABLE_CELLULAR)
 
 // Board selection (set via PIO build_flags in platformio.ini)
-// BOARD_WROOM32  - ESP32-WROOM-32 (no cellular/PMU/battery/SD/sensors)
-// BOARD_CYD      - ESP32-2432S028R (TFT touch, LiteServer instead of full HttpServer)
-// BOARD_ETH      - WT32-ETH01 (Ethernet primary, WiFi fallback)
-// BOARD_S3_BARE  - bare ESP32-S3 devkit (no cellular/PMU/battery/SD)
-// BOARD_OWB_RESCUE - stripped rescue build for OTA recovery
-// Default (no flag): LILYGO T-SIM7080-S3 with all modules
-
-// MQTT TLS (port comes from config.json)
-#define MQTT_TLS true
+// (default, no flag) - LILYGO T-SIM7080-S3 with the full module set
+// BOARD_S3_BARE      - bare ESP32-S3 devkit (SHT31 bench target, no cellular/PMU/SD)
+// BOARD_OWB_RESCUE   - minimum-flash recovery build, every optional module off
 ```
 
 ---

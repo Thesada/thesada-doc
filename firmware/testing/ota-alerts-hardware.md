@@ -28,7 +28,7 @@ description: "OTA update testing (pull and push), temperature alerts, webhook, S
 | Check | Expected |
 |---|---|
 | `cli/ota.status` payload `""` | Running / boot / next partition labels + addresses + rollback state (`valid`, `pending_verify`, etc) + running firmware version |
-| `cli/chip.info` payload `""` | Chip model (ESP32-S3), revision, cores, flash size, PSRAM size + free (if `BOARD_HAS_PSRAM`), CPU frequency |
+| `cli/chip.info` payload `""` | Chip model (ESP32-S3), revision, cores, flash size, PSRAM size + free, CPU frequency |
 | `cli/net.mqtt` payload `""` | Connection state, broker, prefix, subscription table with active flags, RX ring of recent incoming topics with age |
 
 ---
@@ -50,17 +50,17 @@ description: "OTA update testing (pull and push), temperature alerts, webhook, S
 ~/.platformio/penv/bin/pio run -e esp32-owb
 
 # Upload (prompts for password, does not echo it)
-python3 scripts/ota_upload.py 172.16.1.212
+python3 scripts/ota_upload.py 192.0.2.10
 
 # Custom username or binary path
-python3 scripts/ota_upload.py 172.16.1.212 --user admin --bin build/firmware.bin
+python3 scripts/ota_upload.py 192.0.2.10 --user admin --bin build/firmware.bin
 ```
 
 The script checks credentials before uploading and prints the current device version so you can confirm which firmware is being replaced. After a successful upload the device restarts automatically.
 
 Verify the new version booted:
 ```bash
-curl http://172.16.1.212/api/info
+curl http://192.0.2.10/api/info
 ```
 
 ---
@@ -83,15 +83,17 @@ Set an alert rule with `function: "gte"` and `value` just below current room tem
 | Custom `message` field | Alert label matches config value |
 | Set `enabled: false` | No alerts fire |
 
-## 11a. MQTT Config Set/Push
+## 11a. MQTT config workflow
+
+The dedicated `cmd/config/*` topics were retired. Drive configuration through the CLI bridge instead:
 
 | Check | Expected |
 |---|---|
-| Publish `{"path":"telegram.cooldown_s","value":"600"}` to `<prefix>/cmd/config/set` | Config updated, saved to disk, reloaded |
+| Publish `telegram.cooldown_s 600` to `<prefix>/cli/config.set` | Config updated, saved to flash, reloaded; response on `<prefix>/cli/response` |
 | Verify via API: `GET /api/file?path=/config.json&source=littlefs` | Value changed |
-| Publish full config JSON to `<prefix>/cmd/config/push` | Config replaced, saved, reloaded |
-| Push invalid JSON | Error logged, config rolls back to file on disk |
-| Set non-existent path | Error logged, no crash |
+| Push `/config.json\n<json>` via `<prefix>/cli/fs.write`, then publish empty payload to `<prefix>/cli/config.reload` | Config replaced, saved, reloaded, `/info` republishes with the new `config_hash` |
+| Push invalid JSON | Error logged, live config untouched (atomic parse-then-swap) |
+| `config.set` on non-existent path | Error logged, no crash |
 
 ## 11b. Fallback AP
 

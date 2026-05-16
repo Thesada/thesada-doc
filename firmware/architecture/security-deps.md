@@ -32,9 +32,9 @@ No other files touched. `ModuleRegistry.cpp` has zero module-specific code - sel
 | Rate limiting | `/api/login` and `/api/auth/check`: 5 failed attempts per source IP triggers a 30 s lockout (returns 429). Table holds 16 IPs. |
 | WebSocket terminal | Requires prior `GET /api/ws/token` (auth-gated); server records caller IP as authorized for 30 s (one-time use) |
 | Path traversal | `/api/file` rejects any path containing `..` |
-| TLS | MQTT and OTA use CA cert from `/ca.crt` on LittleFS when present. See TLS exceptions below. |
+| TLS | MQTT and OTA load the CA from `/ca.crt` on LittleFS. If that file is missing or empty, both subsystems fall back to a PROGMEM bundle baked into the firmware (common public TLS roots). The rotation path stays flash-based; the bundle is a safety net for wiped data partitions. See TLS exceptions below. |
 
-**Token auth flow (v1.2.4+):**
+**Token auth flow:**
 
 ```
 1. POST /api/login  (Authorization: Basic base64(user:pass))
@@ -65,18 +65,17 @@ Not all outbound connections use `/ca.crt`. These paths use `setInsecure()` (TLS
 | Path | Reason | Risk |
 |---|---|---|
 | MQTT before NTP sync | Cert validation requires a valid system clock. Pre-NTP, the device connects insecure and upgrades to cert-validated once NTP syncs. | First-boot MITM on untrusted networks. Low risk on LAN. |
-| MQTT on low-heap boards | Boards with < 40 KB max contiguous heap (CYD/WROOM) can't allocate for TLS cert context. They stay insecure permanently. | No cert validation on constrained boards. |
-| Telegram Bot API | `setInsecure()` to avoid heap fragmentation that kills Telegram after 3 alerts. Bot tokens are bearer creds visible to a MITM. | Low risk on trusted upstream. |
-| OTA without `/ca.crt` | If `/ca.crt` is missing, OTA manifest + binary download proceed without cert validation. SHA256 covers binary integrity but the manifest itself is unverified. | Manifest substitution possible. Always deploy with `/ca.crt`. |
+| MQTT on low-heap boards | A board with less than ~40 KB max contiguous heap cannot allocate for the TLS cert context. The connection stays on `setInsecure()` permanently when the upgrade is unsafe. | No cert validation on constrained boards. |
+| Telegram Bot API | `setInsecure()` to avoid heap fragmentation that kills Telegram after a few alerts. Bot tokens are bearer creds visible to a MITM. | Low risk on trusted upstream. |
 
 ### MQTT CLI trust model
 
 `cli/lua.exec` runs arbitrary Lua with the full standard library (including `io` and `os`). Anyone with MQTT broker credentials can read `/config.json` (contains WiFi, MQTT, Telegram credentials in plaintext), overwrite `/ca.crt`, or access the filesystem. MQTT broker credentials therefore gate everything on the device - treat them with the same trust level as local root access.
 
-### LiteServer (CYD) auth notes
+### Captive-portal auth notes
 
-- In AP mode (fallback setup): auth is skipped entirely so the user can configure WiFi. Anyone in radio range of the AP can read/write config.
-- Empty web credentials: if `web.user` and `web.password` are both empty in config.json, LiteServer admin endpoints are unprotected. A warning is logged.
+- In AP mode (fallback setup): auth is skipped entirely so the user can configure WiFi. Anyone in radio range of the AP can read/write config until the device joins a real network again.
+- Empty web credentials: if `web.user` and `web.password` are both empty in `config.json`, admin endpoints are unprotected. A warning is logged at boot.
 
 ---
 
@@ -96,10 +95,10 @@ esp_task_wdt_reset();          // fed every loop() cycle
 
 GitHub Actions pipeline (`.github/workflows/ci.yml`):
 
-- **Every push to `dev` or `main`**: builds all 5 board targets (owb, cyd, wroom, eth, s3bare) + minimal firmware, uploads as artifacts
-- **Push to `main` with new version**: auto-creates GitHub release with binaries + changelog
-- **Existing version**: skips release (no duplicates)
-- Rescue envs (`esp32-owb-rescue`, `esp32-s3-debug-rescue`) are not built by CI - manual builds only for recovery scenarios
+- **Every push to `dev` or `main`**: builds the production OWB binary plus the debug variants (`esp32-owb`, `esp32-owb-debug`, `esp32-s3-debug`) and uploads them as artifacts.
+- **Push to `main` with a new version**: auto-creates a GitHub release with the production binary, the rescue binary, and a manifest pointer.
+- **Existing version**: release step is skipped (no duplicates).
+- Rescue envs (`esp32-owb-rescue`, `esp32-s3-debug-rescue`) are built on demand only - manual recovery flow.
 
 **Git workflow:**
 1. Develop on `dev` - CI catches compile errors on every push

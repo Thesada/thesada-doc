@@ -56,7 +56,7 @@ Or read the first 2 KiB of a CSV file off the SD card:
 Payload: /sd/log042.csv 0 2048
 ```
 
-### Request, envelope form (firmware v1.4.5+)
+### Request, envelope form
 
 When multiple CLI commands are in flight against the same device, wrap the payload in a correlation envelope:
 
@@ -64,7 +64,7 @@ When multiple CLI commands are in flight against the same device, wrap the paylo
 {"req_id": "abc-123", "args": "/sd/log042.csv 0 2048"}
 ```
 
-The firmware extracts `req_id` and echoes it back on the response, and unwraps `args` so the chunked-read handler parses `"<path> <byte_offset> <byte_length>"` exactly as it would for the plain form. See the [CLI Reference - Request correlation](cli-reference.html#request-correlation-firmware-v145) for the full envelope semantics.
+The firmware extracts `req_id` and echoes it back on the response, and unwraps `args` so the chunked-read handler parses `"<path> <byte_offset> <byte_length>"` exactly as it would for the plain form. See the [CLI Reference - Request correlation](cli-reference.html#request-correlation) for the full envelope semantics.
 
 ### Response
 
@@ -226,7 +226,7 @@ The firmware's CLI dispatcher serialises per-device: every `cli/<cmd>` arrival d
 Two defences at the client side:
 
 1. **Serialise per device.** Hold one in-flight CLI per `<prefix>`. Next call waits for the previous response (or its timeout) before publishing.
-2. **Correlate by `req_id`.** Use the envelope form for every read; firmware v1.4.5+ echoes `req_id` on each response so a late or replay message from a previous call cannot be mistaken for the current one.
+2. **Correlate by `req_id`.** Use the envelope form for every read; the firmware echoes `req_id` on each response so a late or replay message from a previous call cannot be mistaken for the current one.
 
 Both together are belt-and-suspenders. The mutex alone is sufficient when one client owns every CLI emission for a device. The `req_id` filter alone catches retained replays and out-of-order delivery edge cases.
 

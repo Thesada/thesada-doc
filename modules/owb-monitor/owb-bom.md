@@ -1,8 +1,9 @@
 ---
 title: Bill of Materials
 parent: OWB Monitor
+grand_parent: Modules
 nav_order: 1
-description: "Bill of materials for the outdoor wood boiler monitoring node -- DS18B20, CT clamps, ADS1115, LILYGO T-SIM7080-S3."
+description: "Bill of materials for the outdoor wood boiler monitoring node - DS18B20, CT clamps, ADS1115, LILYGO T-SIM7080-S3."
 ---
 
 # OWB Monitor - Bill of Materials
@@ -39,7 +40,7 @@ Parts list for the outdoor wood boiler monitoring node. Monitors supply/return t
 - Default address 0x48 (addr pin to GND)
 - Two differential channels used: A0_A1 for house pump, A2_A3 for barn pump
 - Gain setting: 0.256V in config.json (tightest usable range for 0-1V CT clamp signal, best resolution)
-- Calibration: multiply factor in firmware config -- fine-tune against a clamp meter reading on-site
+- Calibration: multiply factor in firmware config - fine-tune against a clamp meter reading on-site
 
 ---
 

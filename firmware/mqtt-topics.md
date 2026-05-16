@@ -60,7 +60,7 @@ Retained JSON blob describing the device. Published once per successful connect,
 
 ```json
 {
-  "firmware_version": "1.4.5",
+  "firmware_version": "x.y.z",
   "hardware_type": "esp32-s3",
   "board": "s3-bare",
   "chip_model": "esp32-s3",
@@ -68,7 +68,7 @@ Retained JSON blob describing the device. Published once per successful connect,
   "chip_cores": 2,
   "mac": "48:27:e2:e8:b4:34",
   "psram": true,
-  "build_time": "May 13 2026 14:50:39",
+  "build_time": "<build timestamp>",
   "config_hash": "a3b1...e2",
   "scripts_main_hash": "c4d2...8f",
   "scripts_rules_hash": "0000...00"
@@ -150,17 +150,23 @@ Cellular boards mirror alerts on the same topic via the cellular module's queue 
 
 ### `<prefix>/status/ota`
 
-Plain-string OTA progress events.
+JSON state events. Published on every OTA code path so operators can drive dashboards without watching serial. Not retained; the broker only holds rolling status while an OTA is in flight.
 
-```text
-checking
-downloading
-verifying
-applied: 1.4.5
-failed: connection_lost
+```json
+{"state":"updating","version":"x.y.z"}
+{"state":"up-to-date","version":"x.y.z"}
+{"state":"refused","reason":"no-ca","version":"x.y.z"}
+{"state":"failed","reason":"sha256-mismatch","version":"x.y.z"}
 ```
 
-Useful for live OTA dashboards. Not retained; rolling status is captured on the broker only while the OTA is happening.
+| `state` | Meaning | `reason` field |
+|---|---|---|
+| `updating` | Manifest fetched and a flash is in progress. | not present |
+| `up-to-date` | Manifest matches the running version; nothing to do. | not present |
+| `refused` | OTA aborted before the download started. | one of `no-transport`, `no-manifest-url`, `no-ca`, `heap-low`, `manifest-fetch-failed` |
+| `failed` | Download or flash phase failed. | free-form short string |
+
+`reason` values are kebab-case stable identifiers. Add new reasons by extending `publishOtaRefusal()` in `OTAUpdate.cpp`.
 
 ## CLI bridge
 
@@ -176,14 +182,14 @@ mosquitto_pub -t 'thesada/owb/cli/ota.check' -m '--force'
 mosquitto_pub -t 'thesada/owb/cli/config.set' -m 'sleep.deep_sleep_minutes 15'
 ```
 
-Envelope form (firmware v1.4.5+), useful when multiple CLI commands are in flight against the same device:
+Envelope form, useful when multiple CLI commands are in flight against the same device:
 
 ```bash
 mosquitto_pub -t 'thesada/owb/cli/chip.info' -m '{"req_id":"abc-123"}'
 mosquitto_pub -t 'thesada/owb/cli/ota.check' -m '{"req_id":"x42","args":"--force"}'
 ```
 
-The firmware extracts `req_id` and echoes it back on every response message, and unwraps `args` so downstream handlers see the raw payload they did before envelopes existed. Older firmware that does not understand the envelope ignores `req_id` silently; correlation degrades to "match by command name + serialise per device at the client."
+The firmware extracts `req_id` and echoes it back on every response message, and unwraps `args` so downstream handlers see the raw payload as if it had been published directly. A payload without `req_id` / `args` falls through and is treated as the literal command argument, so plain-payload clients keep working unchanged.
 
 Some commands take multi-line payloads (`fs.write`, `fs.append`, `cert.set`) and are not envelope-compatible because the binary protocol reads the raw payload directly. See the [CLI Reference](cli-reference.html) for the per-command wire contracts.
 
@@ -203,7 +209,7 @@ JSON envelope with the original command, success flag, and one entry per output 
 }
 ```
 
-`req_id` appears only when the inbound payload carried one (firmware v1.4.5+). Subscribe before publishing to avoid missing the response (it is QoS 0 + not retained).
+`req_id` appears in the response only when the inbound payload carried one. Subscribe before publishing to avoid missing the response (it is QoS 0 and not retained).
 
 ### `<prefix>/cmd/lua/reload`
 
@@ -234,7 +240,7 @@ Each config payload references the sensor's state topic from the table above and
     "ids": "sht31",
     "name": "SHT31 Test Node",
     "mf": "Thesada",
-    "sw": "1.4.5"
+    "sw": "x.y.z"
   }
 }
 ```

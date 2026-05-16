@@ -33,7 +33,7 @@ The ScriptEngine module sits low in the boot priority, so by the time scripts st
 
 - WiFi / Ethernet has attempted association (live or fallback).
 - MQTT may or may not be connected yet - assume not, and use `MQTT.subscribe` which queues the subscription until the broker session is up.
-- Other modules (Display, TFT, Telegram, Cellular) have called `begin()`. Their Lua bindings are available immediately.
+- Other modules (Telegram, Cellular) have called `begin()`. Their Lua bindings are available immediately.
 
 Subscribe-style code is safe to run at top level. Anything that needs MQTT to be connected (e.g. `MQTT.publish` and expecting it to land immediately) should be wrapped in a `Node.setTimeout` or driven from an `EventBus.subscribe("mqtt_connected", ...)` style hook.
 
@@ -67,7 +67,7 @@ Per-device runtime info plus a small timer queue.
 
 ```lua
 Node.restart()                   -- reboot the device
-Node.version()                   -- "1.3.11"
+Node.version()                   -- firmware version string
 Node.uptime()                    -- millis since boot, integer
 Node.ip()                        -- WiFi IP as "192.168.1.42" or empty
 Node.setTimeout(5000, function() -- one-shot timer, ms
@@ -144,13 +144,11 @@ Use this for files whose names contain whitespace or other characters that the S
 
 ### Module-provided bindings
 
-Modules optionally register their own Lua libraries when their compile flag is set. These are documented in their respective module pages:
+Modules optionally register their own Lua libraries when their compile flag is set. The most common today:
 
-- `Display.*` - SSD1306 OLED rendering (see Display module docs).
-- `TFT.*` / aliased `Display.*` on CYD - ILI9341 TFT + touch (see TFT module docs).
-- `Telegram.*` - direct Telegram bot send-message (see Telegram module docs).
+- `Telegram.send(chatID, msg)` / `Telegram.broadcast(msg)` - direct Telegram Bot API output (compile flag `ENABLE_TELEGRAM`).
 
-If a binding is missing on the running build (e.g. `Display` on a board without `ENABLE_DISPLAY`), referencing it raises a Lua error. Guard with `if Display then ... end` for scripts that may run on multiple board variants.
+If a binding is missing on the running build, referencing it raises a Lua error. Guard with `if Telegram then ... end` for scripts that may run on a build where the module is disabled.
 
 ## Generation safety on reload
 
@@ -275,7 +273,7 @@ If a script has a syntax error or runtime error during top-level execution, the 
 
 ## Limits and gotchas
 
-- **Heap pressure**. Lua state on a no-PSRAM board (CYD, WROOM) costs ~30 KB plus per-script overhead. Heavy table allocations during alert handlers can spike free-heap below the TLS reconnect floor and trigger a preventive reboot. Use `collectgarbage("collect")` from a periodic `Node.setTimeout` if you see linear heap decline.
+- **Heap pressure**. The Lua state itself costs ~30 KB plus per-script overhead. On a board without PSRAM, heavy table allocations during alert handlers can spike free-heap below the TLS reconnect floor and trigger a preventive reboot. Use `collectgarbage("collect")` from a periodic `Node.setTimeout` if you see linear heap decline.
 - **8 timer slots**. Concurrent `setTimeout` count is hard-capped. Long polling loops should re-arm one timer at a time, not stack many.
 - **No file I/O from Lua** beyond `os.remove`. The full `io` stdlib is loaded but not connected to LittleFS in a useful way; treat it as scratch / sandbox-only.
 - **Lua 5.3 integer / float semantics**. Numbers from `JSON.decode` come as floats; cast with `math.floor` or `n // 1` (integer division) before string formatting if you want an integer print.

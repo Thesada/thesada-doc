@@ -3,7 +3,7 @@ title: Shell & Scripting
 parent: Architecture
 grand_parent: Firmware
 nav_order: 2
-description: "Unified CLI with 30+ commands across serial, WebSocket, HTTP, and MQTT. Lua 5.3 scripting with hot-reloadable event rules."
+description: "Unified CLI across serial, WebSocket, HTTP, and MQTT. Lua 5.3 scripting with hot-reloadable event rules."
 ---
 
 # Shell & Scripting
@@ -119,7 +119,7 @@ For multi-chunk writes: first `fs.write` (truncates), then `fs.append` for remai
 
 Lua 5.3 runtime via the [ESP-Arduino-Lua](https://github.com/sfranzyshen/ESP-Arduino-Lua) library (GPL-3.0).
 
-**Self-registering Lua bindings:** Modules register their own Lua bindings in `begin()` via `ScriptEngine::addBindings(fn)`. ScriptEngine has zero module includes - Display, TFT, and Telegram Lua bindings live in their respective modules. The registrar list is persistent and survives `lua.reload`. The Lua API table below is unchanged - the same functions are available to scripts.
+**Self-registering Lua bindings:** Modules register their own Lua bindings in `begin()` via `ScriptEngine::addBindings(fn)`. ScriptEngine has zero module includes - module-side bindings (Telegram and similar) live in their respective modules. The registrar list is persistent and survives `lua.reload`.
 
 **Scripts on LittleFS:**
 - `/scripts/main.lua` - runs once at boot (setup tasks, one-time subscriptions)
@@ -144,26 +144,6 @@ Lua 5.3 runtime via the [ESP-Arduino-Lua](https://github.com/sfranzyshen/ESP-Ard
 | `Node.uptime()` | Returns `millis()` as number |
 | `Node.ip()` | Returns WiFi IP as string |
 | `Node.setTimeout(ms, fn)` | Call `fn` after `ms` milliseconds (max 8 pending timers) |
-| `Display.clear()` | Clear OLED framebuffer [ENABLE_DISPLAY] |
-| `Display.text(x, y, str)` | Draw text at position |
-| `Display.line(x1, y1, x2, y2)` | Draw a line |
-| `Display.rect(x, y, w, h)` | Rectangle outline |
-| `Display.fill(x, y, w, h)` | Filled rectangle |
-| `Display.show()` | Send framebuffer to screen |
-| `Display.font(size)` | Set font: "small", "medium", "large" |
-| `Display.ready()` | Returns true if display initialized |
-| `Display.color(r, g, b)` | Set foreground color (TFT only, 0-255 per channel) |
-| `Display.bgcolor(r, g, b)` | Set background color (TFT only) |
-| `Display.width()` | Screen width in pixels (TFT only) |
-| `Display.height()` | Screen height in pixels (TFT only) |
-| `Display.touched()` | Returns x, y if touched, nil otherwise (TFT only) |
-| `Display.onTouch(fn)` | Register touch callback fn(x, y), IRQ-driven (TFT only) |
-| `Display.center(y, str)` | Draw text centered horizontally (TFT only) |
-| `Display.textWidth(str)` | Return pixel width of string in current font (TFT only) |
-| `Display.backlight(bool)` | Turn TFT backlight on/off (TFT only) |
-| `Display.led(r, g, b)` | Set RGB LED color (CYD only, 0-255) |
-
-On the OLED module, TFT-specific functions are not available. On the TFT module, `Display.show()` is a no-op (TFT draws immediately). Touch uses the XPT2046 IRQ pin for zero-polling-overhead event detection.
 
 **Config.get array support:**
 `Config.get` supports both object keys and array indices via dot notation:

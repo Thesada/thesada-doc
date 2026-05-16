@@ -1,7 +1,8 @@
 ---
 title: Firmware Config
 parent: OWB Monitor
-nav_order: 2
+grand_parent: Modules
+nav_order: 3
 description: "thesada-fw configuration for the OWB monitor node - WiFi, MQTT, sensors, alerts, and deployment."
 ---
 
@@ -127,7 +128,9 @@ curl -u admin:changeme -X POST http://<node-ip>/ota -F 'firmware=@build/firmware
 **Push scripts remotely:**
 
 ```bash
-printf '/scripts/rules.lua\n' | cat - rules.lua | mosquitto_pub ... -t 'thesada/owb/cli/file.write' -s
+printf '/scripts/rules.lua\n' > /tmp/payload.bin
+cat rules.lua                >> /tmp/payload.bin
+mosquitto_pub ... -t 'thesada/owb/cli/fs.write' -f /tmp/payload.bin
 mosquitto_pub ... -t 'thesada/owb/cli/lua.reload' -m ''
 ```
 
