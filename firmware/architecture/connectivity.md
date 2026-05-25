@@ -206,6 +206,8 @@ Several mechanisms prevent connection drops after extended uptime:
 
 **TLS heap guard** - the cert upgrade is skipped when free heap is below ~40 KB at connect time. `WiFiClientSecure`'s SSL allocation needs a large contiguous block; attempting it on a tight heap causes OOM crashes. The connection stays insecure with a warning logged.
 
+**Bounded exhaustion reboots** - after `mqtt.reboot_after_fails` consecutive failed reconnects (default 30) the client used to call `ESP.restart()` indefinitely, so a misconfigured broker turned into a perpetual ~30 min reboot loop with no remote recovery path. The reboot still happens, but an NVS counter (`thesada-boot` namespace, keys `mqtt_reboots` + `mqtt_rb_at`) tracks consecutive exhaustion reboots and stops them once `mqtt.max_exhaust_reboots` (default 3) is reached. The device stays up and keeps retrying at the capped backoff so local serial/HTTP/shell remain usable. The counter clears on the first successful connect; a streak older than 6 h (`RB_STALE_WINDOW_S`) ages out so a one-off outage does not accumulate toward a halt.
+
 Connection uptime is logged on disconnect to help diagnose patterns (consistent ~3600s = NAT timeout, random = WiFi instability).
 
 ---
@@ -253,6 +255,14 @@ The web interface is fully functional in AP mode - you can view sensors, edit co
 - SIM7080G modem-native MQTT over TLS via AT+SM* commands
 - Periodic WiFi recheck every 15 min (configurable); reverts to WiFi when available
 - The modem uploads the same CA the WiFi path uses (`/ca.crt` if present, otherwise the firmware's PROGMEM bundle) via AT+SMSSL + AT+CSSLCFG CONVERT, so cellular MQTT is cert-validated end-to-end.
+
+### Incremental activation
+
+Cellular activation runs as a phase-per-call state machine (`tickActivation()`), polled by `CellularModule` each loop, so other modules keep ticking between phases. The earlier path ran power-on through MQTT connect in one synchronous `Cellular::begin()` call - up to 30-120 s of frozen `loop()` during a WiFi-to-cellular failover (no MQTT keepalive, no sensor publish, no shell).
+
+Phases: `POWER_ON -> SIM -> RADIO_CFG -> REGISTER -> BEARER -> MQTT -> ACTIVE`. `networkConnect()` is split into `radioConfigure`, `pollRegistration`, and `activateBearer`; the synchronous version stays for the steady-state recovery path inside `loop()`.
+
+`cellular.activation_timeout_ms` (default 30 min) bounds the whole cycle. On expiry the modem is hard-reset and activation fails back to STANDBY instead of looping a wedged modem forever.
 
 ---
 

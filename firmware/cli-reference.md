@@ -214,6 +214,17 @@ config.set telegram.enabled false
 
 The value is parsed as JSON: bare strings need to be quoted, booleans and numbers do not. The save + reload happens atomically; a write that fails to parse leaves the live config untouched.
 
+`config.set` both creates and updates: a missing intermediate object is materialised on the fly, so `config.set newsection.nested.key "v"` works without seeding the parents first.
+
+Numeric path segments target array indices, never object keys. If the parent is missing, `config.set` refuses with an instruction to initialise it as an array first:
+
+```text
+config.set wifi.networks []
+config.set wifi.networks.0 '{"ssid":"home","psk":"..."}'
+```
+
+The previous walker silently created an object keyed `"0"` when the parent did not exist, producing config that read back as `wifi.networks: {"0": ...}` instead of an array.
+
 ### config.save
 
 Save the in-memory config to flash without changing it. Used after a sequence of `config.set` calls if you batched edits or after a programmatic mutation from Lua.
