@@ -132,15 +132,13 @@ end
 
 Decode-only for now; build outbound JSON by string concatenation or `string.format`.
 
-### `os`
+### Stdlib sandbox
 
-The standard `os` table is partially populated by the embedded Lua runtime (no `os.execute`, `os.exit`, `os.time` on an MCU). One targeted helper has been added:
+The Lua state is sandboxed. `io`, `os`, `debug`, `package`, `require`, `dofile`, `loadfile`, `load`, and `loadstring` are all `nil` - calling any of them raises a "attempt to call a nil value" error.
 
-```lua
-os.remove("/scripts/zombie file.lua")  -- delete a LittleFS dirent
-```
+Reason: MQTT broker credentials are device root via `cli/lua.exec`. A leaked broker login should not equal `io.open("/config.json"):read("*a")` over the network. The safe subset that stays exposed is `_G`, `math`, `string`, `table`, `utf8` plus the firmware bindings below.
 
-Use this for files whose names contain whitespace or other characters that the Shell parser cannot represent on the command line.
+For LittleFS cleanup that the shell parser cannot reach (filenames with embedded whitespace etc), use the `fs.rm` shell command rather than the older `os.remove` helper that used to live here. `os.remove` is no longer registered.
 
 ### Module-provided bindings
 
@@ -275,7 +273,7 @@ If a script has a syntax error or runtime error during top-level execution, the 
 
 - **Heap pressure**. The Lua state itself costs ~30 KB plus per-script overhead. On a board without PSRAM, heavy table allocations during alert handlers can spike free-heap below the TLS reconnect floor and trigger a preventive reboot. Use `collectgarbage("collect")` from a periodic `Node.setTimeout` if you see linear heap decline.
 - **8 timer slots**. Concurrent `setTimeout` count is hard-capped. Long polling loops should re-arm one timer at a time, not stack many.
-- **No file I/O from Lua** beyond `os.remove`. The full `io` stdlib is loaded but not connected to LittleFS in a useful way; treat it as scratch / sandbox-only.
+- **No file I/O from Lua at all**. `io` is nil-out for sandbox reasons (see Stdlib sandbox above). Use the firmware bindings (`Config.set`, MQTT outbound, etc) for state writes; for LittleFS cleanup use the `fs.rm` shell command.
 - **Lua 5.3 integer / float semantics**. Numbers from `JSON.decode` come as floats; cast with `math.floor` or `n // 1` (integer division) before string formatting if you want an integer print.
 - **String concatenation in tight loops** allocates. Prefer `table.concat` for building large strings.
 - **Generation guard does not cover top-level side effects**. If `main.lua` allocates a global, hot-reload re-runs it from scratch in a new state - the previous state's global is gone, but any external resource the previous run held (a WiFi socket, a file handle) is also gone. Modules clean up their own resources on script-state teardown; Lua-side helpers should not hold resources that need explicit close.

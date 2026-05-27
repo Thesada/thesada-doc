@@ -76,7 +76,9 @@ The Telegram Bot API client now validates against Go Daddy Root G2 (baked into `
 
 ### MQTT CLI trust model
 
-`cli/lua.exec` runs arbitrary Lua with the full standard library (including `io` and `os`). Anyone with MQTT broker credentials can read `/config.json` (contains WiFi, MQTT, Telegram credentials in plaintext), overwrite `/ca.crt`, or access the filesystem. MQTT broker credentials therefore gate everything on the device - treat them with the same trust level as local root access.
+`cli/lua.exec` runs arbitrary Lua. The Lua sandbox blocks `io`, `os`, `debug`, `package`, `require`, `dofile`, `loadfile`, `load`, and `loadstring` (nil after `luaL_openlibs`), so a broker-credential leak no longer equals `io.open("/config.json"):read("*a")` over MQTT. The safe subset is `_G`, `math`, `string`, `table`, `utf8` plus the firmware bindings (`Config`, `MQTT`, `Node`, `EventBus`, `JSON`, `Log`, optional module-provided libs).
+
+MQTT broker credentials remain a sensitive surface - they still give a remote attacker the ability to push arbitrary Lua via `lua.exec` and to call any firmware binding (which can write Config, send Telegram, etc). Treat them with the same trust level as a privileged on-device shell, not full root.
 
 ### Captive-portal auth notes
 

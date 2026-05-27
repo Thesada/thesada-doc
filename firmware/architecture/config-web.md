@@ -109,11 +109,13 @@ Accessible at `http://[device-ip]/` - requires login (credentials from `web` con
 
 ## SD Card Logging
 
-Logs sensor events as CSV. A new file is opened on each boot; when `sd.max_file_kb` is exceeded the module rotates to the next file automatically.
+Logs sensor events as CSV. On boot the module scans for the highest-numbered existing `/logNNN.csv` and resumes appending to it if it is under `sd.max_file_kb`; otherwise it opens the next free slot. Rotation is size-triggered only, never per-boot - a frequently-rebooting device no longer piles up near-empty log files.
 
 **File naming:** `/log001.csv`, `/log002.csv`, ... up to `/log999.csv`.
 
 **CSV format:** `timestamp,sensor,json_data`
+
+**Subscribed sensors:** `temperature`, `current`, `battery`. Each event publishes one CSV row. The `battery` row carries `{"present":true,"voltage_v":4.18,"percent":100,"charging":false}` - useful for outage debriefs since battery voltage is the only persistent post-mortem record.
 
 Timestamp is ISO 8601 UTC (`2026-03-22T14:32:00Z`) when NTP is synced; falls back to `ms/<millis>` before sync.
 
@@ -126,6 +128,11 @@ Timestamp is ISO 8601 UTC (`2026-03-22T14:32:00Z`) when NTP is synced; falls bac
 ```
 - `max_file_kb: 1024` - rotate to the next file when current exceeds 1 MB
 - `max_file_kb: 0` - no size limit (file grows indefinitely until next boot)
+
+On boot the log shows the resumed (or fresh) file and its on-disk size:
+```
+[INF][SD] Logging to /log690.csv  (149106 B, max 10240 KB per file)
+```
 
 When a rotation happens the log shows:
 ```

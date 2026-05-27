@@ -362,6 +362,18 @@ There is no `cell.http` command - HTTPS GET over the modem is reached through [n
 
 Last reset reason (raw + decoded), boot count, time since last hard reset, wake reason if the previous reset came out of sleep.
 
+Every cold boot also writes a one-line summary near the top of `setup()`, before WiFi / OTA / MQTT come up:
+
+```
+[INF][Boot] reset=sw (3) rtc_core0=12 rtc_core1=12 brownout_total=0
+```
+
+Fields:
+
+- `reset=<name> (<n>)` - `esp_reset_reason()` mapped to a short string (`power_on`, `external_pin`, `sw`, `panic`, `int_wdt`, `task_wdt`, `wdt`, `deep_sleep_wake`, `brownout`, `sdio`, `unknown`) plus its numeric value.
+- `rtc_core0` / `rtc_core1` - the legacy ROM-level `rtc_get_reset_reason()` per CPU core. Survives some fault paths the unified API folds into `ESP_RST_PANIC`. Useful for distinguishing TWDT vs panic vs RTCWDT post-mortem.
+- `brownout_total` - monotonic counter persisted in NVS (`boot` namespace, `brownout_n` key). Only increments when `reset_reason == ESP_RST_BROWNOUT`. Never resets - rolling baseline for field units.
+
 ### partitions
 
 Full partition table dump - same data the bootloader sees. Useful for confirming the OTA layout matches what the firmware expects.
