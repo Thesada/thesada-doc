@@ -55,36 +55,53 @@ If `/config.json` is missing on first boot, the firmware writes a minimal defaul
     "check_interval_s": 21600
   },
   "web": {
+    "enabled": true,
     "user": "admin",
     "password": "<password>"
   },
   "telegram": {
+    "enabled": true,
     "bot_token": "<token>",
     "chat_ids": ["<id>"],
     "cooldown_s": 300
   },
   "temperature": {
+    "enabled": true,
     "unit": "C",
     "sensors": [
       { "name": "boiler", "address": "28-3c01a818..." }
     ]
   },
   "ads1115": {
+    "enabled": true,
     "channels": [
       { "name": "house_pump", "channel": 0, "ratio": 30.0 }
     ]
   },
   "battery": { "enabled": true },
   "sht31":   { "enabled": true, "sda": 11, "scl": 12, "address": 68, "interval_s": 30 },
-  "sd": { "pin_clk": 38, "pin_cmd": 39, "pin_data": 40, "max_file_kb": 1024 },
-  "pwm": { "pin": 16, "frequency_hz": 25000, "channel": 0, "resolution": 8 },
+  "sd": { "enabled": true, "pin_clk": 38, "pin_cmd": 39, "pin_data": 40, "max_file_kb": 1024 },
+  "pwm": { "enabled": true, "pin": 16, "frequency_hz": 25000, "channel": 0, "resolution": 8 },
   "sleep": { "deep_sleep_minutes": 0 }
 }
 ```
 
-Sections are optional. A field absent from `/config.json` falls back to the firmware's compile-time default, so a minimal usable config is just `device`, `wifi`, and `mqtt`. Other sections only need to appear when their module is enabled and you want to override defaults.
+Within a section, individual fields are optional and fall back to the firmware's compile-time default. But whether a module runs at all is governed by its `enabled` key - see below.
 
-Module-specific sections (`temperature`, `ads1115`, `battery`, `sht31`, `sd`, `pwm`, `telegram`, `sleep`) are read by their respective modules at `begin()`; missing sections leave the module on its compiled defaults.
+## Module activation
+
+Compiling a module into the firmware does not run it. Each module reads its own `enabled` flag at boot and stays completely dark - no hardware probe, no handlers, no log lines - unless activated. Modules fall into two tiers that differ only in what an **absent** `enabled` key means:
+
+- **Core** - `wifi`, `mqtt`, `ota`, `heartbeat`, `cellular`, `power`. Default **on**. An absent key means the module runs; set `"enabled": false` to turn one off. This is how `"wifi": { "enabled": false }` forces a device onto the cellular transport without removing WiFi credentials.
+- **Optional** - `temperature`, `ads1115`, `battery`, `sht31`, `sd`, `pwm`, `telegram`, `web`, `lua`, `gnss`. Default **off**. An absent or `false` key means the module never inits. You must set `"enabled": true` to activate it, in addition to any other fields that section needs.
+
+So a minimal config is just `device`, `wifi`, and `mqtt` - and on such a device every optional module is off. To enable an optional sensor or service, add its section with `"enabled": true`.
+
+The recovery shell (serial/MQTT CLI) is always available and has no `enabled` gate - a bad config can never lock you out of it.
+
+> **Upgrading from a firmware build before module gating**: optional modules used to run whenever they were compiled in and their section was present. They now require `"enabled": true`. Before flashing, add the key to every optional section a device actively uses (commonly `web` for the dashboard, plus whatever sensors it carries), or that module will go silent after the update. Core sections need no change.
+
+You can confirm what is actually running on a device with `module.status` over the shell - gated-off modules report `disabled`.
 
 ## Reading config
 
