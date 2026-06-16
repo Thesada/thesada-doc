@@ -154,6 +154,24 @@ Every successful `lua.reload` bumps an internal generation counter. MQTT subscri
 
 The point: you can `lua.reload` mid-flight without leftover subscriptions executing under the new state. The C++ side keeps the broker subscription alive across reloads, so the new script's `MQTT.subscribe` re-attaches its own handler without re-talking to the broker.
 
+## Alert envelope
+
+Scripts raise alerts by publishing a JSON object to `<prefix>/alert`. The platform parses the payload as JSON and requires a valid `severity`; everything else is optional metadata.
+
+```json
+{"severity": "warn", "code": "battery_low", "metric": "battery.voltage", "value": 3.21, "message": "Battery low for 60 s"}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `severity` | yes | One of `info`, `warn`, `crit`. Any other value is dropped at ingest. |
+| `message` | recommended | Human-readable text. |
+| `code` | no | Short stable identifier for the alert kind. |
+| `metric` | no | Dotted metric path the alert relates to (e.g. `temperature.boiler`). |
+| `value` | no | The reading that triggered it. |
+
+Publish delivery metadata (retry or ack status from a downstream notifier) to `<prefix>/status/alert_delivery`, never to `<prefix>/alert/status` - the latter collides with the alert ingest path.
+
 ## Common patterns
 
 ### Threshold alert with hysteresis
