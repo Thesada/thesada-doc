@@ -23,6 +23,8 @@ Custom firmware (`thesada-fw`) for all Thesada nodes. Supports multiple ESP32 bo
 | [Chunked File I/O]({{ site.baseurl }}/firmware/chunked-io/) | Read and write device files larger than the MQTT buffer |
 | [Lua Scripting]({{ site.baseurl }}/firmware/lua-scripting/) | Lua 5.3 runtime, EventBus, alert patterns, hot-reload |
 | [Config Management]({{ site.baseurl }}/firmware/config/) | config.json shape, save/reload, drift hashes, recovery |
+| [Provisioning]({{ site.baseurl }}/firmware/provisioning/) | Configure a new device, set the topic prefix, verify first connection |
+| [Build and Field Notes]({{ site.baseurl }}/firmware/build/) | Build targets, release workflow, SIM7080G cellular mTLS sequence |
 | [Testing]({{ site.baseurl }}/firmware/fw-testing/) | Test script, manual checks, section-by-section verification |
 | [Source](https://github.com/thesada/thesada-fw) | GitHub - GPL-3.0-only |
 
