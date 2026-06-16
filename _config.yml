@@ -8,6 +8,7 @@ social:
   links:
     - https://github.com/Thesada
     - https://youtube.com/@FoothillsBuilds
+    - https://foothillsbuilds.com
 
 theme: just-the-docs
 
@@ -32,6 +33,8 @@ aux_links:
     - "https://github.com/Thesada"
   "YouTube":
     - "https://youtube.com/@FoothillsBuilds"
+  "Blog":
+    - "https://foothillsbuilds.com"
 
 aux_links_new_tab: true
 
