@@ -84,7 +84,7 @@ Binary protocols (`fs.write`, `fs.append`, `cert.set`) read the raw payload dire
 
 ## Command groups
 
-- [Core](#core) - help, version, restart, heap, uptime, sensors, selftest, sleep
+- [Core](#core) - help, version, restart, heap, uptime, sensors, selftest, sleep, console.mode
 - [Filesystem](#filesystem) - fs.ls, fs.cat, fs.rm, fs.write, fs.append, fs.mv, fs.df, fs.format
 - [Config](#config) - config.get, config.set, config.save, config.reload, config.dump
 - [Network](#network) - net.ip, net.ping, net.ntp, net.mqtt, net.http
@@ -136,6 +136,18 @@ Runs each module's `selftest` hook in registration order. Modules report their i
 ### sleep
 
 Inspect the SleepManager state: configured deep-sleep schedule, boot count since last hard reset, wake reason of the most recent boot. Read-only; sleep behavior is configured via `config.set sleep.*`.
+
+### console.mode
+
+Get or set the serial console mode. Resets to `normal` on reboot.
+
+```text
+console.mode             # report the current mode
+console.mode normal      # logs mirror to the serial console (default)
+console.mode command     # logs suppressed from serial; framed command output
+```
+
+In `command` mode the firmware stops mirroring async log lines to the serial console (the ring buffer and the WebSocket terminal still receive every line) and terminates each command response with a frame marker carrying a sequence number. A program driving the serial console - the bench test harness, for example - then reads clean, self-delimiting command output instead of racing interleaved log lines. The mode only affects the serial console; the MQTT and WebSocket command transports are unchanged.
 
 ## Filesystem
 
