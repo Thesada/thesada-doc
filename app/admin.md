@@ -50,7 +50,7 @@ This page is a tour of each admin area.
 
 ## Waitlist
 
-When invite-only mode is on, signups land on `/admin/waitlist`. Review an entry and either convert it into a user (which provisions the account) or delete it.
+When invite-only mode is on, signups land on `/admin/waitlist`. Review an entry and either convert it into a user, provisioning the account, or delete it.
 
 ## Impersonation
 

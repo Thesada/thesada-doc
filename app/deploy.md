@@ -96,7 +96,7 @@ Secrets reach the app through the environment only. With Compose they live in `a
 | `THESADA_CA_DIR` | device-CA directory; default `/opt/thesada-app/ca`, persist it |
 | `THESADA_CA_KEY_PASSPHRASE` | encrypts the on-disk CA key |
 | `THESADA_BASE_URL` | public URL for email links; default `http://localhost:8080` |
-| `THESADA_ADMIN_EMAIL` | first super-admin, bootstrapped on every boot |
+| `THESADA_ADMIN_EMAIL` | first super-admin; created on first boot if missing, then idempotent (later boots leave an existing user untouched) |
 | `THESADA_SMTP_HOST` / `_PORT` / `_USER` / `_PASS` / `_FROM` | outbound mail; empty host logs links instead of sending |
 | `THESADA_TELEGRAM_BOT_TOKEN` | optional alert fan-out |
 

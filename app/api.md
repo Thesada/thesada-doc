@@ -20,8 +20,10 @@ Tokens and session tokens are stored only as SHA-256 hashes server-side.
 
 | Status | Meaning |
 |---|---|
+| 400 | malformed request - bad id, invalid JSON body, or invalid field value |
 | 401 | no valid credential presented |
 | 403 | authenticated but missing the required role (e.g. a non-super-admin calling pair) |
+| 404 | resource not found, or outside your tenant |
 
 ## Errors
 
@@ -39,21 +41,21 @@ List endpoints accept `?limit=` - default **100**, maximum **500**. Out-of-range
 
 ## Endpoints
 
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| GET | `/healthz` | none | liveness probe |
-| POST | `/auth/login` | none | password login - returns a bearer token + user |
-| POST | `/auth/logout` | optional | revoke the presented token and/or cookie |
-| POST | `/auth/signup` | none | join the waitlist |
-| GET | `/devices` | yes | list the tenant's devices |
-| GET | `/devices/{id}` | yes | one device |
-| POST | `/devices/{id}/pair` | super-admin | issue a device client certificate |
-| GET | `/devices/{id}/telemetry` | yes | telemetry readings |
-| GET | `/devices/{id}/alerts` | yes | a device's alerts |
-| GET | `/alerts` | yes | the tenant's alerts |
-| GET | `/alert-subscriptions` | yes | the caller's alert subscriptions |
-| POST | `/alert-subscriptions` | yes | create a subscription |
-| DELETE | `/alert-subscriptions/{id}` | yes | delete a subscription |
+| Method | Path | Auth | OK | Purpose |
+|---|---|---|---|---|
+| GET | `/healthz` | none | 200 | liveness probe |
+| POST | `/auth/login` | none | 200 | password login - returns a bearer token + user |
+| POST | `/auth/logout` | optional | 200 | revoke the presented token and/or cookie |
+| POST | `/auth/signup` | none | 200 | join the waitlist |
+| GET | `/devices` | yes | 200 | list the tenant's devices |
+| GET | `/devices/{id}` | yes | 200 | one device |
+| POST | `/devices/{id}/pair` | super-admin | 200 | issue a device client certificate |
+| GET | `/devices/{id}/telemetry` | yes | 200 | telemetry readings |
+| GET | `/devices/{id}/alerts` | yes | 200 | a device's alerts |
+| GET | `/alerts` | yes | 200 | the tenant's alerts |
+| GET | `/alert-subscriptions` | yes | 200 | the caller's alert subscriptions |
+| POST | `/alert-subscriptions` | yes | 201 | create a subscription |
+| DELETE | `/alert-subscriptions/{id}` | yes | 204 | delete a subscription |
 
 `POST /auth/magic-link` is reserved and not yet available.
 
