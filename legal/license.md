@@ -15,6 +15,12 @@ You may copy, distribute, and modify the firmware under the terms of the GPL. An
 
 Source: [github.com/Thesada/thesada-fw](https://github.com/Thesada/thesada-fw)
 
+## Web App (thesada-app)
+
+The companion web application is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0-only)](https://www.gnu.org/licenses/agpl-3.0.html).
+
+The app is AGPL rather than plain GPL because it is run as a network service. AGPL section 13 obligates network operators to offer the corresponding source to users who interact with the running service.
+
 ## Documentation
 
 All text and images on this documentation site are licensed under [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/).
@@ -30,5 +36,6 @@ Hardware designs (schematics, PCB layouts) will be released under the [CERN Open
 | Content | License |
 |:---|:---|
 | Firmware source code | GPL-3.0-only |
+| Web app source code | AGPL-3.0-only |
 | Documentation text and images | CC BY-NC-SA 4.0 |
 | Hardware designs (future) | CERN-OHL-P-2.0 |
