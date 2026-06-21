@@ -1,6 +1,6 @@
 ---
 title: Architecture
-parent: App
+parent: Web App
 nav_order: 1
 description: "How thesada-app fits together: components, the telemetry and alert data flow, where state lives, and how it is deployed."
 ---

@@ -1,6 +1,6 @@
 ---
 title: API
-parent: App
+parent: Web App
 nav_order: 5
 description: "The /api/v1 JSON REST API: authentication, devices, telemetry, alerts, and alert subscriptions."
 ---

@@ -21,4 +21,5 @@ Thesada is an open-source modular property monitoring platform built on ESP32 ha
 
 - [Firmware architecture]({{ site.baseurl }}/firmware/)
 - [Modules]({{ site.baseurl }}/modules/)
+- [Web App]({{ site.baseurl }}/app/)
 - [Source code](https://github.com/Thesada/thesada-fw)

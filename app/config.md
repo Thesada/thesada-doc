@@ -1,6 +1,6 @@
 ---
 title: Config Management
-parent: App
+parent: Web App
 nav_order: 2
 description: "How the platform tracks, versions, and detects drift in each device's config.json and Lua scripts."
 ---

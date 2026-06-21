@@ -1,6 +1,6 @@
 ---
 title: Deployment
-parent: App
+parent: Web App
 nav_order: 4
 description: "Self-host thesada-app: the standalone binary or the Docker Compose stack, the one-shot migration job, and the configuration it needs."
 ---

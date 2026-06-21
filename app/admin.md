@@ -1,6 +1,6 @@
 ---
 title: Admin UI
-parent: App
+parent: Web App
 nav_order: 3
 description: "The super-admin web interface: tenants and users, devices and pairing, per-device config, the MQTT shell, waitlist, and impersonation."
 ---

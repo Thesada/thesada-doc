@@ -1,6 +1,6 @@
 ---
 title: Provisioning
-parent: App
+parent: Web App
 nav_order: 6
 description: "Bringing a tenant and its devices online: creating a tenant, issuing MQTT credentials, and the device pairing flow."
 ---
