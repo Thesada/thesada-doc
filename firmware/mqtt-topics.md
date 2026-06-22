@@ -170,7 +170,7 @@ JSON state events. Published on every OTA code path so operators can drive dashb
 
 ## CLI bridge
 
-The firmware subscribes to `<prefix>/cli/#` so any topic under it is treated as a command. Topic suffix is the command name; payload is the argument string.
+The firmware subscribes to `<prefix>/cli/#` so any topic under it is treated as a command. Topic suffix is the command name; payload is the argument string. The device ignores its own `<prefix>/cli/response` output, so replies are never reprocessed as commands - this matters over cellular, where the subscription wildcard would otherwise echo every response back to the device.
 
 ### Inbound: `<prefix>/cli/<command>`
 
