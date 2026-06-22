@@ -14,7 +14,7 @@ Thesada is an open-source modular property monitoring platform built on ESP32 ha
 - **Monitors** - temperature (DS18B20, SHT31), current (ADS1115 + CT clamp), battery voltage and charge state
 - **Alerts** - Lua-defined alert rules with sustain, cooldown, and hysteresis via MQTT, Telegram, or webhook
 - **Logs** - CSV data to SD card, logrotate included
-- **Updates** - over-the-air via HTTP push or pull (TLS-verified, SHA256 checked, PROGMEM CA fallback)
+- **Updates** - over-the-air over WiFi or cellular, via HTTP push or pull (TLS-verified, SHA256 checked, PROGMEM CA fallback)
 - **Scripted** - Lua 5.3 runtime for custom rules without recompiling
 
 ## Where to start
