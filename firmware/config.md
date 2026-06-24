@@ -75,7 +75,7 @@ If `/config.json` is missing on first boot, the firmware writes a minimal defaul
   "ads1115": {
     "enabled": true,
     "channels": [
-      { "name": "house_pump", "channel": 0, "ratio": 30.0 }
+      { "name": "house_pump", "mux": "A0_A1", "gain": 0.256, "clamp_a_per_v": 30 }
     ]
   },
   "battery": { "enabled": true },
