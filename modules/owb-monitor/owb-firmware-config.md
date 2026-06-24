@@ -81,13 +81,14 @@ The full config lives on LittleFS at `/config.json`. Edit via the web UI, HTTP A
   "interval_s": 60,
   "line_voltage": 120,
   "channels": [
-    { "name": "House Pump", "mux": "A0_A1", "gain": 0.256 },
-    { "name": "Barn Pump", "mux": "A2_A3", "gain": 0.256 }
+    { "name": "House Pump", "mux": "A0_A1", "gain": 0.256, "clamp_a_per_v": 30 },
+    { "name": "Barn Pump", "mux": "A2_A3", "gain": 0.256, "clamp_a_per_v": 30 }
   ]
 }
 ```
 
 - `line_voltage: 120` - used for power (watts) calculation. Update if your supply voltage differs.
+- `clamp_a_per_v: 30` - CT clamp ratio, amps per 1 V of output. SCT-013-030 = 30, SCT-013-005 = 5. Defaults to 30 if omitted.
 - RMS sampling: 30 samples over 2x 60Hz cycles for accurate AC current measurement
 
 **Telegram alerts:**
