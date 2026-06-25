@@ -108,6 +108,23 @@ The scalar `pin` form still works and is treated as a single bus.
 - `clamp_a_per_v: 30` - CT clamp ratio, amps per 1 V of output. SCT-013-030 = 30, SCT-013-005 = 5. Defaults to 30 if omitted.
 - RMS sampling: 30 samples over 2x 60Hz cycles for accurate AC current measurement
 
+**Multiple ADS1115 chips:** to read more than 4 channels, wire a second ADS1115 at a different I2C address (ADDR pin to VDD = 0x49) and list both under `devices`. Each device carries its own `channels`; `i2c_sda` / `i2c_scl` / `interval_s` / `line_voltage` stay shared at the top level:
+
+```json
+"ads1115": {
+  "i2c_sda": 1,
+  "i2c_scl": 2,
+  "interval_s": 60,
+  "line_voltage": 120,
+  "devices": [
+    { "address": 72, "channels": [ { "name": "House Pump", "mux": "A0_A1", "gain": 0.256 } ] },
+    { "address": 73, "channels": [ { "name": "Barn Pump",  "mux": "A0_A1", "gain": 0.256 } ] }
+  ]
+}
+```
+
+The scalar `address` + top-level `channels` form still works and is treated as a single device.
+
 **Telegram alerts:**
 
 ```json
