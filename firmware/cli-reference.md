@@ -93,6 +93,7 @@ Binary protocols (`fs.write`, `fs.append`, `cert.set`) read the raw payload dire
 - [Cellular](#cellular) - cell.at, cell.reset, cell.cert.test, cell.cert.dump, cell.smconn.test
 - [Boot and system](#boot-and-system) - boot.info, partitions, chip.info, sdkconfig
 - [Modules](#modules) - module.list, module.status
+- [Temperature](#temperature) - temp.discover
 - [Lua](#lua) - lua.exec, lua.load, lua.reload
 
 ## Core
@@ -407,6 +408,19 @@ List every module compiled into the firmware, with an enabled flag (`[x]` enable
 ### module.status
 
 Each module reports a one-line health string. Format is module-specific; common entries cover last successful operation, error counter, and any retry / cooldown state.
+
+## Temperature
+
+### temp.discover
+
+Re-scan the 1-Wire bus(es) for DS18B20 probes without a reboot. Until this lands, the bus is only walked once in `begin()`, so a probe attached after boot stays invisible until a restart. `temp.discover` re-walks every bus configured in `temperature.buses` (or the single `temperature.pin`), adds any new probe to the live list, persists it to `config.json` with an auto-assigned name, and refreshes `/api/state`.
+
+```text
+temp.discover            # add newly attached probes
+temp.discover --prune    # also drop probes that no longer respond
+```
+
+`--prune` removes any probe that fails to answer on its bus from both the live list and `config.json`, and clears it from `/api/state`. Use it after physically removing a probe to clear a lingering `disconnected` entry. A probe moved between buses is re-tagged to its new bus on the next `temp.discover`.
 
 ## Lua
 
