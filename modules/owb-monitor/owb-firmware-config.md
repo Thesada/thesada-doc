@@ -56,6 +56,8 @@ The full config lives on LittleFS at `/config.json`. Edit via the web UI, HTTP A
   "interval_s": 60,
   "auto_discover": true,
   "conversion_wait_ms": 850,
+  "read_retries": 2,
+  "max_delta_c": 40,
   "unit": "F",
   "sensors": [
     { "address": "28...", "name": "House Supply" },
@@ -70,6 +72,21 @@ The full config lives on LittleFS at `/config.json`. Edit via the web UI, HTTP A
 - After discovery, sensor addresses and names are saved to config
 - `conversion_wait_ms: 850` gives reliable reads on long wire runs (default 750)
 - `unit: "F"` publishes in Fahrenheit (thresholds in alert scripts always use Celsius)
+- `read_retries: 2` re-reads a probe on a transient bus fault before reporting it disconnected (default 2). DS18B20 scratchpad CRC is always checked by the driver; this adds retries on top.
+- `max_delta_c: 40` rejects a reading that jumps more than 40 C from the last good value and reports `disconnected` instead - guards against marginal-bus garbage (long flying leads can read wildly wrong but CRC-valid). Set `0` to disable.
+
+**Multiple 1-Wire buses:** to drive more than one bus, replace the scalar `pin` with a `buses` list. Each bus gets its own GPIO; probes from all buses aggregate into one sensor list (DS18B20 ROM addresses are globally unique):
+
+```json
+"temperature": {
+  "buses": [ { "pin": 9 }, { "pin": 10 } ],
+  "auto_discover": true
+}
+```
+
+The scalar `pin` form still works and is treated as a single bus.
+
+**Live probe management:** attach or swap a probe without rebooting - run `temp.discover` over the [CLI]({{ site.baseurl }}/firmware/cli-reference/) to re-walk every bus and pick up new probes; `temp.discover --prune` drops probes that no longer respond and clears their stale entries.
 
 **Current sensing (ADS1115 + CT clamps):**
 

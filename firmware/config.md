@@ -68,6 +68,9 @@ If `/config.json` is missing on first boot, the firmware writes a minimal defaul
   "temperature": {
     "enabled": true,
     "unit": "C",
+    "buses": [ { "pin": 9 }, { "pin": 10 } ],
+    "read_retries": 2,
+    "max_delta_c": 40,
     "sensors": [
       { "name": "boiler", "address": "28-3c01a818..." }
     ]
@@ -259,7 +262,7 @@ See [CLI Reference - Request correlation](cli-reference.html#request-correlation
 - **Quoting in `config.set`**: values are parsed as JSON. `config.set device.name foo` writes the string `foo` as JSON-parsed (works because bare-word JSON is permissive in some parsers, but rely on quoting for safety). Always quote string values.
 - **Whole-tree replacement via `config.set`**: not supported. `config.set` is scalar-only. Use `fs.write` + `config.reload` for sub-trees.
 - **Secrets in `config.json`**: WiFi passwords, MQTT credentials, Telegram bot tokens, and the web admin password all live in plain JSON on LittleFS. Treat the file as a secret. NVS-only storage is reserved for the per-device mTLS client cert + key.
-- **Heartbeat field**: `device.heartbeat_s` controls some periodic publishes; reading it as a tunable for sensor intervals is wrong. Per-module sensor intervals are in their own sections (`sht31.interval_s`, `temperature.read_interval_s`, etc).
+- **Heartbeat field**: `device.heartbeat_s` controls some periodic publishes; reading it as a tunable for sensor intervals is wrong. Per-module sensor intervals are in their own sections (`sht31.interval_s`, `temperature.interval_s`, etc).
 
 ## See also
 
