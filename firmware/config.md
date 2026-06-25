@@ -77,6 +77,10 @@ If `/config.json` is missing on first boot, the firmware writes a minimal defaul
   },
   "ads1115": {
     "enabled": true,
+    "i2c_sda": 1,
+    "i2c_scl": 2,
+    "interval_s": 60,
+    "line_voltage": 120,
     "devices": [
       { "address": 72, "channels": [
         { "name": "house_pump", "mux": "A0_A1", "gain": 0.256, "clamp_a_per_v": 30 }
