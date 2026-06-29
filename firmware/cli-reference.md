@@ -94,6 +94,7 @@ Binary protocols (`fs.write`, `fs.append`, `cert.set`) read the raw payload dire
 - [Boot and system](#boot-and-system) - boot.info, partitions, chip.info, sdkconfig
 - [Modules](#modules) - module.list, module.status
 - [Temperature](#temperature) - temp.discover
+- [LoRa](#lora) - lora.send, lora.status, lora.listen, lora.rssi
 - [Lua](#lua) - lua.exec, lua.load, lua.reload
 
 ## Core
@@ -421,6 +422,26 @@ temp.discover --prune    # also drop probes that no longer respond
 ```
 
 `--prune` removes any probe that fails to answer on its bus from both the live list and `config.json`, and clears it from `/api/state`. Use it after physically removing a probe to clear a lingering `disconnected` entry. A probe moved between buses is re-tagged to its new bus on the next `temp.discover`.
+
+## LoRa
+
+SX1262 radio (poll-mode, DIO1 not wired). Configured under `lora` (`freq_mhz`, `bw_khz`, `sf`, `cr`, `tx_power_dbm`, `sync_word`). Received packets publish to `<prefix>/lora/rx` and the `lora` EventBus event.
+
+### lora.send
+
+Transmit a text packet, blocking until TX_DONE (or a 4 s timeout). `lora.send <text>`. Resumes RX afterward if the radio was listening.
+
+### lora.status
+
+Print the radio config and last-RX stats: `freq`, `sf`, `bw`, `power`, whether it is listening, the RX count, and the last packet's RSSI/SNR.
+
+### lora.listen
+
+Toggle continuous receive. `lora.listen on` arms RX; `lora.listen off` drops to standby. With no argument it reports the current state.
+
+### lora.rssi
+
+Instantaneous RSSI in dBm - the band noise floor / activity. Useful on the bench to confirm the RX path is live without a second peer.
 
 ## Lua
 

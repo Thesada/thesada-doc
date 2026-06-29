@@ -91,6 +91,7 @@ If `/config.json` is missing on first boot, the firmware writes a minimal defaul
   "sht31":   { "enabled": true, "sda": 11, "scl": 12, "address": 68, "interval_s": 30 },
   "sd": { "enabled": true, "pin_clk": 38, "pin_cmd": 39, "pin_data": 40, "max_file_kb": 1024 },
   "pwm": { "enabled": true, "pin": 16, "frequency_hz": 25000, "channel": 0, "resolution": 8 },
+  "lora": { "enabled": true, "freq_mhz": 915, "bw_khz": 125, "sf": 9, "cr": 7, "tx_power_dbm": 14 },
   "sleep": { "deep_sleep_minutes": 0 }
 }
 ```
@@ -102,7 +103,7 @@ Within a section, individual fields are optional and fall back to the firmware's
 Compiling a module into the firmware does not run it. Each module reads its own `enabled` flag at boot and stays completely dark - no hardware probe, no handlers, no log lines - unless activated. Modules fall into two tiers that differ only in what an **absent** `enabled` key means:
 
 - **Core** - `wifi`, `mqtt`, `ota`, `heartbeat`, `cellular`, `power`. Default **on**. An absent key means the module runs; set `"enabled": false` to turn one off. This is how `"wifi": { "enabled": false }` forces a device onto the cellular transport without removing WiFi credentials.
-- **Optional** - `temperature`, `ads1115`, `battery`, `sht31`, `sd`, `pwm`, `telegram`, `web`, `lua`, `gnss`. Default **off**. An absent or `false` key means the module never inits. You must set `"enabled": true` to activate it, in addition to any other fields that section needs.
+- **Optional** - `temperature`, `ads1115`, `battery`, `sht31`, `sd`, `pwm`, `telegram`, `web`, `lua`, `gnss`, `lora`. Default **off**. An absent or `false` key means the module never inits. You must set `"enabled": true` to activate it, in addition to any other fields that section needs.
 
 So a minimal config is just `device`, `wifi`, and `mqtt` - and on such a device every optional module is off. To enable an optional sensor or service, add its section with `"enabled": true`.
 
