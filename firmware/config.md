@@ -91,6 +91,7 @@ If `/config.json` is missing on first boot, the firmware writes a minimal defaul
   "sht31":   { "enabled": true, "sda": 11, "scl": 12, "address": 68, "interval_s": 30 },
   "sd": { "enabled": true, "pin_clk": 38, "pin_cmd": 39, "pin_data": 40, "max_file_kb": 1024 },
   "pwm": { "enabled": true, "pin": 16, "frequency_hz": 25000, "channel": 0, "resolution": 8 },
+  "lora": { "enabled": true, "freq_mhz": 915, "bw_khz": 125, "sf": 9, "cr": 7, "tx_power_dbm": 14 },
   "sleep": { "deep_sleep_minutes": 0 }
 }
 ```
@@ -102,7 +103,7 @@ Within a section, individual fields are optional and fall back to the firmware's
 Compiling a module into the firmware does not run it. Each module reads its own `enabled` flag at boot and stays completely dark - no hardware probe, no handlers, no log lines - unless activated. Modules fall into two tiers that differ only in what an **absent** `enabled` key means:
 
 - **Core** - `wifi`, `mqtt`, `ota`, `heartbeat`, `cellular`, `power`. Default **on**. An absent key means the module runs; set `"enabled": false` to turn one off. This is how `"wifi": { "enabled": false }` forces a device onto the cellular transport without removing WiFi credentials.
-- **Optional** - `temperature`, `ads1115`, `battery`, `sht31`, `sd`, `pwm`, `telegram`, `web`, `lua`, `gnss`. Default **off**. An absent or `false` key means the module never inits. You must set `"enabled": true` to activate it, in addition to any other fields that section needs.
+- **Optional** - `temperature`, `ads1115`, `battery`, `sht31`, `sd`, `pwm`, `telegram`, `web`, `lua`, `gnss`, `lora`. Default **off**. An absent or `false` key means the module never inits. You must set `"enabled": true` to activate it, in addition to any other fields that section needs.
 
 So a minimal config is just `device`, `wifi`, and `mqtt` - and on such a device every optional module is off. To enable an optional sensor or service, add its section with `"enabled": true`.
 
@@ -227,7 +228,32 @@ The mTLS client cert + key live in NVS, separate from `/config.json`, so this pr
 
 ### Roll back to a previous config
 
-The firmware does not keep on-device snapshots of `/config.json`. If you need rollback, a management process needs to keep its own history and re-push the old version via the chunked-write path.
+The firmware does not keep on-device snapshots of the full `/config.json`. If you need whole-file rollback, a management process needs to keep its own history and re-push the old version via the chunked-write path.
+
+The one exception is the MQTT connection config, which has its own automatic last-good rollback - see below.
+
+### MQTT last-good rollback
+
+A bad `mqtt.broker` / `port` / `user` / `password` edit on a remote device would otherwise cut the very channel used to fix it. The firmware protects that specific mistake automatically:
+
+1. Every successful broker connect snapshots the four connection-critical `mqtt` keys to NVS as "last-good".
+2. When connecting fails repeatedly, the device reboots to clear a possibly wedged TLS stack - after `mqtt.reboot_after_fails` consecutive failures (default 30), at most `mqtt.max_exhaust_reboots` times (default 3). Each such reboot records which config was failing.
+3. If the reboot budget is spent and the still-current config is exactly the one that kept failing, the firmware restores the last-good snapshot and reconnects with it. The device stays reachable; your edit is undone rather than the device lost.
+
+What does NOT trigger a rollback:
+
+- An offline-but-correct broker: current config equals last-good, so there is nothing to roll back to. The device keeps retrying with capped backoff.
+- A recovery edit you made after a failing streak: the current config no longer matches the recorded failing one, so the new edit gets its own chance instead of being clobbered.
+- Anything outside the four connection-critical keys - topic prefix, buffer sizes, intervals and the rest never roll back.
+
+After the reboot budget is spent without a rollback candidate, the device stops rebooting and stays alive with serial and the web dashboard reachable, still retrying MQTT in the background.
+
+Knobs:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `mqtt.reboot_after_fails` | 30 | consecutive connect failures before an exhaustion reboot |
+| `mqtt.max_exhaust_reboots` | 3 | reboot budget before the device settles into retry-forever |
 
 ### Push from a remote management process
 
@@ -267,7 +293,7 @@ See [CLI Reference - Request correlation](cli-reference.html#request-correlation
 - **Forgetting `config.reload` after `fs.write`**: the file on flash is new but the in-memory tree is old, so the device keeps running with the previous values. The retained `<prefix>/info` on the broker also still shows the previous `config_hash` because `/info` only republishes on connect or after a `config.reload`. Always follow `fs.write /config.json` with `config.reload` so both the live config and the public hash advance together.
 - **Quoting in `config.set`**: values are parsed as JSON. `config.set device.name foo` writes the string `foo` as JSON-parsed (works because bare-word JSON is permissive in some parsers, but rely on quoting for safety). Always quote string values.
 - **Whole-tree replacement via `config.set`**: not supported. `config.set` is scalar-only. Use `fs.write` + `config.reload` for sub-trees.
-- **Secrets in `config.json`**: WiFi passwords, MQTT credentials, Telegram bot tokens, and the web admin password all live in plain JSON on LittleFS. Treat the file as a secret. NVS-only storage is reserved for the per-device mTLS client cert + key.
+- **Secrets in `config.json`**: by default WiFi passwords, MQTT credentials, Telegram bot tokens, and the web admin password live in plain JSON on LittleFS - treat the file as a secret. Each of those can instead be provisioned into NVS with `secret.set`, where it survives a config reset, never appears in `config.dump`, and wins over the config value. The plain-config path stays fully supported; see [CLI Reference - Secrets](cli-reference.html#secrets). The per-device mTLS client cert + key are always NVS-only.
 - **Heartbeat field**: `device.heartbeat_s` controls some periodic publishes; reading it as a tunable for sensor intervals is wrong. Per-module sensor intervals are in their own sections (`sht31.interval_s`, `temperature.interval_s`, etc).
 
 ## See also
