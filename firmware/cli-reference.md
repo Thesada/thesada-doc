@@ -249,7 +249,53 @@ Re-read `config.json` from flash and replace the in-memory copy. Use after editi
 
 ### config.dump
 
-Print the entire config as pretty-formatted JSON. Useful for a one-shot snapshot from MQTT.
+Print the entire config as pretty-formatted JSON. Useful for a one-shot snapshot from MQTT. Values provisioned into NVS via `secret.set` are not part of `config.json`, so they never appear here - but a credential still sitting in `config.json` prints as-is. Move it to NVS and clear the config field if that matters for your transport.
+
+## Secrets
+
+Device credentials can live in NVS instead of `config.json`. The store is write-only: no command prints a stored value back. Resolution order at every use site is NVS first, then the matching `config.json` field, then empty - so a plain-config setup keeps working unchanged, and a provisioned secret wins over whatever the config file says.
+
+Supported fields:
+
+| Field | Fallback config key |
+|---|---|
+| `mqtt.password` | `mqtt.password` |
+| `telegram.bot_token` | `telegram.bot_token` |
+| `web.password` | `web.password` |
+| `wifi.ap_password` | `wifi.ap_password` |
+| `wifi.password:<ssid>` | `wifi.networks[n].password` for that SSID |
+
+WiFi station passwords are stored per network, keyed by SSID - provision one entry per SSID the device should join.
+
+### secret.set
+
+```text
+secret.set mqtt.password s3cret-value
+secret.set wifi.password:HomeNet "pass with spaces"
+```
+
+Stores the value in NVS and reports `secret stored in NVS`. Values with spaces can be double-quoted; the quotes are stripped. Takes effect on the next use of the credential (next MQTT reconnect, next WiFi join) - no restart needed for MQTT since credentials are resolved per connect attempt. Unknown field names are rejected.
+
+### secret.info
+
+```text
+secret.info
+mqtt.password          nvs
+telegram.bot_token     config/none
+web.password           nvs
+wifi.ap_password       config/none
+wifi.password:HomeNet  nvs
+```
+
+Presence report only - shows which fields are NVS-backed and which fall back to `config.json` (or nothing). Never prints a value. The WiFi list covers every network currently in `wifi.networks`.
+
+### secret.clear
+
+```text
+secret.clear mqtt.password
+```
+
+Erases the NVS entry. The field falls back to its `config.json` value, or empty if the config has none.
 
 ## Network
 
