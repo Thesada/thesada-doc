@@ -276,6 +276,8 @@ secret.set wifi.password:HomeNet "pass with spaces"
 
 Stores the value in NVS and reports `secret stored in NVS`. Values with spaces can be double-quoted; the quotes are stripped. Takes effect on the next use of the credential (next MQTT reconnect, next WiFi join) - no restart needed for MQTT since credentials are resolved per connect attempt. Unknown field names are rejected.
 
+Use a serial console or the web app's device secrets page for this command - the web app's raw MQTT console cannot send it (the shell needs a newline-terminated payload the console does not produce). Publishing to `cli/secret.set` with a raw MQTT client works if the payload ends in a newline.
+
 ### secret.info
 
 ```text
