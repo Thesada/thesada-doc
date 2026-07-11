@@ -44,6 +44,7 @@ flowchart LR
 1. A Lua rule on the device publishes a JSON alert to `<prefix>/alert` (`severity` is `info`, `warn`, or `crit`, plus `code` and `message`). Malformed or unknown-severity payloads are dropped.
 2. The app inserts the event into `device_alerts` and pushes a live WebSocket event.
 3. A background dispatcher matches alert subscriptions - per device or tenant-wide, each with a minimum-severity threshold - and sends email and/or Telegram. Delivery flags are set idempotently so retries never double-send.
+4. A failed send is retried with doubling backoff (a redispatch sweep also runs at startup, so a restart mid-alert loses nothing). After the attempt budget (default 5) the alert is dead-lettered and logged loudly; the attempt budget, backoff, and sweep cadence are configurable via `THESADA_ALERT_*` (see [Deploy]({{ site.baseurl }}/app/deploy.html)).
 
 ## Where state lives
 
