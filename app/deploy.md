@@ -99,6 +99,7 @@ Secrets reach the app through the environment only. With Compose they live in `a
 | `THESADA_ADMIN_EMAIL` | first super-admin; created on first boot if missing, then idempotent (later boots leave an existing user untouched) |
 | `THESADA_SMTP_HOST` / `_PORT` / `_USER` / `_PASS` / `_FROM` | outbound mail; empty host logs links instead of sending |
 | `THESADA_TELEGRAM_BOT_TOKEN` | optional alert fan-out |
+| `THESADA_TRUSTED_PROXIES` | comma-separated IPs/CIDRs of your reverse proxy; required for `X-Forwarded-Proto`/`X-Forwarded-For` to be honoured (Secure cookies, HSTS, real client IPs) |
 | `THESADA_ALERT_MAX_ATTEMPTS` | delivery attempts per alert before dead-letter; default `5` |
 | `THESADA_ALERT_RETRY_BASE` | first retry delay, doubles per attempt; default `1m` |
 | `THESADA_ALERT_REDISPATCH_INTERVAL` | sweep cadence for undelivered alerts; default `1m` |
@@ -130,6 +131,7 @@ On SIGINT or SIGTERM the HTTP server gets a 10-second graceful drain before the 
 The quickstart is a starting point, not a production deployment.
 
 - [ ] Front the app with a TLS reverse proxy; keep `8080` bound to localhost.
+- [ ] Set `THESADA_TRUSTED_PROXIES` to the proxy's address - forwarded headers from unlisted peers are ignored, so without it cookies lose their Secure flag behind the proxy.
 - [ ] Replace the plaintext broker with TLS + per-device mTLS and ACLs.
 - [ ] Use managed or backed-up storage for the TimescaleDB and CA volumes.
 - [ ] Run `ca-encrypt` so the CA key is encrypted at rest.
