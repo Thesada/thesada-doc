@@ -11,11 +11,13 @@ Device-side setup for a new node: WiFi, broker connection, and topic prefix, the
 
 ## Configure over USB serial
 
-Connect to the serial console and set the connection keys. Each `config.set` writes `/config.json` to flash immediately and refreshes the in-memory copy:
+Connect to the serial console and set the connection keys. Each `config.set` writes `/config.json` to flash immediately and refreshes the in-memory copy.
+
+WiFi credentials live in the `wifi.networks` array (the firmware only reads that array - flat `wifi.ssid`/`wifi.password` keys are ignored). Initialise the array once, then set entry 0:
 
 ```text
-config.set wifi.ssid <ssid>
-config.set wifi.password <password>
+config.set wifi.networks []
+config.set wifi.networks.0 '{"ssid":"<ssid>","password":"<password>"}'
 config.set mqtt.broker <broker-host>
 config.set mqtt.port 8883
 config.set mqtt.user <username>
@@ -23,6 +25,12 @@ config.set mqtt.password <password>
 config.set mqtt.topic_prefix <root>/<tenant>/<device-id>
 config.reload
 ```
+
+Passwords can live in NVS instead of `config.json`: provision with
+`secret.set wifi.password:<ssid> <password>` (one entry per SSID) and
+`secret.set mqtt.password <password>`, then leave the config fields
+blank. NVS wins over config at every read site; see
+[CLI Reference]({{ site.baseurl }}/firmware/cli-reference/#secrets).
 
 `config.set` persists each key on its own - there is no separate save step in normal use. `config.save` exists only to flush programmatic changes that bypass `config.set`. Network keys (broker, port, credentials, prefix) do not take effect until `config.reload` reconnects the MQTT client; a `restart` also applies them.
 
@@ -81,8 +89,8 @@ The keys you touch during provisioning. See [Config Management]({{ site.baseurl 
 
 | Key | Example | Purpose |
 |---|---|---|
-| `wifi.ssid` | `MyNetwork` | WiFi SSID |
-| `wifi.password` | `secret` | WiFi password |
+| `wifi.networks` | `[]` | Known networks array - initialise before setting entries |
+| `wifi.networks.0` | `'{"ssid":"MyNetwork","password":"secret"}'` | First network entry (ssid + password) |
 | `mqtt.broker` | `<broker-host>` | Broker hostname |
 | `mqtt.port` | `8883` | Broker port (TLS) |
 | `mqtt.user` | `<username>` | MQTT username |

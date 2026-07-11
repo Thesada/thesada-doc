@@ -50,8 +50,14 @@ cp examples/config.json.example data/config.json
 curl -o data/ca.crt https://test.mosquitto.org/ssl/mosquitto.org.crt
 ```
 
-- `data/config.json` is the editable runtime config. Leave the placeholder WiFi in
-  place for now - you will set the real SSID over the web UI in step 5.
+- `data/config.json` is the editable runtime config. Make one edit before
+  flashing: set `web.password` to a real value. The firmware refuses every
+  admin login while the password is `changeme` or empty - there is no
+  default-credential window - so the placeholder would lock you out of the
+  Config tab in step 5. Keep `web.enabled: true` as shipped (without it the
+  HTTP server, dashboard, and captive portal never start), and leave the
+  placeholder WiFi in place for now - you will set the real SSID over the
+  web UI in step 5.
 - `data/ca.crt` is the CA the device trusts for MQTT over TLS. The firmware always
   uses TLS, so the broker's CA must be present. This walkthrough uses the public
   `test.mosquitto.org` broker, so its CA goes here. For your own broker, use that
@@ -130,9 +136,11 @@ fallback AP there is no internet yet, so they stay bare.)
 1. On a laptop or phone, join the `thesada-node-setup` WiFi network. A captive
    portal opens the dashboard automatically; if it does not, browse to
    `http://192.168.4.1/`.
-2. Open the **Config** tab and log in. The default credentials from the example
-   config are `admin` / `changeme` - change the password before any real
-   deployment.
+2. Open the **Config** tab and log in as `admin` with the `web.password` you
+   set in step 2. `changeme` and an empty password are rejected by design -
+   the firmware locks the whole admin surface until a real password is set.
+   If you flashed with the placeholder, set one over the serial console
+   (`secret.set web.password`) and reload.
 3. The Config tab is a JSON editor holding the full `config.json`. Set your network
    and broker:
 

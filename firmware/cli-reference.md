@@ -234,10 +234,25 @@ Numeric path segments target array indices, never object keys. If the parent is 
 
 ```text
 config.set wifi.networks []
-config.set wifi.networks.0 '{"ssid":"home","psk":"..."}'
+config.set wifi.networks.0 '{"ssid":"home","password":"..."}'
 ```
 
 The previous walker silently created an object keyed `"0"` when the parent did not exist, producing config that read back as `wifi.networks: {"0": ...}` instead of an array.
+
+### config.del
+
+```text
+config.del lora.mode
+config.del test
+```
+
+Delete a config key, persisted immediately. A dotted key removes that
+member; an array slot is set to `null` instead of removed so sibling
+indices stay stable. A bare section name deletes the whole top-level
+section. Main use is residue cleanup: a key whose type changed between
+releases (bool to object, say) blocks `config.set` on its subkeys until
+the stale node is deleted, after which `config.set` recreates it with the
+new shape.
 
 ### config.save
 
@@ -306,6 +321,13 @@ The `net.*` commands route by active transport. With WiFi up they use the WiFi s
 ### net.ip
 
 Print every active transport. The WiFi block shows SSID, IP, gateway, DNS, RSSI, and MAC. When cellular is connected a separate block shows operator, modem IP, signal quality, and IMEI. Both blocks appear when both transports are up - no claim is made about which one the OS routes through.
+
+### net.scan
+
+List every visible 2.4 GHz AP: SSID, RSSI, channel, and auth mode. The
+diagnostic for "the device says not-in-range but the network should be
+there" - a 5 GHz-only, hidden, or renamed SSID never appears in this list,
+which is the answer. Blocks the shell for the scan duration (about 3 s).
 
 ### net.ping
 
