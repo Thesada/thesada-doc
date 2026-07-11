@@ -146,6 +146,17 @@ Optional HTTP POST fired from Lua or TelegramModule on every alert:
 
 `{% raw %}{{value}}{% endraw %}` is replaced with the full alert message. Supports `http://` and `https://`. Leave `url` empty to disable.
 
+HTTPS webhook endpoints are unverified by default (the URL is arbitrary, so there is no CA to pin ahead of time). To verify TLS, upload the endpoint's root certificate - self-signed works - as `/webhook-ca.crt` via the file API, then restart:
+
+```bash
+curl -u admin:<password> -X POST \
+  'http://[ip]/api/file?path=/webhook-ca.crt&source=littlefs' \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary @webhook-ca.crt
+```
+
+Same override pattern as `/telegram-ca.crt` and `/ca.crt`; remove the file (and restart) to fall back to unverified. The boot log states which mode is active.
+
 ---
 
 ## Boot alert (main.lua)

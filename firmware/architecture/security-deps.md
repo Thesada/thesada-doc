@@ -66,7 +66,7 @@ Not all outbound connections use `/ca.crt`. These paths use `setInsecure()` (TLS
 |---|---|---|
 | MQTT before NTP sync | Cert validation requires a valid system clock. Pre-NTP, the device connects insecure and upgrades to cert-validated once NTP syncs. | First-boot MITM on untrusted networks. Low risk on LAN. |
 | MQTT on low-heap boards | A board with less than ~40 KB max contiguous heap cannot allocate for the TLS cert context. The connection stays on `setInsecure()` permanently when the upgrade is unsafe. | No cert validation on constrained boards. |
-| Webhook (operator endpoint) | Arbitrary URL configured by operator - no fixed CA to pin against. Stays on the unverified client. | Operator-chosen endpoint; treat as untrusted upstream. |
+| Webhook (operator endpoint) | Arbitrary URL configured by operator - no fixed CA to pin against by default. Uploading `/webhook-ca.crt` (endpoint root, self-signed included) switches the client to verified TLS; without it the client stays unverified. | Operator-chosen endpoint; treat as untrusted upstream unless a CA is uploaded. |
 
 The Telegram Bot API client now validates against Go Daddy Root G2 (baked into `telegram_ca_progmem.h` with a `/telegram-ca.crt` LittleFS override, mirroring the OTA CA pattern). If no CA is available the request fails closed instead of falling back to `setInsecure()`, so bot tokens stop leaking over unverified TLS.
 
