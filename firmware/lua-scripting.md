@@ -96,10 +96,10 @@ For complex objects (whole subtrees), `Config.get` returns the JSON string seria
 Subscribe to events emitted by C++ modules. The callback receives a Lua table built from the event's JSON payload.
 
 ```lua
-EventBus.subscribe("sensor.temperature", function(data)
+EventBus.subscribe("temperature", function(data)
   for i, sensor in ipairs(data.sensors or {}) do
-    if sensor.temp and sensor.temp > 70 then
-      Log.warn(string.format("%s above 70 C: %.1f", sensor.name, sensor.temp))
+    if sensor.temp_c and sensor.temp_c > 70 then
+      Log.warn(string.format("%s above 70 C: %.1f", sensor.name, sensor.temp_c))
     end
   end
 end)
@@ -109,14 +109,17 @@ EventBus.subscribe("alert", function(data)
 end)
 ```
 
+Event names are exact strings - there is no `sensor.*` namespace or wildcard
+matching. Write thresholds against `temp_c` (always Celsius); `temp` is the
+same reading in the configured display unit.
+
 Common events (varies by build):
 
 | Event | Source | Payload shape |
 |---|---|---|
-| `sensor.temperature` | TemperatureModule | `{ sensors = [{ name, temp }] }` |
-| `sensor.current` | ADS1115Module | `{ channels = [{ name, current_a, power_w }] }` |
-| `sensor.battery` | BatteryModule | `{ percent, voltage, charging }` |
-| `sensor.sht31` | SHT31Module | `{ temperature, humidity }` |
+| `temperature` | TemperatureModule, SHT31Module | `{ sensors = [{ name, address, temp_c, temp }] }` (SHT31 row adds `humidity`, name `SHT31`) |
+| `current` | ADS1115Module | `{ channels = [{ name, address, raw, voltage_v, current_a, power_w, line_v }] }` |
+| `battery` | BatteryModule | `{ present, voltage_v, percent, charging }` |
 | `alert` | any module / Lua publish | `{ severity, code, message, metric, value, ts }` |
 
 The C++ side publishes to the EventBus as soon as a sensor read completes; subscribing in Lua is the lowest-latency way to react.
@@ -179,17 +182,17 @@ Publish delivery metadata (retry or ack status from a downstream notifier) to `<
 ```lua
 local triggered = false
 
-EventBus.subscribe("sensor.temperature", function(data)
+EventBus.subscribe("temperature", function(data)
   for _, s in ipairs(data.sensors or {}) do
     if s.name == "boiler" then
-      if s.temp > 75 and not triggered then
+      if s.temp_c > 75 and not triggered then
         triggered = true
         local prefix = Config.get("mqtt.topic_prefix")
         local payload = string.format(
           '{"severity":"crit","metric":"temperature.boiler","value":%.1f,"message":"Boiler over 75 C"}',
-          s.temp)
+          s.temp_c)
         MQTT.publish(prefix .. "/alert", payload)
-      elseif s.temp < 70 and triggered then
+      elseif s.temp_c < 70 and triggered then
         triggered = false
       end
     end
@@ -207,8 +210,8 @@ local last_alert    = 0
 local SUSTAIN_MS    = 60000   -- must stay over threshold for 60 s
 local COOLDOWN_MS   = 600000  -- 10 min between alerts
 
-EventBus.subscribe("sensor.battery", function(data)
-  if data.voltage and data.voltage < 3.3 then
+EventBus.subscribe("battery", function(data)
+  if data.voltage_v and data.voltage_v < 3.3 then
     if sustain_start == nil then
       sustain_start = Node.uptime()
     elseif Node.uptime() - sustain_start > SUSTAIN_MS
@@ -217,7 +220,7 @@ EventBus.subscribe("sensor.battery", function(data)
       local prefix = Config.get("mqtt.topic_prefix")
       MQTT.publish(prefix .. "/alert",
         string.format('{"severity":"warn","metric":"battery.voltage","value":%.2f,"message":"Battery low for 60 s"}',
-                      data.voltage))
+                      data.voltage_v))
     end
   else
     sustain_start = nil  -- reset on recovery
