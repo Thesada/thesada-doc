@@ -99,6 +99,9 @@ Secrets reach the app through the environment only. With Compose they live in `a
 | `THESADA_ADMIN_EMAIL` | first super-admin; created on first boot if missing, then idempotent (later boots leave an existing user untouched) |
 | `THESADA_SMTP_HOST` / `_PORT` / `_USER` / `_PASS` / `_FROM` | outbound mail; empty host logs links instead of sending |
 | `THESADA_TELEGRAM_BOT_TOKEN` | optional alert fan-out |
+| `THESADA_ALERT_MAX_ATTEMPTS` | delivery attempts per alert before dead-letter; default `5` |
+| `THESADA_ALERT_RETRY_BASE` | first retry delay, doubles per attempt; default `1m` |
+| `THESADA_ALERT_REDISPATCH_INTERVAL` | sweep cadence for undelivered alerts; default `1m` |
 
 ### Database pools
 
