@@ -50,14 +50,19 @@ cp examples/config.json.example data/config.json
 curl -o data/ca.crt https://test.mosquitto.org/ssl/mosquitto.org.crt
 ```
 
-- `data/config.json` is the editable runtime config. Make one edit before
-  flashing: set `web.password` to a real value. The firmware refuses every
-  admin login while the password is `changeme` or empty - there is no
-  default-credential window - so the placeholder would lock you out of the
-  Config tab in step 5. Keep `web.enabled: true` as shipped (without it the
-  HTTP server, dashboard, and captive portal never start), and leave the
-  placeholder WiFi in place for now - you will set the real SSID over the
-  web UI in step 5.
+- `data/config.json` is the editable runtime config. Make two edits before
+  flashing:
+  - `web.password` - a real value. The firmware refuses every admin login while
+    the password is `changeme` or empty, so the placeholder would lock you out
+    of the Config tab in step 5. There is no default-credential window.
+  - `wifi.ap_password` - at least 8 characters, and not `changeme`. The fallback
+    AP refuses to start on an absent, short, or placeholder passphrase, so
+    leaving the shipped empty value in place means no captive portal appears in
+    step 5.
+
+  Keep `web.enabled: true` as shipped (without it the HTTP server, dashboard,
+  and captive portal never start), and leave the placeholder WiFi in place for
+  now - you will set the real SSID over the web UI in step 5.
 - `data/ca.crt` is the CA the device trusts for MQTT over TLS. The firmware always
   uses TLS, so the broker's CA must be present. This walkthrough uses the public
   `test.mosquitto.org` broker, so its CA goes here. For your own broker, use that
@@ -119,23 +124,36 @@ WiFi cannot connect - the device fall back to a setup access point:
 ESP-ROM:esp32s3-20210327
 entry 0x403c98d0
 [INF][Boot] thesada-fw <version>
-[INF][WiFi] Scanning...
-[INF][WiFi] Scan complete: 18 AP(s) visible
-[INF][WiFi] Trying primary-ssid (RSSI -67 dBm, attempt 1/2, timeout 10s)...
-[WRN][WiFi] All networks failed - starting fallback AP
-[WRN][WiFi] Fallback AP: thesada-node-setup (captive portal at 192.168.4.1, timeout 300s)
+[INF][Identity] identity.generated device_id=thesada-0123456789ab
+[INF][WiFi] wifi.scan_start
+[INF][WiFi] wifi.scan_done visible=18
+[INF][WiFi] wifi.connect_attempt ssid=primary-ssid rssi=-67 attempt=1 max=2 timeout_s=10
+[WRN][WiFi] wifi.state_change from=scanning to=all_failed reason=all_ssids_failed
+[WRN][WiFi] wifi.fallback_ap_started ssid=thesada-0123456789ab-setup ip=192.168.4.1 timeout_s=300
 ```
 
-The AP name is `<device name>-setup`, so the default is `thesada-node-setup`. It
-times out after 5 minutes and retries the WiFi scan, so if it disappears just wait
-for it to come back. (Log lines carry no timestamp until NTP syncs - on the
+The AP name is `<device_id>-setup`. The device id is minted on first boot from the
+board's factory MAC, so it is unique per unit and yours will differ from the one
+above - read it off the boot log, or run `identity.info` on the serial console. The
+AP times out after 5 minutes and retries the WiFi scan, so if it disappears just
+wait for it to come back. (Log lines carry no timestamp until NTP syncs - on the
 fallback AP there is no internet yet, so they stay bare.)
+
+If the passphrase from step 2 never landed, the AP does not come up at all and the
+log says so instead:
+
+```text
+[WRN][WiFi] wifi.ap_refused reason=no_password hint="seed via secret.set wifi.ap_password"
+```
+
+`reason=default_or_short_password` is the other case: a passphrase that is under 8
+characters or still the `changeme` placeholder. Set a real one and reboot.
 
 ## 5. Set WiFi and broker over the captive portal
 
-1. On a laptop or phone, join the `thesada-node-setup` WiFi network. A captive
-   portal opens the dashboard automatically; if it does not, browse to
-   `http://192.168.4.1/`.
+1. On a laptop or phone, join the `<device_id>-setup` WiFi network with the
+   `wifi.ap_password` you set in step 2. A captive portal opens the dashboard
+   automatically; if it does not, browse to `http://192.168.4.1/`.
 2. Open the **Config** tab and log in as `admin` with the `web.password` you
    set in step 2. `changeme` and an empty password are rejected by design -
    the firmware locks the whole admin surface until a real password is set.
@@ -169,10 +187,10 @@ Re-open the serial console (RST, then launch). After the reboot the device joins
 your WiFi, syncs NTP, loads the CA, and connects over TLS:
 
 ```text
-[INF][WiFi] Connected to your-ssid - IP: 192.168.1.42
-[INF][MQTT] CA cert loaded from /ca.crt
-[INF][MQTT] Connecting as thesada-...
-[INF][MQTT] Connected
+[INF][WiFi] wifi.state_change from=scanning to=connected ssid=your-ssid ip=192.168.1.42
+[INF][MQTT] mqtt.ca_loaded path=/ca.crt bytes=1310 heap=PSRAM
+[INF][MQTT] mqtt.connect_start client_id=thesada-0123456789ab
+[INF][MQTT] mqtt.state_change from=disconnected to=connected broker=test.mosquitto.org
 ```
 
 From your computer, subscribe to the device's prefix and watch it publish. Point
@@ -186,7 +204,7 @@ mosquitto_sub --cafile mosquitto.org.crt -h test.mosquitto.org -p 8883 \
 
 ```text
 thesada/demo/s3-01/status   online
-thesada/demo/s3-01/info     {"name":"thesada-node","fw":"...","ip":"192.168.1.42"}
+thesada/demo/s3-01/info     {"firmware_version":"<version>","hardware_type":"esp32-s3","board":"s3-bare","chip_model":"esp32-s3","chip_revision":0,"chip_cores":2,"mac":"01:23:45:67:89:ab","psram":true,"build_time":"Jan  1 2026 12:00:00","config_hash":"<sha256>","scripts_main_hash":"<sha256>","scripts_rules_hash":"<sha256>"}
 ```
 
 A retained `online` on `.../status` plus an `.../info` payload confirm the device is
@@ -202,6 +220,7 @@ sensor is attached) follows on its own topics.
 | Watching the wrong device | More than one board plugged in | `pio device list`, match by MAC, then `-p` the right port |
 | `Could not find port` / permission denied (Linux) | Missing udev rules | Install `99-platformio-udev.rules` (see the PlatformIO udev-rules docs) |
 | AP never appears | WiFi actually connected, or AP timed out | Check the log for a connect line; wait for the 5 min retry |
+| AP never appears, log says `wifi.ap_refused` | `wifi.ap_password` absent, under 8 chars, or still `changeme` | Set a real passphrase in `config.json`, or `secret.set wifi.ap_password <value>` over serial, then reboot |
 | MQTT never connects | Missing or wrong `ca.crt` | Re-run the `uploadfs` step with the broker's CA in `data/ca.crt` |
 | `mosquitto_sub` sees nothing | Prefix mismatch | Match the `-t` filter to the `topic_prefix` you set |
 

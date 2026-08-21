@@ -37,7 +37,7 @@ In every section below, `<prefix>` stands for whatever this device's prefix is.
 | `<prefix>/cellular/active` | publish | no | 0 | Cellular fallback toggled on |
 | `<prefix>/cellular/rssi` | publish | no | 0 | Periodic during cellular session |
 | `<prefix>/cli/<command>` | subscribe | no | 0 | Operator CLI invocation |
-| `<prefix>/cli/response` | publish | no | 0 | Reply to a CLI invocation |
+| `<prefix>/cli_response` | publish | no | 0 | Reply to a CLI invocation |
 | `<prefix>/cmd/lua/reload` | subscribe | no | 0 | Hot-reload Lua scripts |
 | `homeassistant/<component>/<dev>/<uid>/config` | publish | yes | 0 | HA autodiscovery, once per connect |
 
@@ -170,7 +170,7 @@ JSON state events. Published on every OTA code path so operators can drive dashb
 
 ## CLI bridge
 
-The firmware subscribes to `<prefix>/cli/#` so any topic under it is treated as a command. Topic suffix is the command name; payload is the argument string. The device ignores its own `<prefix>/cli/response` output, so replies are never reprocessed as commands - this matters over cellular, where the subscription wildcard would otherwise echo every response back to the device.
+The firmware subscribes to `<prefix>/cli/#` so any topic under it is treated as a command. Topic suffix is the command name; payload is the argument string. Responses go to `<prefix>/cli_response`, which deliberately sits outside the `cli/` segment so it cannot match the input wildcard - this matters over cellular, where the broker would otherwise echo every response straight back to the device.
 
 ### Inbound: `<prefix>/cli/<command>`
 
@@ -193,7 +193,7 @@ The firmware extracts `req_id` and echoes it back on every response message, and
 
 Some commands take multi-line payloads (`fs.write`, `fs.append`, `cert.set`) and are not envelope-compatible because the binary protocol reads the raw payload directly. See the [CLI Reference](cli-reference.html) for the per-command wire contracts.
 
-### Outbound: `<prefix>/cli/response`
+### Outbound: `<prefix>/cli_response`
 
 JSON envelope with the original command, success flag, and one entry per output line.
 
@@ -223,7 +223,7 @@ When `mqtt.ha_discovery: true` in `config.json` (default), the firmware publishe
 homeassistant/<component>/<device_id>/<unique_id>/config
 ```
 
-`<component>` is the HA entity component (`sensor`, `binary_sensor`, etc - currently only `sensor` is used). `<device_id>` is the device's name from `config.json`. `<unique_id>` is per-entity, derived from the device id and a per-sensor suffix.
+`<component>` is the HA entity component (`sensor`, `binary_sensor`, etc - currently only `sensor` is used). `<device_id>` is `Identity::nodeName()`: `device.name` from `config.json` when it is set, otherwise the generated device id. `<unique_id>` is per-entity, derived from the device id and a per-sensor suffix.
 
 Each config payload references the sensor's state topic from the table above and an availability topic of `<prefix>/status`, so HA marks the entity unavailable when the device drops offline. Worked-out example for an SHT31 humidity sensor on a device named `sht31`:
 
@@ -253,6 +253,8 @@ The firmware connects with one of:
 
 - **Username + password** from `config.json` `mqtt.user` / `mqtt.password`. The fallback path used by unpaired devices.
 - **mTLS client certificate** stored in NVS. When present, `cert.apply` triggers a reconnect using the cert as identity (no username, no password). The broker maps the certificate CN onto the MQTT username via `use_identity_as_username`, so the connection arrives as if the device had logged in with username = CN.
+
+Which auth the session used also decides what the `cli/` bridge will run. A certificate session reaches every command; a password session reaches only what pairing and recovery need, and anything else answers `Denied: not permitted on this connection`. See [CLI Reference](cli-reference.html#how-to-invoke-a-command).
 
 ACLs live on the broker side via the Mosquitto dynamic-security plugin. Per-device pairing creates a role scoped to `<prefix>/#` plus the device's `homeassistant/...` discovery namespace. Operators wire those out of band; the firmware does not configure ACLs.
 

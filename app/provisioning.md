@@ -7,7 +7,18 @@ description: "Bringing a tenant and its devices online: creating a tenant, issui
 
 # Provisioning
 
-Provisioning takes a device from a fresh, password-authenticated connection to a fully isolated, certificate-authenticated MQTT client. There are two distinct steps with very different scopes: creating a tenant (a database row and nothing more) and pairing a device (where all the MQTT credential and ACL work happens). This page covers both, plus the revoke and delete paths that tear them down. The admin routes themselves are toured in [Admin UI]({{ site.baseurl }}/app/admin.html); the on-device side of the cert and port swap is under [Firmware Config]({{ site.baseurl }}/firmware/config.html).
+Provisioning ends with a device that is a fully isolated, certificate-authenticated MQTT client. Creating a tenant is a database row and nothing more; all the MQTT credential and ACL work happens per device.
+
+There are two routes to a provisioned device:
+
+| Route | Who drives it | Certificate reaches the device over |
+|---|---|---|
+| [Self-service enrollment](#self-service-enrollment) | the device plus the user who owns it | HTTPS, the device fetches it |
+| [Operator pairing](#pairing-a-device) | a super-admin, from the admin UI | the MQTT CLI, the app pushes it |
+
+Self-service enrollment is the route for a factory-fresh device: it never touches the broker until it already holds a certificate. Operator pairing is the super-admin route for a device that is already connected on the shared password credential.
+
+This page covers both, plus the revoke and delete paths that tear them down. The admin routes themselves are toured in [Admin UI]({{ site.baseurl }}/app/admin.html); the on-device side of the cert and port swap is under [Firmware Config]({{ site.baseurl }}/firmware/config.html).
 
 ## Creating a tenant
 
@@ -29,6 +40,85 @@ Every device publishes under a topic prefix. The canonical prefix is stored in t
 | Fallback formula | `<root>/<tenant-slug>/<device-id>` |
 | Root default | `thesada` (env `THESADA_MQTT_TOPIC_ROOT`) |
 | Typical per-device prefix | `thesada/<tenant>/<device-id>` |
+
+## Self-service enrollment
+
+A factory-fresh device has no tenant, no owner, and no credential, so it cannot authenticate to anything. Enrollment is how it gets one without an operator touching the broker on its behalf.
+
+The device's half of it rests on the identity it mints on first boot: a `device_id` derived from its factory MAC, and an Ed25519 keypair whose private half never leaves NVS. See [Firmware Provisioning]({{ site.baseurl }}/firmware/provisioning.html#device-identity).
+
+### The flow
+
+| # | Step | Actor | Endpoint or route |
+|---|---|---|---|
+| 1 | Announce the device id, public key and a claim token; receive a challenge | device | `POST /api/v1/devices/enroll` |
+| 2 | Return an Ed25519 signature over the challenge | device | `POST /api/v1/devices/enroll/verify` |
+| 3 | Claim the device into a tenant | a signed-in user | `POST /devices/claim` |
+| 4 | Collect the certificate; 204 until step 3 has happened | device | `POST /api/v1/devices/enroll/cert` |
+| 5 | Confirm the certificate is stored, which seals the enrollment | device | `POST /api/v1/devices/enroll/ack` |
+
+Nothing touches the broker before step 4 completes. Wire-level request and response shapes are in [API]({{ site.baseurl }}/app/api.html#device-enrollment).
+
+### What each credential is for
+
+The claim token and the signature answer different questions, and the flow needs both:
+
+| Credential | Proves | Failure without it |
+|---|---|---|
+| Ed25519 signature over the challenge | the caller holds the device's private key | a photographed QR would be enough to claim a device off a shelf |
+| Claim token from the device's own setup page | the claimer has physical access to the hardware | any signed-in user could claim any device the moment they guess its id |
+
+The challenge is single-use and expires after five minutes, and it is consumed whether or not the signature verifies, so a failed attempt burns the nonce rather than leaving it grindable.
+
+### Enrollment rows
+
+Unclaimed devices are not `devices` rows. They live in `device_enrollments`, which has no tenant column, because an unclaimed device genuinely belongs to nobody and modelling "nobody" as a holding tenant would mean a user-facing endpoint reading through the privileged pool. Claiming graduates the enrollment into a `devices` row.
+
+| Property | Value |
+|---|---|
+| Row identity | `(device_id, pubkey_hex)`, not `device_id` alone |
+| Claim token | stored as a SHA-256 hash, never plaintext, compared in constant time |
+| Challenge | cleared the moment it is answered |
+| Unclaimed row lifetime | 24 hours since last seen, then pruned |
+| Claimed row lifetime | never pruned by age |
+
+Keying on the pair rather than the id alone is what stops a lockout. Device ids come from sequentially assigned factory MACs, so holding one unit tells you its neighbours' ids - the id is a guess, not a credential. If rows were keyed on the id, the first caller to announce would own it, and a remote caller who guessed one could pin its own keypair, satisfy the proof with it, and lock the real hardware out permanently. With the pair as the key, the squatter and the real device each get their own row, and the squatter's row is inert: claiming needs the token from the device's own setup page, and the public key is not derivable from anything the device broadcasts over the air.
+
+Multiple rows per `device_id` are therefore expected rather than a fault, bounded by the per-device rate limit on the announce endpoint and cleared by the pruning sweep.
+
+### Claiming, from the user's side
+
+`/devices/claim` is a form that takes two values, and any signed-in user can reach it:
+
+| Field | Source |
+|---|---|
+| Device ID | the device's setup page, e.g. `thesada-0123456789ab` |
+| Claim code | the same setup page. It rotates per session, so a rejected code means reload the device page and use the new one |
+
+It is **not** a browsable list of unclaimed devices, and that is a security decision rather than a UI preference. Enrollments have no tenant until they are claimed, so any list of them is inherently cross-tenant: showing one would let any signed-in user claim any device on the deployment the moment they know its id, and ids are guessable from a neighbouring unit. The authorization model cannot express the rule that would be wanted either, since an action is either super-admin-only or open to everyone. Requiring the claim token from the device's own setup page makes physical possession the authorization, which is the property that matters and the only one available.
+
+Claims are capped per user per hour (`THESADA_DEVICE_CLAIM_MAX_PER_HOUR`, default 5). An unknown device id and a wrong claim token return the same message, so the form cannot be used to confirm that a device id exists. A device that has not finished proving possession yet is refused with a "try again shortly" message rather than being bound to hardware that may not be the unit on the label.
+
+### What a claim does
+
+| # | Step | Notes |
+|---|---|---|
+| 1 | Flip the enrollment to claimed and insert the `devices` row | one transaction - both, or neither |
+| 2 | Create the dynsec role and client for the device | network call, idempotent, retried independently |
+
+The owner and the MQTT topic prefix are written at step 1 and nowhere else on this path. The prefix has to be written now because it is otherwise only ever set from the MQTT ingest path, and a device that has never published would leave it null - which yields a broker ACL that does not match what the device eventually publishes on.
+
+Step 2 failing is a hard error surfaced to the user, not a warning: without the dynsec client the device's future certificate is inert and it would silently never connect. Retrying the claim is safe - the first step is idempotent on an already-claimed row for the same tenant, and the broker calls tolerate "already exists".
+
+**The certificate is not issued here.** The device fetches it itself in step 4 of the flow, which is what keeps its private key off this request path entirely.
+
+### Why the device seals the enrollment, not the app
+
+`POST /devices/enroll/cert` hands over a certificate but does not mark the enrollment delivered. The device does that with a separate acknowledgement once the pair is stored and validated on its side.
+
+Sealing at hand-over looks natural and is wrong: the seal would commit before a byte reached the socket, so a dropped TLS session or a proxy timeout mid-write would leave the app believing the device is provisioned while the device has nothing. The certificate endpoint would then refuse forever and the unit is bricked short of an operator re-pair. Letting the device close the loop makes that failure a retry instead - until the acknowledgement arrives the endpoint re-signs, and each issue supersedes the last, so a retry costs a wasted certificate rather than dead hardware.
+
+Once sealed, the row is terminal. A second delivery needs an explicit re-pair, so a leaked claim token cannot be redeemed twice. Revoking a pair and deleting a device both clear the device's enrollment rows, so the next announce starts a fresh cycle.
 
 ## Pairing a device
 
@@ -86,6 +176,8 @@ The write path (publish) is always narrow: a device can only publish under its o
 
 The `cert.set` payload is `<part-type>\n<PEM>` - the part type, a newline, then the full PEM.
 
+Steps 2 to 4 and step 8 run over the shared password credential, which is exactly what the firmware's MQTT CLI allows a password session to do: `cert.set`, `cert.apply`, `cert.info`, `secret.set`, `restart`, `version`, `chip.info`, `heap`, and `config.set` on `mqtt.port` alone. Nothing that reads the filesystem, dumps config, or runs code is reachable until the device is on its own certificate. See [Firmware Security]({{ site.baseurl }}/firmware/architecture/security-deps.html#mqtt-cli-authorization).
+
 A successful issue emits a `device.pair.state_change` audit log (`unpaired` -> `paired`, reason `pair_issue`) with the device, tenant, and operator email.
 
 ### Why a restart, not a config reload
@@ -121,6 +213,9 @@ On the post-restart boot the firmware reads `config.json` (port 8884) and the NV
 | 2 | `config.set mqtt.port 8883`, `cert.clear`, `restart` on the device | best-effort |
 | 3 | Delete the dynsec client | best-effort, 10s |
 | 4 | Delete the dynsec role | best-effort, 10s |
+| 5 | Clear the device's enrollment rows | best-effort, so the next announce starts a fresh cycle |
+
+Step 5 matters for anything enrolled self-service: a sealed enrollment row left behind would mean the device could never prove itself again, which is a brick short of manual SQL.
 
 The database revoke is the step that matters; the broker rejects the device on its next auth check regardless of whether the dynsec teardown reached the broker. Revoke emits a `device.pair.state_change` audit log (`paired` -> `revoked`, reason `admin_revoke`).
 
@@ -137,9 +232,10 @@ The on-device cleanup runs through a shared three-step sequence: publish `mqtt.p
 | 2 | Delete the dynsec client and role | best-effort, 10s |
 | 3 | Clear the device's retained broker topics | best-effort, 10s |
 | 4 | Delete the device row (FK cascade) | load-bearing, 30s |
-| 5 | Write a tombstone | prevents MQTT ingest re-creating the row |
+| 5 | Clear the device's enrollment rows | best-effort, so the hardware can enrol again |
+| 6 | Write a tombstone | prevents MQTT ingest re-creating the row |
 
-Step 4's foreign-key cascade drops the device's telemetry, alerts, certificates, and config-snapshot files. The tombstone stops the ingest pipeline from re-creating the device row from a retained broker message after an app restart. Re-pairing is the only way back. Bulk delete runs the identical per-device sequence; a selection that spans more than one tenant is rejected unless the cross-tenant action is explicitly confirmed.
+Step 4's foreign-key cascade drops the device's telemetry, alerts, certificates, and config-snapshot files. The tombstone stops the ingest pipeline from re-creating the device row from a retained broker message after an app restart. The way back is a fresh enrollment or an operator re-pair. Bulk delete runs the identical per-device sequence; a selection that spans more than one tenant is rejected unless the cross-tenant action is explicitly confirmed.
 
 ## Reassigning a device
 

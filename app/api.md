@@ -25,6 +25,8 @@ Tokens and session tokens are stored only as SHA-256 hashes server-side.
 | 403 | authenticated but missing the required role (e.g. a non-super-admin calling pair) |
 | 404 | resource not found, or outside your tenant |
 
+On the unauthenticated enrollment endpoints, 403 means something else: one uniform refusal covering every reason a device enrollment did not proceed. See [Device enrollment](#device-enrollment).
+
 ## Errors
 
 Every error response is a JSON object with a single `error` string:
@@ -50,6 +52,10 @@ List endpoints accept `?limit=` - default **100**, maximum **500**. Out-of-range
 | GET | `/devices` | yes | 200 | list the tenant's devices |
 | GET | `/devices/{id}` | yes | 200 | one device |
 | POST | `/devices/{id}/pair` | super-admin | 200 | issue a device client certificate |
+| POST | `/devices/enroll` | none | 200 | device announces itself, gets a challenge |
+| POST | `/devices/enroll/verify` | none | 200 | device returns a signature over the challenge |
+| POST | `/devices/enroll/cert` | none | 200 / 204 | device collects its certificate once claimed |
+| POST | `/devices/enroll/ack` | none | 200 | device confirms the certificate is stored |
 | GET | `/devices/{id}/telemetry` | yes | 200 | telemetry readings |
 | GET | `/devices/{id}/alerts` | yes | 200 | a device's alerts |
 | GET | `/alerts` | yes | 200 | the tenant's alerts |
@@ -127,6 +133,60 @@ List endpoints accept `?limit=` - default **100**, maximum **500**. Out-of-range
 { "id": 1234, "received_at": "...", "severity": "warn", "code": "battery_low",
   "message": "Battery low for 60 s", "delivered_email": true, "delivered_telegram": false }
 ```
+
+### Device enrollment
+
+The four `/devices/enroll*` endpoints are the only unauthenticated device-facing surface in the API. A factory-fresh device has no credential to authenticate with, so these are guarded by rate limits, a claim token, and an Ed25519 proof of key possession instead. The narrative version of the flow is in [Provisioning]({{ site.baseurl }}/app/provisioning.html#self-service-enrollment).
+
+Every refusal on this surface is the same 403 with the same body, whatever went wrong:
+
+```json
+{ "error": "enrollment refused" }
+```
+
+Unknown device id, wrong claim token, stale or already-consumed challenge, bad signature, an already-redeemed enrollment and a spent rate-limit bucket are indistinguishable to the caller. That is deliberate: device ids are derived from sequentially assigned factory MACs, so a caller who guesses one must not be able to tell a real id from a fabricated one. The detail goes to the server log, not the response.
+
+Limits that apply to all four: request bodies are capped at 4096 bytes, 60 requests per hour per client IP, and 30 per hour per `device_id`. The client IP is taken from `X-Forwarded-For` only when the peer is inside `THESADA_TRUSTED_PROXIES`, otherwise from the connection itself.
+
+**POST /devices/enroll** - body `{ "device_id": ..., "pubkey": ..., "claim_token": ... }`. `pubkey` is the device's Ed25519 public key as lowercase hex; `claim_token` is the plaintext token the device also shows on its setup page. Returns a fresh challenge to sign:
+
+```json
+{ "challenge": "<64 hex chars>", "expires_in": 300 }
+```
+
+Any well-formed `device_id` and `pubkey` get a challenge, always, whatever state the enrollment is in - refusing here would answer the one question this surface must not answer, which ids are real. Re-announcing is expected and replaces the outstanding challenge, so an old one cannot be answered later. The claim token may rotate on re-announce, but only until the enrollment is verified; after that the stored token stands and the change is ignored silently.
+
+**POST /devices/enroll/verify** - body `{ "device_id": ..., "claim_token": ..., "signature": ... }`. `signature` is the Ed25519 signature over the challenge bytes, hex-encoded. Returns `{ "status": "verified" }`.
+
+The claim token selects which enrollment row is being answered and the signature proves the caller holds that row's private key; both are required. The challenge is consumed whether or not the signature checks out, so a failed attempt burns the nonce rather than leaving it grindable for the rest of its five minutes.
+
+**POST /devices/enroll/cert** - body `{ "device_id": ..., "claim_token": ... }`. Three outcomes:
+
+| Status | Meaning |
+|---|---|
+| 200 | claimed - the certificate bundle is in the body |
+| 204 | verified but nobody has claimed the device yet; keep polling |
+| 403 | anything else |
+
+```json
+{
+  "cert_pem": "-----BEGIN CERTIFICATE----- ...",
+  "key_pem": "-----BEGIN PRIVATE KEY----- ...",
+  "tenant": "<tenant slug>",
+  "device_id": "thesada-0123456789ab",
+  "topic_prefix": "<root>/<tenant>/<device-id>",
+  "mqtt_host": "<broker host>",
+  "mqtt_port": 8884
+}
+```
+
+The tenant, topic prefix, broker host and mTLS port travel with the certificate because without them the device holds a credential it cannot use: the CN, the broker ACL and the app's ingest are all keyed on the tenant, and the firmware's default topic prefix belongs to no tenant.
+
+There is no `ca_pem`. That would be the private device CA the broker uses to verify client certificates; the device verifies the broker against public roots it already carries, and handing it the device CA invites it to overwrite its own trust anchor and lose MQTT and OTA.
+
+**POST /devices/enroll/ack** - body `{ "device_id": ..., "claim_token": ... }`. Returns `{ "status": "sealed" }`, and is idempotent - a second call on an already-sealed enrollment answers the same way.
+
+The certificate endpoint does not seal the enrollment; this does. Until the acknowledgement lands, `/devices/enroll/cert` re-issues, which is what makes delivery safe to retry when a device dies between receiving a certificate and storing it. Once sealed, the enrollment is terminal: a second delivery needs an explicit re-pair, so a leaked claim token cannot be redeemed twice.
 
 ### Alerts and subscriptions
 

@@ -31,7 +31,7 @@ stateDiagram-v2
     CellularActive --> WiFiScan: periodic recheck
 ```
 
-WiFi is always tried first. Each SSID is retried up to `wifi.retries` times (default 2) before moving on. If no WiFi network is in range, the fallback AP starts a captive portal for local configuration. Cellular activates in parallel when WiFi fails.
+WiFi is always tried first. Each SSID is retried up to `wifi.retries` times (default 2) before moving on. If no WiFi network is in range, the fallback AP starts a captive portal for local configuration - provided its passphrase is usable, see below. Cellular activates in parallel when WiFi fails.
 
 ## OTA Update (OTAUpdate)
 
@@ -79,7 +79,7 @@ flowchart TD
 3. Shell command `ota.check [--force] [url]` - over serial, WebSocket, HTTP POST `/api/cmd`, or MQTT CLI topic `<prefix>/cli/ota.check`
 4. MQTT message to `ota.cmd_topic` (any payload) - defaults to `<topic_prefix>/cmd/ota`
 
-Trigger over MQTT CLI (recommended - no external scripts, response on `<prefix>/cli/response`):
+Trigger over MQTT CLI (recommended - no external scripts, response on `<prefix>/cli_response`):
 ```bash
 # use config manifest_url, version check
 mosquitto_pub ... -t '<prefix>/cli/ota.check' -m ''
@@ -118,7 +118,7 @@ Force mode bypasses `isNewer()` so dev iteration does not need a `FIRMWARE_VERSI
 
 ### MQTT CLI
 
-The primary interface for remote management. Subscribe to `<prefix>/cli/#` - the topic is the command, the payload is the arguments. Response published to `<prefix>/cli/response` as JSON.
+The primary interface for remote management. Subscribe to `<prefix>/cli/#` - the topic is the command, the payload is the arguments. Response published to `<prefix>/cli_response` as JSON.
 
 ```
 thesada/node/cli/sensors          payload: ""              -> all sensors
@@ -153,7 +153,7 @@ The legacy `cli/file.write` alias still works for older clients. See [Chunked Fi
 
 ### Dedicated triggers vs the CLI bridge
 
-`<prefix>/cmd/ota` is the only legacy dedicated trigger still wired up. Set `ota.cmd_topic` in `config.json` to enable it; any payload on the configured topic triggers an OTA check. Prefer the `cli/ota.check` path for normal use - it calls the same code path, accepts `--force`, and publishes its response to `<prefix>/cli/response` so failures are diagnosable instead of silent.
+`<prefix>/cmd/ota` is the only legacy dedicated trigger still wired up. Set `ota.cmd_topic` in `config.json` to enable it; any payload on the configured topic triggers an OTA check. Prefer the `cli/ota.check` path for normal use - it calls the same code path, accepts `--force`, and publishes its response to `<prefix>/cli_response` so failures are diagnosable instead of silent.
 
 Modules and Lua scripts can add further subscriptions via `MQTTClient::subscribe()` or `MQTT.publish()` / `EventBus.subscribe()`.
 
@@ -161,7 +161,9 @@ Modules and Lua scripts can add further subscriptions via `MQTTClient::subscribe
 
 ## HA MQTT Auto-Discovery
 
-On every MQTT connect, the firmware publishes retained discovery config messages to `homeassistant/sensor/<device_id>/...` and `homeassistant/binary_sensor/<device_id>/...`. Home Assistant picks these up automatically - no manual YAML sensor config needed.
+On every MQTT connect, the firmware publishes retained discovery config messages to `homeassistant/sensor/<node-name>/...` and `homeassistant/binary_sensor/<node-name>/...`. Home Assistant picks these up automatically - no manual YAML sensor config needed.
+
+`<node-name>` is the same identifier the MQTT clientId uses: `device.name` from `config.json` when it is set, otherwise the generated device id. It is also the value in the discovery payload's `dev.ids`, so changing `device.name` on a live device re-registers it in Home Assistant as a new device.
 
 Enabled by default. Disable with `mqtt.ha_discovery: false` in config.json.
 
@@ -231,14 +233,29 @@ Connection uptime is logged on disconnect to help diagnose patterns (consistent 
 
 ## Fallback AP (captive portal)
 
-When no configured WiFi network is in range (or none are configured), the node starts a SoftAP for local configuration. Previously the firmware would skip straight to cellular fallback - now the AP always starts first so you can configure WiFi locally.
+When no configured WiFi network is in range (or none are configured), the node starts a SoftAP for local configuration, in parallel with the cellular fallback.
 
-- **SSID:** `<device.name>-setup` (e.g. `thesada-owb-setup`)
-- **Password:** from `wifi.ap_password` (min 8 chars for WPA2; open if empty or shorter)
+- **SSID:** `<device_id>-setup` (e.g. `thesada-0123456789ab-setup`). Built from the per-device identity, not from `device.name`: the config label ships as a fixed string, so every unit off the line would broadcast the same SSID and a per-device join QR would be ambiguous the moment two units are in range.
+- **Password:** from `wifi.ap_password`, resolved NVS-first then `config.json`.
 - **Captive portal:** all DNS queries redirect to `192.168.4.1`, and unknown HTTP requests redirect to the dashboard. Phones and laptops auto-open the config page on connect.
 - **Timeout:** after `wifi.ap_timeout_s` (default 300s) the AP stops and WiFi scan retries. This cycles until WiFi connects.
 
 The web interface is fully functional in AP mode - you can view sensors, edit config, and upload firmware.
+
+### The AP refuses to start without a usable passphrase
+
+The AP is not a first-boot-only feature: it is raised on any WiFi failure for the device's whole service life, and the portal behind it writes WiFi credentials. An open or publicly-keyed AP is therefore an unauthenticated console, so the firmware fails closed rather than degrading.
+
+| Passphrase state | Result |
+|---|---|
+| absent or empty | refused, `wifi.ap_refused reason=no_password` |
+| shorter than 8 characters | refused, `wifi.ap_refused reason=default_or_short_password` |
+| the shipped `changeme` placeholder | refused, `wifi.ap_refused reason=default_or_short_password` |
+| 8 or more characters, not the placeholder | AP starts |
+
+The placeholder case is the one a length check alone would miss: `changeme` is exactly 8 characters. The refusal log carries the hint `seed via secret.set wifi.ap_password`.
+
+A unit whose passphrase was never seeded has no local recovery path short of a serial cable, so seeding is a flash-time step - see [Provisioning]({{ site.baseurl }}/firmware/provisioning.html#seed-the-fallback-ap-passphrase-at-flash-time).
 
 ```json
 "wifi": {

@@ -98,7 +98,7 @@ offset = 0
 content = ""
 loop:
   publish <prefix>/cli/fs.cat with payload "<path> <offset> 2048"
-  wait for response on <prefix>/cli/response
+  wait for response on <prefix>/cli_response
   content += response.data
   if response.done: break
   offset += response.length
@@ -221,7 +221,7 @@ mosquitto_pub -h $BROKER -u $USER -P "$PASS" \
 
 ## Concurrency
 
-The firmware's CLI dispatcher serialises per-device: every `cli/<cmd>` arrival deferred-enqueues onto a small ring, drained one slot at a time on the main loop task. Two writers cannot race inside the firmware. But the shared `cli/response` topic means a client that issues two requests without waiting for the first response cannot tell which response matches which request just from the topic.
+The firmware's CLI dispatcher serialises per-device: every `cli/<cmd>` arrival deferred-enqueues onto a small ring, drained one slot at a time on the main loop task. Two writers cannot race inside the firmware. But the shared `cli_response` topic means a client that issues two requests without waiting for the first response cannot tell which response matches which request just from the topic.
 
 Two defences at the client side:
 
