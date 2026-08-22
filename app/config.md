@@ -13,6 +13,7 @@ The platform keeps a current copy and a full change history of each device's con
 
 Detection is hash-based and reactive:
 
+<!-- claim: repo=thesada-app file=pkg/mqtt/mqtt_ingest.go match="scripts_rules_hash" why="the app reads the per-file hashes off /info" -->
 1. Every device publishes a retained `<prefix>/info` message on connect, and re-publishes it after any state-changing command (for example `config.reload`). The payload carries SHA-256 hashes of the on-disk file bytes:
    - `config_hash` - `/config.json`
    - `scripts_main_hash` - `/scripts/main.lua`
@@ -25,6 +26,7 @@ Because the firmware re-publishes `/info` right after a `config.reload`, a chang
 
 ## Pulling a changed file
 
+<!-- claim: repo=thesada-app file=pkg/mqtt/mqtt_cli.go match="config\.dump" -->
 - **config.json** is pulled with a single `config.dump` command.
 - **Lua scripts** are pulled with chunked `fs.cat` (paged reads), since a script can exceed the MQTT buffer. See [Chunked File I/O]({{ site.baseurl }}/firmware/chunked-io.html).
 

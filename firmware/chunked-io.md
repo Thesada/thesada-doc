@@ -7,6 +7,8 @@ description: "Protocol for reading and writing device files larger than the MQTT
 
 # Chunked File I/O
 
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/cli_topics.h match="CLI_TOPIC_INPUT_SEGMENT\s+\"/cli/\"" why="commands arrive on the /cli/ segment" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/Shell.cpp match="registerCommand\(\"fs\.cat\"" -->
 Device files (config, Lua scripts, SD-card log files) routinely exceed the MQTT buffer size (typically 4096 bytes). The CLI bridge defines a chunked-transfer contract for reading and writing files in slices that fit a single MQTT publish.
 
 ## Paths across filesystems
