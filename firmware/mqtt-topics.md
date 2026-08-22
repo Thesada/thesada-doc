@@ -37,7 +37,7 @@ In every section below, `<prefix>` stands for whatever this device's prefix is.
 | `<prefix>/cellular/active` | publish | no | 0 | Cellular fallback toggled on |
 | `<prefix>/cellular/rssi` | publish | no | 0 | Periodic during cellular session |
 | `<prefix>/cli/<command>` | subscribe | no | 0 | Operator CLI invocation |
-| `<prefix>/cli/response` | publish | no | 0 | Reply to a CLI invocation |
+| `<prefix>/cli_response` | publish | no | 0 | Reply to a CLI invocation |
 | `<prefix>/cmd/lua/reload` | subscribe | no | 0 | Hot-reload Lua scripts |
 | `homeassistant/<component>/<dev>/<uid>/config` | publish | yes | 0 | HA autodiscovery, once per connect |
 
@@ -88,8 +88,8 @@ Retained JSON array listing every topic this device currently retains on the bro
   "thesada/sht31/status",
   "thesada/sht31/info",
   "thesada/sht31/info/retained_topics",
-  "homeassistant/sensor/sht31/sht31_sht31_temp/config",
-  "homeassistant/sensor/sht31/sht31_sht31_humidity/config"
+  "homeassistant/sensor/thesada-dcb4d91acd28/thesada-dcb4d91acd28_sht31_temp/config",
+  "homeassistant/sensor/thesada-dcb4d91acd28/thesada-dcb4d91acd28_sht31_humidity/config"
 ]
 ```
 
@@ -170,7 +170,7 @@ JSON state events. Published on every OTA code path so operators can drive dashb
 
 ## CLI bridge
 
-The firmware subscribes to `<prefix>/cli/#` so any topic under it is treated as a command. Topic suffix is the command name; payload is the argument string. The device ignores its own `<prefix>/cli/response` output, so replies are never reprocessed as commands - this matters over cellular, where the subscription wildcard would otherwise echo every response back to the device.
+The firmware subscribes to `<prefix>/cli/#` so any topic under it is treated as a command. Topic suffix is the command name; payload is the argument string. Responses go to `<prefix>/cli_response`, which deliberately sits outside the `cli/` segment so it cannot match the input wildcard - this matters over cellular, where the broker would otherwise echo every response straight back to the device.
 
 ### Inbound: `<prefix>/cli/<command>`
 
@@ -193,7 +193,7 @@ The firmware extracts `req_id` and echoes it back on every response message, and
 
 Some commands take multi-line payloads (`fs.write`, `fs.append`, `cert.set`) and are not envelope-compatible because the binary protocol reads the raw payload directly. See the [CLI Reference](cli-reference.html) for the per-command wire contracts.
 
-### Outbound: `<prefix>/cli/response`
+### Outbound: `<prefix>/cli_response`
 
 JSON envelope with the original command, success flag, and one entry per output line.
 
@@ -223,7 +223,9 @@ When `mqtt.ha_discovery: true` in `config.json` (default), the firmware publishe
 homeassistant/<component>/<device_id>/<unique_id>/config
 ```
 
-`<component>` is the HA entity component (`sensor`, `binary_sensor`, etc - currently only `sensor` is used). `<device_id>` is the device's name from `config.json`. `<unique_id>` is per-entity, derived from the device id and a per-sensor suffix.
+`<component>` is the HA entity component (`sensor`, `binary_sensor`, etc. - currently only `sensor` is used). `<device_id>` is `Identity::deviceId()`, the id minted on first boot - never `device.name`, so renaming a device cannot orphan its entities. `<unique_id>` is per-entity, derived from that same id and a per-sensor suffix. Discovery is skipped entirely when no identity is available.
+
+Firmware before 26.08.1 keyed both on `Identity::nodeName()`, so a device that ran an earlier build has retained configs under its old name still sitting on the broker. They will show as a duplicate device in HA until they are cleared: read `<prefix>/info/retained_topics` from the older firmware, or subscribe `homeassistant/sensor/+/+/config`, then publish an empty retained payload on each stale topic.
 
 Each config payload references the sensor's state topic from the table above and an availability topic of `<prefix>/status`, so HA marks the entity unavailable when the device drops offline. Worked-out example for an SHT31 humidity sensor on a device named `sht31`:
 
@@ -231,13 +233,13 @@ Each config payload references the sensor's state topic from the table above and
 {
   "name": "SHT31 Humidity",
   "stat_t": "thesada/sht31/sensor/humidity/sht31",
-  "uniq_id": "sht31_sht31_humidity",
+  "uniq_id": "thesada-dcb4d91acd28_sht31_humidity",
   "avty_t": "thesada/sht31/status",
   "unit_of_meas": "%",
   "dev_cla": "humidity",
   "stat_cla": "measurement",
   "dev": {
-    "ids": "sht31",
+    "ids": "thesada-dcb4d91acd28",
     "name": "SHT31 Test Node",
     "mf": "Thesada",
     "sw": "x.y.z"
@@ -254,6 +256,8 @@ The firmware connects with one of:
 - **Username + password** from `config.json` `mqtt.user` / `mqtt.password`. The fallback path used by unpaired devices.
 - **mTLS client certificate** stored in NVS. When present, `cert.apply` triggers a reconnect using the cert as identity (no username, no password). The broker maps the certificate CN onto the MQTT username via `use_identity_as_username`, so the connection arrives as if the device had logged in with username = CN.
 
+Which auth the session used also decides what the `cli/` bridge will run. A certificate session reaches every command; a password session reaches only what pairing and recovery need, and anything else answers `Denied: not permitted on this connection`. See [CLI Reference](cli-reference.html#how-to-invoke-a-command).
+
 ACLs live on the broker side via the Mosquitto dynamic-security plugin. Per-device pairing creates a role scoped to `<prefix>/#` plus the device's `homeassistant/...` discovery namespace. Operators wire those out of band; the firmware does not configure ACLs.
 
 ## Putting it together
@@ -267,7 +271,7 @@ mosquitto_sub -v -t 'thesada/owb/#'
 For Home Assistant discovery on a single device:
 
 ```bash
-mosquitto_sub -v -t 'homeassistant/sensor/owb/#'
+mosquitto_sub -v -t 'homeassistant/sensor/thesada-dcb4d91acd28/#'
 ```
 
 For a tenanted multi-device deployment, the wider `thesada/#` works at the broker layer; combine with broker-side ACLs to scope by tenant.

@@ -22,7 +22,7 @@ Every shell command registered by the firmware. The same handler runs on every t
 
 **WebSocket** at `ws://<device-ip>/ws/serial`. Same line-based protocol.
 
-**MQTT** via the device's `cli/` bridge. Publish the command to `<topic_prefix>/cli/<command>`; payload is the argument string (empty for argless commands). The response lands on `<topic_prefix>/cli/response` as a JSON object.
+**MQTT** via the device's `cli/` bridge. Publish the command to `<topic_prefix>/cli/<command>`; payload is the argument string (empty for argless commands). The response lands on `<topic_prefix>/cli_response` as a JSON object.
 
 ```bash
 # argless command
@@ -32,7 +32,7 @@ mosquitto_pub -t 'thesada/owb/cli/chip.info' -m ''
 mosquitto_pub -t 'thesada/owb/cli/ota.check' -m '--force'
 
 # subscribe to the response before publishing
-mosquitto_sub -t 'thesada/owb/cli/response' -v
+mosquitto_sub -t 'thesada/owb/cli_response' -v
 ```
 
 Response shape:
@@ -48,11 +48,21 @@ Response shape:
 }
 ```
 
+Over MQTT the command surface depends on how the broker session authenticated. An mTLS session reaches every command on this page; a session on the shared password credential reaches only what pairing and recovery need:
+
+| Session auth | Command surface |
+|---|---|
+| Client certificate | every command below |
+| Password | `cert.set`, `cert.apply`, `cert.info`, `secret.set` (provisioning fields only), `restart`, `version`, `chip.info`, `heap`, and `config.set mqtt.port <1-65535>` |
+| Password, stored cert broken | additionally `cert.clear` |
+
+Anything else on a password session answers `ok: false` with `Denied: not permitted on this connection`. `config.set mqtt.port` is additionally value-checked on both session types: a value that is not a bare decimal port in 1-65535 is refused rather than stored, because `config.set` writes what it is handed and a junk port strands the device at its next reload. Serial and the WebSocket terminal are not gated.
+
 A command line longer than the MQTT 256-char buffer should be sent over the WebSocket terminal instead. The chunked file I/O commands (`fs.cat` with offset, `fs.write`) have their own MQTT contract so the wire payload stays small; see [Chunked I/O](#chunked-file-io) below.
 
 ### Request correlation
 
-Multiple in-flight CLI commands share the single `cli/response` topic. To match a response to the request that issued it, wrap the published payload in a JSON envelope with a caller-supplied `req_id`:
+Multiple in-flight CLI commands share the single `cli_response` topic. To match a response to the request that issued it, wrap the published payload in a JSON envelope with a caller-supplied `req_id`:
 
 ```json
 {"req_id": "abc-123", "args": "/sd/log042.csv 0 256"}
@@ -91,7 +101,7 @@ Binary protocols (`fs.write`, `fs.append`, `cert.set`) read the raw payload dire
 - [OTA](#ota) - ota.check, ota.status
 - [Certificates](#certificates) - cert.info, cert.apply, cert.clear
 - [Cellular](#cellular) - cell.at, cell.reset, cell.cert.test, cell.cert.dump, cell.smconn.test
-- [Boot and system](#boot-and-system) - boot.info, partitions, chip.info, sdkconfig
+- [Boot and system](#boot-and-system) - boot.info, partitions, chip.info, identity.info, identity.reset, sdkconfig
 - [Modules](#modules) - module.list, module.status
 - [Temperature](#temperature) - temp.discover
 - [LoRa](#lora) - lora.send, lora.status, lora.listen, lora.rssi
@@ -282,6 +292,8 @@ Supported fields:
 
 WiFi station passwords are stored per network, keyed by SSID - provision one entry per SSID the device should join.
 
+`wifi.ap_password` is load-bearing rather than optional: the fallback AP refuses to start without it. It is normally seeded at flash time by `scripts/flash-provision.sh`, which drives `secret.set` over the serial shell - see [Provisioning]({{ site.baseurl }}/firmware/provisioning.html#seed-the-fallback-ap-passphrase-at-flash-time).
+
 ### secret.set
 
 ```text
@@ -464,7 +476,41 @@ Full partition table dump - same data the bootloader sees. Useful for confirming
 
 ### chip.info
 
-Chip family + revision, core count, flash size, PSRAM presence and size, security e-fuses set.
+Chip family + revision, core count, flash size, PSRAM presence and size, security e-fuses set. Also prints the device id, the identity public key, and whether the device holds a client certificate, so one command tells a factory-fresh unit from a provisioned one.
+
+### identity.info
+
+The device's own identity, minted on first boot and stored in the `thesada-ident` NVS namespace.
+
+```text
+identity.info
+device_id: thesada-0123456789ab
+pubkey: 3d40f1...c7
+node_name: thesada-0123456789ab
+factory-provisioned: false
+ap_password: set
+ap_ssid: thesada-0123456789ab-setup
+```
+
+- `device_id` - `thesada-` plus 12 lowercase hex digits of the factory MAC. Stable across reboots and config resets.
+- `pubkey` - the Ed25519 public key as lowercase hex. The private half is never printed by any command.
+- `node_name` - the name used for the MQTT clientId: `device.name` from `config.json` when set, otherwise `device_id`. Home Assistant discovery does not read it; that is keyed on `device_id` alone.
+- `factory-provisioned` - `true` once the device holds an mTLS client certificate.
+- `ap_password` - the fallback AP passphrase state, one of `set`, `default`, `too-short`, `absent`. Never the value. Anything but `set` means the AP refuses to start.
+- `ap_ssid` - the SSID the fallback AP would broadcast.
+
+Both `device_id` and `pubkey` read `(none)` on a device with no identity in NVS. On a rescue build the command still reports what NVS holds and adds `minting: off (rescue build, read-only)` - rescue images drop the keypair generator to save flash, but they read the stored identity so they keep the same node name on the recovery path.
+
+### identity.reset
+
+```text
+identity.reset --yes
+identity erased - rebooting to regenerate
+```
+
+Wipes the keypair and the device id from NVS, then reboots so the next boot mints a fresh pair. The `--yes` argument is required; without it the command prints its usage line and does nothing.
+
+Destructive: the new public key is a new identity, so anything that trusted the old one has to be re-paired. A rescue build refuses the command outright (`identity: this build cannot mint - reset would leave no identity`), because erasing on an image that cannot mint would leave the unit with no identity at all.
 
 ### sdkconfig
 

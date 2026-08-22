@@ -74,16 +74,60 @@ The Telegram Bot API client now validates against Go Daddy Root G2 (baked into `
 
 `MQTTClient::validateClientCertKey` parses both PEMs and calls `mbedtls_pk_check_pair` before accepting them, so a mismatched cert + key (cert A + key B) is rejected at `cert.set` instead of failing later as an opaque TLS handshake error. Version-guarded for mbedtls 2.x and 3.x.
 
-### MQTT CLI trust model
+### MQTT CLI authorization
 
-`cli/lua.exec` runs arbitrary Lua. The Lua sandbox blocks `io`, `os`, `debug`, `package`, `require`, `dofile`, `loadfile`, `load`, and `loadstring` (nil after `luaL_openlibs`), so a broker-credential leak no longer equals `io.open("/config.json"):read("*a")` over MQTT. The safe subset is `_G`, `math`, `string`, `table`, `utf8` plus the firmware bindings (`Config`, `MQTT`, `Node`, `EventBus`, `JSON`, `Log`, optional module-provided libs).
+`MQTTClient::runCli` dispatches straight into the shell, so publish rights on a device's topic tree mean command execution. Every inbound CLI command is therefore authorized against how the broker session that carried it authenticated.
 
-MQTT broker credentials remain a sensitive surface - they still give a remote attacker the ability to push arbitrary Lua via `lua.exec` and to call any firmware binding (which can write Config, send Telegram, etc). Treat them with the same trust level as a privileged on-device shell, not full root.
+| Session auth | Command surface |
+|---|---|
+| Client certificate (mTLS) | every registered command |
+| Password (shared onboarding credential) | `cert.set`, `cert.apply`, `cert.info`, `secret.set`, `restart`, `version`, `chip.info`, `heap` |
+| Password, stored cert broken | the above plus `cert.clear` |
+| Password, `config.set` | the key `mqtt.port` only |
+| Password, `secret.set` | provisioning fields only: `mqtt.password`, `telegram.bot_token`, `web.password`, `wifi.ap_password`, `wifi.password:<ssid>` |
+| Either mode, `config.set mqtt.port` | the value must parse as a decimal port in 1-65535 |
+
+The password rows are exactly what the pairing and recovery flows need, and nothing that reads the filesystem, dumps config, or runs code - `lua.exec`, `fs.cat` and `config.dump` are out of reach on a password session. `cert.clear` opens only while the stored cert would not load or validate: a broken pair is worthless, so clearing it unstrands the device without widening anything else, and the permission closes again with the cert that granted it. `broker_url` is deliberately absent from the one writable config key: it is the repoint-to-another-broker path. Command names case-fold exactly as the shell dispatches them.
+
+The value rule sits on both rows because it is not an authorization question. `config.set` stores what it is handed, so `mqtt.port 8884}` saved verbatim strands the device at its next reload whoever sent it. A bare `config.set mqtt.port` with no value is left alone - the command answers with its usage line and writes nothing.
+
+The mode is a property of the session that spoke, frozen at dispatch rather than read when the deferred ring drains, and each transport carries its own answer: a device that failed over from a WiFi mTLS session to a cellular password session must not carry the mTLS verdict onto the password path. Password is the default in every ambiguous case. A denied command answers on `<prefix>/cli_response` with `ok: false` and `Denied: not permitted on this connection`, and logs `mqtt.cli_denied cmd=<cmd> auth=<mode>`.
+
+Serial and the HTTP/WebSocket surfaces are not gated by this: serial implies physical access, and HTTP has its own admin auth. A build with `MQTT_TLS` undefined (the local plaintext-broker escape hatch) has no per-device identity to gate on, so the gate is a no-op there.
+
+This is authorization, not device authentication. A leaked per-device certificate still gets the full surface; the CLI carries no signature and no replay protection.
+
+### Lua sandbox
+
+`cli/lua.exec` runs arbitrary Lua, and is reachable only on an mTLS session (see above). The Lua sandbox blocks `io`, `os`, `debug`, `package`, `require`, `dofile`, `loadfile`, `load`, and `loadstring` (nil after `luaL_openlibs`), so even there it is not `io.open("/config.json"):read("*a")`. The safe subset is `_G`, `math`, `string`, `table`, `utf8` plus the firmware bindings (`Config`, `MQTT`, `Node`, `EventBus`, `JSON`, `Log`, optional module-provided libs).
+
+A leaked per-device certificate is still a sensitive surface - it gives a remote attacker arbitrary Lua and any firmware binding (write Config, send Telegram, and so on). Treat one with the same trust level as a privileged on-device shell, not full root.
+
+### Device identity
+
+First boot derives a `device_id` from the full six-byte factory MAC and mints an Ed25519 keypair. Both live in their own NVS namespace, `thesada-ident`, separate from the `secret.*` store.
+
+| Property | Value |
+|---|---|
+| NVS namespace | `thesada-ident` |
+| Device id shape | `thesada-` plus 12 lowercase hex digits of the factory MAC |
+| CLI reach | `identity.info` / `chip.info` print the id and public key, `identity.reset --yes` erases the pair; no `secret.*` field maps to this namespace and nothing prints or accepts the private key |
+| Private key exposure | loaded, used, and zeroized inside the signing call; never printed by any command |
+| Rescue builds | read the stored id and key, never mint or sign |
+
+The id uses all six MAC bytes rather than a suffix, because Espressif assigns sequentially and a short suffix collides across manufacturer prefixes. Writes go secret key, public key, then id, and the load path gates on the id, so a write interrupted midway reads back as absent and regenerates cleanly rather than yielding half an identity. An all-zero key read is treated the same way.
+
+`identity.info` and `chip.info` report the id and the public key. Neither prints the private half. `identity.reset --yes` wipes the pair and reboots to mint a new one; anything that trusted the old public key has to be re-paired.
+
+Reset does not touch the mTLS client certificate. That lives in its own namespace and only `cert.clear` removes it, so a paired unit keeps broker access across an identity reset and the app must revoke the certificate separately. Reset invalidates possession proofs, not an already-issued certificate.
+
+The keypair is what proves possession when a device is claimed: the app issues a single-use challenge, the device signs it, and the holder of the public key verifies the signature. See [Web App Provisioning]({{ site.baseurl }}/app/provisioning.html).
 
 ### Captive-portal auth notes
 
-- In AP mode (fallback setup): auth is skipped entirely so the user can configure WiFi. Anyone in radio range of the AP can read/write config until the device joins a real network again.
-- Empty web credentials: if `web.user` and `web.password` are both empty in `config.json`, admin endpoints are unprotected. A warning is logged at boot.
+- The fallback AP refuses to start unless `wifi.ap_password` is present, at least 8 characters, and not the shipped `changeme` placeholder. It never falls back to an open AP. See [Connectivity]({{ site.baseurl }}/firmware/architecture/connectivity.html).
+- Admin auth is the same in AP mode as on a normal network: the portal serves the public dashboard routes, and the Config tab still needs `web.password`. Anyone who holds the AP passphrase reaches the device, which is why the passphrase is per device and seeded at flash time.
+- Default or empty `web.password` refuses the whole authenticated surface rather than opening it. `changeme`, an absent key, and an explicit `""` all count as default, and the veto beats a Bearer token too, so a token minted before a password reset cannot outlive the reset. The refusal logs `web.admin_refused reason=default_password`, throttled to one line a minute.
 
 ---
 
@@ -132,6 +176,7 @@ GitHub Actions pipeline (`.github/workflows/ci.yml`):
 | Adafruit ADS1X15 | 2.6.2 | ADS1115 ADC |
 | HTTPClient + WiFiClientSecure | built-in | OTA manifest fetch + TLS |
 | mbedtls | built-in | SHA256 verification for OTA + config drift detection |
+| libsodium | built-in | Ed25519 keypair for device identity (~97 KB of flash; compiled out of rescue builds) |
 
 > **`espressif32` 6.13.0 requires `intelhex`** in the PlatformIO Python environment (used to build the bootloader). Install once:
 > ```bash

@@ -89,7 +89,7 @@ The dedicated `cmd/config/*` topics were retired. Drive configuration through th
 
 | Check | Expected |
 |---|---|
-| Publish `telegram.cooldown_s 600` to `<prefix>/cli/config.set` | Config updated, saved to flash, reloaded; response on `<prefix>/cli/response` |
+| Publish `telegram.cooldown_s 600` to `<prefix>/cli/config.set` | Config updated, saved to flash, reloaded; response on `<prefix>/cli_response` |
 | Verify via API: `GET /api/file?path=/config.json&source=littlefs` | Value changed |
 | Push `/config.json\n<json>` via `<prefix>/cli/fs.write`, then publish empty payload to `<prefix>/cli/config.reload` | Config replaced, saved, reloaded, `/info` republishes with the new `config_hash` |
 | Push invalid JSON | Error logged, live config untouched (atomic parse-then-swap) |

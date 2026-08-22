@@ -1,0 +1,54 @@
+name: gate
+
+# The site is the spec, so a page describing the code is an assertion about
+# it. These jobs prove the assertions while a human is still looking.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: jekyll build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+      - name: build
+        run: bundle exec jekyll build --strict_front_matter --trace
+
+  style:
+    name: style rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: em dashes and forbidden words
+        run: scripts/check-style.sh
+
+  spec-drift:
+    name: spec vs code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Real source, not prose. The checker re-fetches each claimed ref anyway.
+      - uses: actions/checkout@v4
+        with:
+          repository: Thesada/thesada-fw
+          path: sources/thesada-fw
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: Thesada/thesada-app
+          path: sources/thesada-app
+          fetch-depth: 0
+      - name: verify claims
+        env:
+          SPEC_SRC_DIR: ${{ github.workspace }}/sources
+        run: python3 scripts/check-spec-drift.py

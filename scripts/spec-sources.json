@@ -1,0 +1,12 @@
+{
+  "thesada-fw": {
+    "url": "https://github.com/Thesada/thesada-fw.git",
+    "ref": "main",
+    "note": "Released firmware. Use ref=dev on a claim that describes unreleased work."
+  },
+  "thesada-app": {
+    "url": "https://github.com/Thesada/thesada-app.git",
+    "ref": "main",
+    "note": "Deployed app. Use ref=dev on a claim that describes unreleased work."
+  }
+}
