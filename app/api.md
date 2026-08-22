@@ -146,9 +146,17 @@ Every refusal on this surface is the same 403 with the same body, whatever went 
 
 Unknown device id, wrong claim token, stale or already-consumed challenge, bad signature, an already-redeemed enrollment and a spent rate-limit bucket are indistinguishable to the caller. That is deliberate: device ids are derived from sequentially assigned factory MACs, so a caller who guesses one must not be able to tell a real id from a fabricated one. The detail goes to the server log, not the response.
 
-Limits that apply to all four: request bodies are capped at 4096 bytes, 60 requests per hour per client IP, and 30 per hour per `device_id`. The client IP is taken from `X-Forwarded-For` only when the peer is inside `THESADA_TRUSTED_PROXIES`, otherwise from the connection itself.
+Rate limits, spent before anything else is judged:
 
-**POST /devices/enroll** - body `{ "device_id": ..., "pubkey": ..., "claim_token": ... }`. `pubkey` is the device's Ed25519 public key as lowercase hex; `claim_token` is the plaintext token the device also shows on its setup page. Returns a fresh challenge to sign:
+| Scope | Budget | Applies to |
+|---|---|---|
+| client IP | 60/hour | all four endpoints |
+| (`device_id`, `pubkey`) | 30/hour | all four endpoints |
+| `device_id` alone | 30/hour | announce only - the endpoint that creates rows |
+
+Request bodies are capped at 4096 bytes. The client IP is taken from `X-Forwarded-For` only when the peer is inside `THESADA_TRUSTED_PROXIES`, otherwise from the connection itself.
+
+**POST /devices/enroll** - body `{ "device_id": ..., "pubkey": ..., "claim_token": ... }`. `pubkey` is the device's Ed25519 public key as lowercase hex; `claim_token` is the plaintext claim token (the device's setup portal will surface it once the firmware enrollment client ships - the endpoints on this page are live today). Returns a fresh challenge to sign:
 
 ```json
 { "challenge": "<64 hex chars>", "expires_in": 300 }
@@ -156,11 +164,11 @@ Limits that apply to all four: request bodies are capped at 4096 bytes, 60 reque
 
 Any well-formed `device_id` and `pubkey` get a challenge, always, whatever state the enrollment is in - refusing here would answer the one question this surface must not answer, which ids are real. Re-announcing is expected and replaces the outstanding challenge, so an old one cannot be answered later. The claim token may rotate on re-announce, but only until the enrollment is verified; after that the stored token stands and the change is ignored silently.
 
-**POST /devices/enroll/verify** - body `{ "device_id": ..., "claim_token": ..., "signature": ... }`. `signature` is the Ed25519 signature over the challenge bytes, hex-encoded. Returns `{ "status": "verified" }`.
+**POST /devices/enroll/verify** - body `{ "device_id": ..., "pubkey": ..., "signature": ... }`. `signature` is the Ed25519 signature over the challenge bytes, hex-encoded. Returns `{ "status": "verified" }`.
 
-The claim token selects which enrollment row is being answered and the signature proves the caller holds that row's private key; both are required. The challenge is consumed whether or not the signature checks out, so a failed attempt burns the nonce rather than leaving it grindable for the rest of its five minutes.
+Every endpoint after announce names its row by (`device_id`, `pubkey`) - that pair is the row's identity, and a claim token never selects a row. The signature proves the caller holds the row's private key. The challenge is consumed whether or not the signature checks out, so a failed attempt burns the nonce rather than leaving it grindable for the rest of its five minutes.
 
-**POST /devices/enroll/cert** - body `{ "device_id": ..., "claim_token": ... }`. Three outcomes:
+**POST /devices/enroll/cert** - body `{ "device_id": ..., "pubkey": ..., "claim_token": ... }`. The claim token must additionally match the row - the pubkey is public, so the primary key alone is not a credential. Three outcomes:
 
 | Status | Meaning |
 |---|---|
@@ -184,7 +192,7 @@ The tenant, topic prefix, broker host and mTLS port travel with the certificate 
 
 There is no `ca_pem`. That would be the private device CA the broker uses to verify client certificates; the device verifies the broker against public roots it already carries, and handing it the device CA invites it to overwrite its own trust anchor and lose MQTT and OTA.
 
-**POST /devices/enroll/ack** - body `{ "device_id": ..., "claim_token": ... }`. Returns `{ "status": "sealed" }`, and is idempotent - a second call on an already-sealed enrollment answers the same way.
+**POST /devices/enroll/ack** - body `{ "device_id": ..., "pubkey": ..., "claim_token": ... }`. Returns `{ "status": "sealed" }`, and is idempotent - a second call on an already-sealed enrollment answers the same way.
 
 The certificate endpoint does not seal the enrollment; this does. Until the acknowledgement lands, `/devices/enroll/cert` re-issues, which is what makes delivery safe to retry when a device dies between receiving a certificate and storing it. Once sealed, the enrollment is terminal: a second delivery needs an explicit re-pair, so a leaked claim token cannot be redeemed twice.
 

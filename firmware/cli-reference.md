@@ -53,7 +53,8 @@ Over MQTT the command surface depends on how the broker session authenticated. A
 | Session auth | Command surface |
 |---|---|
 | Client certificate | every command below |
-| Password | `cert.set`, `cert.apply`, `cert.info`, `secret.set`, `restart`, `version`, `chip.info`, `heap`, and `config.set mqtt.port <1-65535>` |
+| Password | `cert.set`, `cert.apply`, `cert.info`, `secret.set` (provisioning fields only), `restart`, `version`, `chip.info`, `heap`, and `config.set mqtt.port <1-65535>` |
+| Password, stored cert broken | additionally `cert.clear` |
 
 Anything else on a password session answers `ok: false` with `Denied: not permitted on this connection`. `config.set mqtt.port` is additionally value-checked on both session types: a value that is not a bare decimal port in 1-65535 is refused rather than stored, because `config.set` writes what it is handed and a junk port strands the device at its next reload. Serial and the WebSocket terminal are not gated.
 
@@ -487,12 +488,16 @@ device_id: thesada-0123456789ab
 pubkey: 3d40f1...c7
 node_name: thesada-0123456789ab
 factory-provisioned: false
+ap_password: set
+ap_ssid: thesada-0123456789ab-setup
 ```
 
 - `device_id` - `thesada-` plus 12 lowercase hex digits of the factory MAC. Stable across reboots and config resets.
 - `pubkey` - the Ed25519 public key as lowercase hex. The private half is never printed by any command.
 - `node_name` - the name used for the MQTT clientId and the Home Assistant discovery device id: `device.name` from `config.json` when set, otherwise `device_id`.
 - `factory-provisioned` - `true` once the device holds an mTLS client certificate.
+- `ap_password` - the fallback AP passphrase state, one of `set`, `default`, `too-short`, `absent`. Never the value. Anything but `set` means the AP refuses to start.
+- `ap_ssid` - the SSID the fallback AP would broadcast.
 
 Both `device_id` and `pubkey` read `(none)` on a device with no identity in NVS. On a rescue build the command still reports what NVS holds and adds `minting: off (rescue build, read-only)` - rescue images drop the keypair generator to save flash, but they read the stored identity so they keep the same node name on the recovery path.
 

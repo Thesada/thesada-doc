@@ -161,7 +161,7 @@ Modules and Lua scripts can add further subscriptions via `MQTTClient::subscribe
 
 ## HA MQTT Auto-Discovery
 
-On every MQTT connect, the firmware publishes retained discovery config messages to `homeassistant/sensor/<node-name>/...` and `homeassistant/binary_sensor/<node-name>/...`. Home Assistant picks these up automatically - no manual YAML sensor config needed.
+On every MQTT connect, the firmware publishes retained discovery config messages to `homeassistant/sensor/<device_id>/...`, keyed on the minted identity rather than `device.name`. Home Assistant picks these up automatically - no manual YAML sensor config needed.
 
 `<node-name>` is the same identifier the MQTT clientId uses: `device.name` from `config.json` when it is set, otherwise the generated device id. It is also the value in the discovery payload's `dev.ids`, so changing `device.name` on a live device re-registers it in Home Assistant as a new device.
 

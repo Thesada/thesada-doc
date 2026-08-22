@@ -47,7 +47,9 @@ A factory-fresh device has no tenant, no owner, and no credential, so it cannot 
 
 The device's half of it rests on the identity it mints on first boot: a `device_id` derived from its factory MAC, and an Ed25519 keypair whose private half never leaves NVS. See [Firmware Provisioning]({{ site.baseurl }}/firmware/provisioning.html#device-identity).
 
-### The flow
+### Enrollment flow
+
+The app half of this flow is live. The device half - the firmware enrollment client and the setup portal that shows the claim QR and claim code - is the next firmware milestone; until it ships, devices are provisioned through the operator pair flow above.
 
 | # | Step | Actor | Endpoint or route |
 |---|---|---|---|
@@ -92,8 +94,8 @@ Multiple rows per `device_id` are therefore expected rather than a fault, bounde
 
 | Field | Source |
 |---|---|
-| Device ID | the device's setup page, e.g. `thesada-0123456789ab` |
-| Claim code | the same setup page. It rotates per session, so a rejected code means reload the device page and use the new one |
+| Device ID | the device's setup portal (planned - see the note under Enrollment flow), e.g. `thesada-0123456789ab` |
+| Claim code | the same portal. It rotates per portal session, so a rejected code means reload the device page and use the new one |
 
 It is **not** a browsable list of unclaimed devices, and that is a security decision rather than a UI preference. Enrollments have no tenant until they are claimed, so any list of them is inherently cross-tenant: showing one would let any signed-in user claim any device on the deployment the moment they know its id, and ids are guessable from a neighbouring unit. The authorization model cannot express the rule that would be wanted either, since an action is either super-admin-only or open to everyone. Requiring the claim token from the device's own setup page makes physical possession the authorization, which is the property that matters and the only one available.
 
@@ -108,7 +110,7 @@ Claims are capped per user per hour (`THESADA_DEVICE_CLAIM_MAX_PER_HOUR`, defaul
 
 The owner and the MQTT topic prefix are written at step 1 and nowhere else on this path. The prefix has to be written now because it is otherwise only ever set from the MQTT ingest path, and a device that has never published would leave it null - which yields a broker ACL that does not match what the device eventually publishes on.
 
-Step 2 failing is a hard error surfaced to the user, not a warning: without the dynsec client the device's future certificate is inert and it would silently never connect. Retrying the claim is safe - the first step is idempotent on an already-claimed row for the same tenant, and the broker calls tolerate "already exists".
+Step 2 failing is a hard error surfaced to the user, not a warning: without the dynsec client the device's future certificate is inert and it would silently never connect. Retrying the claim is safe - the first step is idempotent on a row already claimed by the same tenant and user, and the broker calls tolerate "already exists".
 
 **The certificate is not issued here.** The device fetches it itself in step 4 of the flow, which is what keeps its private key off this request path entirely.
 
@@ -176,7 +178,7 @@ The write path (publish) is always narrow: a device can only publish under its o
 
 The `cert.set` payload is `<part-type>\n<PEM>` - the part type, a newline, then the full PEM.
 
-Steps 2 to 4 and step 8 run over the shared password credential, which is exactly what the firmware's MQTT CLI allows a password session to do: `cert.set`, `cert.apply`, `cert.info`, `secret.set`, `restart`, `version`, `chip.info`, `heap`, and `config.set` on `mqtt.port` alone. Nothing that reads the filesystem, dumps config, or runs code is reachable until the device is on its own certificate. See [Firmware Security]({{ site.baseurl }}/firmware/architecture/security-deps.html#mqtt-cli-authorization).
+Steps 2 to 4 and step 8 run over the shared password credential, which reaches only the firmware's pairing allow-list: provisioning, restart and read-only board identification, plus `config.set` on `mqtt.port` alone and `cert.clear` only while the stored cert is broken. Nothing that reads the filesystem, dumps config, or runs code is reachable until the device is on its own certificate. The full command table lives in [Firmware Security]({{ site.baseurl }}/firmware/architecture/security-deps.html#mqtt-cli-authorization).
 
 A successful issue emits a `device.pair.state_change` audit log (`unpaired` -> `paired`, reason `pair_issue`) with the device, tenant, and operator email.
 

@@ -88,8 +88,8 @@ Retained JSON array listing every topic this device currently retains on the bro
   "thesada/sht31/status",
   "thesada/sht31/info",
   "thesada/sht31/info/retained_topics",
-  "homeassistant/sensor/sht31/sht31_sht31_temp/config",
-  "homeassistant/sensor/sht31/sht31_sht31_humidity/config"
+  "homeassistant/sensor/thesada-dcb4d91acd28/thesada-dcb4d91acd28_sht31_temp/config",
+  "homeassistant/sensor/thesada-dcb4d91acd28/thesada-dcb4d91acd28_sht31_humidity/config"
 ]
 ```
 
@@ -223,7 +223,9 @@ When `mqtt.ha_discovery: true` in `config.json` (default), the firmware publishe
 homeassistant/<component>/<device_id>/<unique_id>/config
 ```
 
-`<component>` is the HA entity component (`sensor`, `binary_sensor`, etc - currently only `sensor` is used). `<device_id>` is `Identity::nodeName()`: `device.name` from `config.json` when it is set, otherwise the generated device id. `<unique_id>` is per-entity, derived from the device id and a per-sensor suffix.
+`<component>` is the HA entity component (`sensor`, `binary_sensor`, etc - currently only `sensor` is used). `<device_id>` is `Identity::deviceId()`, the id minted on first boot - never `device.name`, so renaming a device cannot orphan its entities. `<unique_id>` is per-entity, derived from that same id and a per-sensor suffix. Discovery is skipped entirely when no identity is available.
+
+Firmware before 26.08.1 keyed both on `Identity::nodeName()`, so a device that ran an earlier build has retained configs under its old name still sitting on the broker. They will show as a duplicate device in HA until they are cleared: read `<prefix>/info/retained_topics` from the older firmware, or subscribe `homeassistant/sensor/+/+/config`, then publish an empty retained payload on each stale topic.
 
 Each config payload references the sensor's state topic from the table above and an availability topic of `<prefix>/status`, so HA marks the entity unavailable when the device drops offline. Worked-out example for an SHT31 humidity sensor on a device named `sht31`:
 
@@ -231,13 +233,13 @@ Each config payload references the sensor's state topic from the table above and
 {
   "name": "SHT31 Humidity",
   "stat_t": "thesada/sht31/sensor/humidity/sht31",
-  "uniq_id": "sht31_sht31_humidity",
+  "uniq_id": "thesada-dcb4d91acd28_sht31_humidity",
   "avty_t": "thesada/sht31/status",
   "unit_of_meas": "%",
   "dev_cla": "humidity",
   "stat_cla": "measurement",
   "dev": {
-    "ids": "sht31",
+    "ids": "thesada-dcb4d91acd28",
     "name": "SHT31 Test Node",
     "mf": "Thesada",
     "sw": "x.y.z"
@@ -269,7 +271,7 @@ mosquitto_sub -v -t 'thesada/owb/#'
 For Home Assistant discovery on a single device:
 
 ```bash
-mosquitto_sub -v -t 'homeassistant/sensor/owb/#'
+mosquitto_sub -v -t 'homeassistant/sensor/thesada-dcb4d91acd28/#'
 ```
 
 For a tenanted multi-device deployment, the wider `thesada/#` works at the broker layer; combine with broker-side ACLs to scope by tenant.

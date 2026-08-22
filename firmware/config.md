@@ -104,17 +104,17 @@ Within a section, individual fields are optional and fall back to the firmware's
 
 ## What is not in config.json
 
-Two things a device carries are deliberately outside `/config.json`, so a config reset or a LittleFS reformat does not take them with it.
+Three things a device carries are deliberately outside `/config.json`, so a config reset or a LittleFS reformat does not take them with it.
 
 | Item | Where it lives | Notes |
 |---|---|---|
-| Device identity: `device_id` + Ed25519 keypair | NVS namespace `thesada-ident` | Minted on first boot from the factory MAC. No `secret.*` command maps to this namespace, so the CLI cannot read or overwrite it |
+| Device identity: `device_id` + Ed25519 keypair | NVS namespace `thesada-ident` | Minted on first boot from the factory MAC. `identity.info` reads the public half, `identity.reset --yes` erases the pair; nothing reads or writes the private key |
 | mTLS client certificate + key | NVS, via `cert.set` | Separate from identity; erased by `cert.clear`, not by a config reset |
 | Secrets provisioned with `secret.set` | NVS namespace `thesada-secrets` | Write-only. Resolution is NVS first, then the matching `config.json` field, then empty |
 
 `device_id` is `thesada-` plus 12 lowercase hex digits of the full six-byte factory MAC - all six bytes, because Espressif assigns them sequentially and a short suffix collides across manufacturer prefixes. It is not settable and does not appear in `config.json`. Read it with `identity.info` or `chip.info`.
 
-`device.name` is a separate thing: an operator label, and the value the firmware prefers for the MQTT clientId and the Home Assistant discovery device id. When it is unset those fall back to `device_id`. The fallback AP SSID always uses `device_id`, never the label, because the label is not unique across units. Leave `device.name` empty unless a unit needs its own operator label: two units carrying the same label share one MQTT clientId and evict each other from the broker.
+`device.name` is a separate thing: an operator label, and the value the firmware prefers for the MQTT clientId. When it is unset the clientId falls back to `device_id`. The fallback AP SSID and the Home Assistant discovery device id always use `device_id`, never the label, because the label is neither unique across units nor stable when an operator edits it. Leave `device.name` empty unless a unit needs its own operator label: two units carrying the same label share one MQTT clientId and evict each other from the broker. With neither a label nor a minted identity the clientId would be the shared literal `thesada-node`, so the firmware keeps every broker path down and leaves only the serial shell up.
 
 ## Module activation
 
@@ -242,7 +242,7 @@ fs.rm /config.json
 restart
 ```
 
-The mTLS client cert + key live in NVS, separate from `/config.json`, so this preserves pairing. So do the device identity and any `secret.set` values, including `wifi.ap_password` - a device seeded at flash time keeps its fallback AP after a config reset, one that only ever had the passphrase in `config.json` does not. The firmware writes a fresh default config on next boot. A LittleFS reformat (`fs.format --yes`) wipes scripts too, so prefer the targeted `fs.rm` for config-only resets.
+The mTLS client cert + key live in NVS, separate from `/config.json`, so this preserves pairing. So do the device identity and any `secret.set` values, including `wifi.ap_password` - a device seeded at flash time keeps its fallback AP after a config reset, one that only ever had the passphrase in `config.json` does not. With no `/config.json` the firmware boots on built-in defaults and writes no new file until the next `config.set`. A LittleFS reformat (`fs.format --yes`) wipes scripts too, so prefer the targeted `fs.rm` for config-only resets.
 
 ### Roll back to a previous config
 

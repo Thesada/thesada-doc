@@ -82,10 +82,12 @@ The Telegram Bot API client now validates against Go Daddy Root G2 (baked into `
 |---|---|
 | Client certificate (mTLS) | every registered command |
 | Password (shared onboarding credential) | `cert.set`, `cert.apply`, `cert.info`, `secret.set`, `restart`, `version`, `chip.info`, `heap` |
+| Password, stored cert broken | the above plus `cert.clear` |
 | Password, `config.set` | the key `mqtt.port` only |
+| Password, `secret.set` | provisioning fields only: `mqtt.password`, `telegram.bot_token`, `web.password`, `wifi.ap_password`, `wifi.password:<ssid>` |
 | Either mode, `config.set mqtt.port` | the value must parse as a decimal port in 1-65535 |
 
-The password row is exactly what the pairing and recovery flows need, and nothing that reads the filesystem, dumps config, or runs code - `lua.exec`, `fs.cat`, `config.dump` and `cert.clear` are all out of reach on a password session. `broker_url` is deliberately absent from the one writable key: it is the repoint-to-another-broker path.
+The password rows are exactly what the pairing and recovery flows need, and nothing that reads the filesystem, dumps config, or runs code - `lua.exec`, `fs.cat` and `config.dump` are out of reach on a password session. `cert.clear` opens only while the stored cert would not load or validate: a broken pair is worthless, so clearing it unstrands the device without widening anything else, and the permission closes again with the cert that granted it. `broker_url` is deliberately absent from the one writable config key: it is the repoint-to-another-broker path. Command names case-fold exactly as the shell dispatches them.
 
 The value rule sits on both rows because it is not an authorization question. `config.set` stores what it is handed, so `mqtt.port 8884}` saved verbatim strands the device at its next reload whoever sent it. A bare `config.set mqtt.port` with no value is left alone - the command answers with its usage line and writes nothing.
 
@@ -109,11 +111,11 @@ First boot derives a `device_id` from the full six-byte factory MAC and mints an
 |---|---|
 | NVS namespace | `thesada-ident` |
 | Device id shape | `thesada-` plus 12 lowercase hex digits of the factory MAC |
-| CLI reach | none - no `secret.*` field maps to this namespace, so no CLI command can read or overwrite it |
+| CLI reach | `identity.info` / `chip.info` print the id and public key, `identity.reset --yes` erases the pair; no `secret.*` field maps to this namespace and nothing prints or accepts the private key |
 | Private key exposure | loaded, used, and zeroized inside the signing call; never printed by any command |
 | Rescue builds | read the stored id and key, never mint or sign |
 
-The id uses all six MAC bytes rather than a suffix, because Espressif assigns sequentially and a short suffix collides across OUIs. Writes go secret key, public key, then id, and the load path gates on the id, so a write interrupted midway reads back as absent and regenerates cleanly rather than yielding half an identity. An all-zero key read is treated the same way.
+The id uses all six MAC bytes rather than a suffix, because Espressif assigns sequentially and a short suffix collides across manufacturer prefixes. Writes go secret key, public key, then id, and the load path gates on the id, so a write interrupted midway reads back as absent and regenerates cleanly rather than yielding half an identity. An all-zero key read is treated the same way.
 
 `identity.info` and `chip.info` report the id and the public key. Neither prints the private half. `identity.reset --yes` wipes the pair and reboots to mint a new one; anything that trusted the old public key has to be re-paired.
 
