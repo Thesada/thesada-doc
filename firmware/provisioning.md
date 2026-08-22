@@ -21,7 +21,7 @@ node_name: thesada-0123456789ab
 factory-provisioned: false
 ```
 
-Nothing here is provisioned by an operator. The id is what the fallback AP SSID is built from, and the public key is what proves the device holds its private key when somebody claims it. `identity.reset --yes` is the only way to change either, and it makes the unit a stranger to anything that trusted the old key.
+Nothing here is provisioned by an operator. The id is what the fallback AP SSID is built from, and the public key is what proves the device holds its private key when somebody claims it. `identity.reset --yes` rotates the keypair, which makes the unit a stranger to anything that trusted the old key. It does not change `device_id` or the AP SSID: the id comes from the factory MAC and survives every reset.
 
 ## Seed the fallback AP passphrase at flash time
 

@@ -494,7 +494,7 @@ ap_ssid: thesada-0123456789ab-setup
 
 - `device_id` - `thesada-` plus 12 lowercase hex digits of the factory MAC. Stable across reboots and config resets.
 - `pubkey` - the Ed25519 public key as lowercase hex. The private half is never printed by any command.
-- `node_name` - the name used for the MQTT clientId and the Home Assistant discovery device id: `device.name` from `config.json` when set, otherwise `device_id`.
+- `node_name` - the name used for the MQTT clientId: `device.name` from `config.json` when set, otherwise `device_id`. Home Assistant discovery does not read it; that is keyed on `device_id` alone.
 - `factory-provisioned` - `true` once the device holds an mTLS client certificate.
 - `ap_password` - the fallback AP passphrase state, one of `set`, `default`, `too-short`, `absent`. Never the value. Anything but `set` means the AP refuses to start.
 - `ap_ssid` - the SSID the fallback AP would broadcast.

@@ -163,7 +163,7 @@ Modules and Lua scripts can add further subscriptions via `MQTTClient::subscribe
 
 On every MQTT connect, the firmware publishes retained discovery config messages to `homeassistant/sensor/<device_id>/...`, keyed on the minted identity rather than `device.name`. Home Assistant picks these up automatically - no manual YAML sensor config needed.
 
-`<node-name>` is the same identifier the MQTT clientId uses: `device.name` from `config.json` when it is set, otherwise the generated device id. It is also the value in the discovery payload's `dev.ids`, so changing `device.name` on a live device re-registers it in Home Assistant as a new device.
+`<device_id>` is the minted identity, and the same value fills the discovery payload's `dev.ids` and each `uniq_id`. It is deliberately not `device.name`: the MQTT clientId reads that label, discovery does not, so renaming a live device no longer re-registers it in Home Assistant as a new one.
 
 Enabled by default. Disable with `mqtt.ha_discovery: false` in config.json.
 

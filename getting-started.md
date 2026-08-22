@@ -204,8 +204,10 @@ mosquitto_sub --cafile mosquitto.org.crt -h test.mosquitto.org -p 8883 \
 
 ```text
 thesada/demo/s3-01/status   online
-thesada/demo/s3-01/info     {"firmware_version":"<version>","hardware_type":"esp32-s3","board":"s3-bare","chip_model":"esp32-s3","chip_revision":0,"chip_cores":2,"mac":"01:23:45:67:89:ab","psram":true,"build_time":"Jan  1 2026 12:00:00","config_hash":"<sha256>","scripts_main_hash":"<sha256>","scripts_rules_hash":"<sha256>"}
+thesada/demo/s3-01/info     {"firmware_version":"<version>","hardware_type":"esp32-s3","board":"s3-bare","chip_model":"esp32-s3","chip_revision":0,"chip_cores":2,"mac":"<mac>","psram":true,"build_time":"Jan  1 2026 12:00:00","config_hash":"<sha256>","scripts_main_hash":"<sha256>","scripts_rules_hash":"<sha256>"}
 ```
+
+The `mac` field is shown as a placeholder deliberately. `test.mosquitto.org` is unauthenticated and world-readable, and `device_id` is derived from that MAC, so a real device pointed at a public broker publishes its identity to anyone watching. Use a private broker and a prefix of your own for anything but this demo.
 
 A retained `online` on `.../status` plus an `.../info` payload confirm the device is
 connected and publishing. Telemetry (heap, MQTT state, and SHT31 readings if the

@@ -112,6 +112,7 @@ def read_at_ref(repo_dir, ref, path):
 
 def parse_claim(raw, where):
     fields = {}
+    consumed = []
     for m in KV_RE.finditer(raw):
         key = m.group(1)
         val = m.group(2) if m.group(2) is not None else m.group(3)
@@ -120,6 +121,19 @@ def parse_claim(raw, where):
         if key in fields:
             raise Broken(f"{where}: duplicate key {key!r}")
         fields[key] = val
+        consumed.append(m.span())
+
+    # Anything the key=value scan did not consume is a typo, and a typo that
+    # silently drops an assertion (`match=` with no value) downgrades the claim
+    # to a file-exists check while still reporting success.
+    leftover, last = [], 0
+    for start, end in consumed:
+        leftover.append(raw[last:start])
+        last = end
+    leftover.append(raw[last:])
+    junk = "".join(leftover).strip()
+    if junk:
+        raise Broken(f"{where}: unparsed text in claim: {junk[:60]!r}")
 
     unknown = set(fields) - KNOWN_KEYS
     if unknown:
@@ -143,9 +157,15 @@ def check_claim(fields, where, sources, fetched):
     key = (repo, ref)
     if key not in fetched:
         # Fetch once per (repo, ref). A sibling checkout can be arbitrarily
-        # stale, and a gate that passes on stale code is not a gate.
-        git(["fetch", "--quiet", spec["url"], f"+{ref}:refs/spec-drift/{repo}/{ref}"],
-            cwd=repo_dir)
+        # stale, and a gate that passes on stale code is not a gate - so a
+        # failed fetch must not fall through to whatever a previous run left
+        # in refs/spec-drift.
+        r = git(["fetch", "--quiet", spec["url"], f"+{ref}:refs/spec-drift/{repo}/{ref}"],
+                cwd=repo_dir)
+        if r.returncode != 0:
+            raise Broken(
+                f"cannot fetch {ref!r} from {repo}: {r.stderr.strip().splitlines()[-1:]}"
+            )
         fetched[key] = f"refs/spec-drift/{repo}/{ref}"
     resolved = fetched[key]
 

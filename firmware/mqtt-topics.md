@@ -223,7 +223,7 @@ When `mqtt.ha_discovery: true` in `config.json` (default), the firmware publishe
 homeassistant/<component>/<device_id>/<unique_id>/config
 ```
 
-`<component>` is the HA entity component (`sensor`, `binary_sensor`, etc - currently only `sensor` is used). `<device_id>` is `Identity::deviceId()`, the id minted on first boot - never `device.name`, so renaming a device cannot orphan its entities. `<unique_id>` is per-entity, derived from that same id and a per-sensor suffix. Discovery is skipped entirely when no identity is available.
+`<component>` is the HA entity component (`sensor`, `binary_sensor`, etc. - currently only `sensor` is used). `<device_id>` is `Identity::deviceId()`, the id minted on first boot - never `device.name`, so renaming a device cannot orphan its entities. `<unique_id>` is per-entity, derived from that same id and a per-sensor suffix. Discovery is skipped entirely when no identity is available.
 
 Firmware before 26.08.1 keyed both on `Identity::nodeName()`, so a device that ran an earlier build has retained configs under its old name still sitting on the broker. They will show as a duplicate device in HA until they are cleared: read `<prefix>/info/retained_topics` from the older firmware, or subscribe `homeassistant/sensor/+/+/config`, then publish an empty retained payload on each stale topic.
 

@@ -119,6 +119,8 @@ The id uses all six MAC bytes rather than a suffix, because Espressif assigns se
 
 `identity.info` and `chip.info` report the id and the public key. Neither prints the private half. `identity.reset --yes` wipes the pair and reboots to mint a new one; anything that trusted the old public key has to be re-paired.
 
+Reset does not touch the mTLS client certificate. That lives in its own namespace and only `cert.clear` removes it, so a paired unit keeps broker access across an identity reset and the app must revoke the certificate separately. Reset invalidates possession proofs, not an already-issued certificate.
+
 The keypair is what proves possession when a device is claimed: the app issues a single-use challenge, the device signs it, and the holder of the public key verifies the signature. See [Web App Provisioning]({{ site.baseurl }}/app/provisioning.html).
 
 ### Captive-portal auth notes
