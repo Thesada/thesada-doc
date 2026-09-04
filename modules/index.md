@@ -1,13 +1,13 @@
 ---
 title: Modules
 nav_order: 5
-description: "Thesada sensor modules - OWB monitor, SHT31 monitor, well pump monitor. Wiring, BOM, and configuration for each."
+description: "Applications built on the Thesada framework - OWB monitor, SHT31 monitor, well pump monitor. Wiring, BOM, and configuration for each."
 has_children: true
 ---
 
 # Modules
 
-Each Thesada module monitors a specific system on the property. Select a module below for wiring diagrams, BOM, and config.
+These are applications built on the framework, each one a module that adds its sensors and alert rules on top of the shared firmware rather than forking it. They double as worked references for building your own. Select a module below for wiring diagrams, BOM, and config.
 
 ---
 

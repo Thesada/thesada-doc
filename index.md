@@ -2,19 +2,21 @@
 layout: home
 title: Home
 nav_order: 1
-description: "Open-source ESP32 property monitoring platform - firmware, MQTT, cellular fallback, Lua scripting, and hardware documentation."
+description: "Modular ESP32 firmware framework for production IoT products - OTA with rollback, telemetry, runtime config, MQTT, Lua."
 ---
 
 # Thesada Documentation
 
-Thesada is an open-source modular property monitoring platform built on ESP32 hardware with custom C++ firmware, MQTT over TLS, cellular fallback, and Lua scripting. Designed for rural and off-grid deployments where reliability matters.
+Thesada is an open-source modular ESP32 firmware framework for building production IoT products. Custom C++ firmware gives you OTA with rollback, telemetry, runtime config, multi-board support, MQTT over TLS, cellular fallback, a remote shell, and a Lua runtime, so a new product is a module rather than a fork.
 
-## What it does
+Property monitoring is the example application it grew out of, and the module pages below document that build.
 
-- **Monitors** - temperature (DS18B20, SHT31), current (ADS1115 + CT clamp), battery voltage and charge state
+## What the framework gives you
+
+- **Sensors** - drivers for temperature (DS18B20, SHT31), current (ADS1115 + CT clamp), battery voltage and charge state
 - **Alerts** - Lua-defined alert rules with sustain, cooldown, and hysteresis via MQTT, Telegram, or webhook
 - **Logs** - CSV data to SD card, logrotate included
-- **Updates** - over-the-air over WiFi or cellular, via HTTP push or pull (TLS-verified, SHA256 checked, PROGMEM CA fallback)
+- **Updates** - over-the-air over WiFi or cellular, with rollback on a failed boot; HTTP push or pull (TLS-verified, SHA256 checked, PROGMEM CA fallback)
 - **Scripted** - Lua 5.3 runtime for custom rules without recompiling
 
 ## Where to start
