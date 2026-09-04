@@ -15,7 +15,6 @@ theme: just-the-docs
 plugins:
   - jekyll-seo-tag
   - jekyll-feed
-  - jekyll-remote-theme
 
 search_enabled: true
 heading_anchors: true

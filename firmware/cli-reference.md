@@ -232,7 +232,7 @@ Write one key, save to flash, reload in-place.
 
 ```text
 config.set mqtt.broker "mqtt.example.com"
-config.set sleep.deep_sleep_minutes 15
+config.set sleep.sleep_s 900
 config.set telegram.enabled false
 ```
 
@@ -576,7 +576,7 @@ Run a Lua file from LittleFS. `lua.load /scripts/test.lua`.
 
 ### lua.reload
 
-Re-load every script under `/scripts/` in load order (`alerts.lua`, `rules.lua`, `display.lua` where present). Used after `fs.write` or a config update; no reboot needed.
+Re-runs `/scripts/main.lua` then `/scripts/rules.lua`, in that order, after re-creating the Lua state. Any other file needs an explicit `lua.load`. Used after `fs.write` or a config update; no reboot needed.
 
 ## Chunked file I/O
 

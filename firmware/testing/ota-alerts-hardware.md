@@ -156,7 +156,6 @@ Both files should appear in `fs.ls /sd/`. Reset `max_file_kb` to `1024` when don
 | Check | Expected |
 |---|---|
 | `sensors` command | Battery line: `batt  X.XXV  XX%  [CHG/DSG]` |
-| `battery` command | `X.XXV  XX%  charging/discharging` |
 | `module.status` | `battery  pmu=ok  present=yes` |
 | `/api/state` includes `battery` object | `{"present":true,"voltage_v":X.XX,"percent":XX,"charging":false}` |
 | Dashboard shows Battery %, V, Charge State | Three rows in sensor table |

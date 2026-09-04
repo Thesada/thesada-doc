@@ -94,7 +94,7 @@ If `/config.json` is missing on first boot, the firmware writes a minimal defaul
   "sd": { "enabled": true, "pin_clk": 38, "pin_cmd": 39, "pin_data": 40, "max_file_kb": 1024 },
   "pwm": { "enabled": true, "pin": 16, "frequency_hz": 25000, "channel": 0, "resolution": 8 },
   "lora": { "enabled": true, "freq_mhz": 915, "bw_khz": 125, "sf": 9, "cr": 7, "tx_power_dbm": 14 },
-  "sleep": { "deep_sleep_minutes": 0 }
+  "sleep": { "enabled": false, "sleep_s": 300, "wake_s": 60 }
 }
 ```
 
@@ -162,7 +162,7 @@ Two modes: scalar update via `config.set`, or whole-file push via `fs.write`.
 
 ```text
 config.set mqtt.broker "<broker-host>"
-config.set sleep.deep_sleep_minutes 15
+config.set sleep.sleep_s 900
 config.set telegram.cooldown_s 600
 ```
 

@@ -25,7 +25,7 @@ A temperature and humidity monitoring node built on the Freenove ESP32-S3 WROOM 
 - `<prefix>/sensor/temperature/sht31` - temperature reading
 - `<prefix>/sensor/humidity/sht31` - humidity reading
 
-**Shell command:** `sht31` - live reading
+**Shell command:** `sensors sht31` - live reading
 
 **Config:**
 ```json
