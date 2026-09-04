@@ -53,7 +53,7 @@ pio run -e esp32-s3-debug --target uploadfs
 
 Shell command:
 ```
-sht31
+sensors sht31
 19.7C  57.8%
 ```
 

@@ -179,7 +179,7 @@ Plain payload form (works on every firmware version):
 ```bash
 mosquitto_pub -t 'thesada/owb/cli/chip.info' -m ''
 mosquitto_pub -t 'thesada/owb/cli/ota.check' -m '--force'
-mosquitto_pub -t 'thesada/owb/cli/config.set' -m 'sleep.deep_sleep_minutes 15'
+mosquitto_pub -t 'thesada/owb/cli/config.set' -m 'sleep.sleep_s 900'
 ```
 
 Envelope form, useful when multiple CLI commands are in flight against the same device:

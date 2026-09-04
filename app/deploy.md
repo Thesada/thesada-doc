@@ -82,7 +82,7 @@ With no subcommand the binary starts the long-running server.
 
 ## Configuration
 
-Secrets reach the app through the environment only. With Compose they live in `app.env` and `db.env` (mode `0640`); the standalone binary reads them from its process environment.
+Secrets reach the app through the environment only. With Compose they live in `app.env` and `db.env` (mode `0600`, which is what `startup.sh` chmods them to); the standalone binary reads them from its process environment.
 
 | Variable | Purpose |
 |---|---|

@@ -53,7 +53,7 @@ The `module.status` and `selftest` commands call `Module::status()` and `Module:
 | `heap` | Free, min free, max alloc bytes |
 | `uptime` | Days + HH:MM:SS |
 | `sensors` | All configured sensors with addresses/pins/mux/gain + battery reading |
-| `battery` | Voltage, percent, charging state |
+| `sensors battery` | Voltage, percent, charging state |
 | `sleep` | Sleep enabled/disabled, boot count, wake/sleep times, last OTA check |
 | `selftest` | 10-point check with pass/fail/warn per item |
 | `fs.ls [path]` | Directory listing with file sizes |
