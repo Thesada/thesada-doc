@@ -44,6 +44,10 @@ This page is a tour of each admin area.
 - Write a file (config or script) back to the device.
 - Snapshot the assembled content and browse the version history.
 
+### Device secrets
+
+`/admin/devices/{id}/secrets` holds the per-device overrides for the write-only secret fields (`mqtt.password`, `telegram.bot_token`, `web.password`, `wifi.ap_password`, per-SSID WiFi passwords). Values are encrypted at rest and never displayed; the page shows two columns, **Stored** (the app store) and **Device** (the live NVS state, read over MQTT when the device answers). Setting a field stores it. **Provision to device** pushes every stored value to an already-paired device over MQTT, and **Clear** drops an override so the device falls back to the tenant default at the next provision. The same page exists per tenant at `/admin/tenants/{slug}/secrets` for the defaults. Use this page rather than the CLI box on the config workspace: `secret.set` is a raw `<field>\n<value>` payload with no JSON envelope, which that box cannot send. The whole feature is off until `THESADA_DEVICE_CONFIG_KEK` is set, see [Deployment]({{ site.baseurl }}/app/deploy.html).
+
 ## MQTT shell
 
 `/admin/mqtt` is a live broker shell: subscribe to topics and publish messages over a WebSocket, on the same broker connection as the ingest pipeline. Useful for inspecting raw device traffic.

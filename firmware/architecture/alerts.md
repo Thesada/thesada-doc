@@ -82,10 +82,12 @@ local function can_alert(key)
   return true
 end
 
-local function notify(msg)
+local function notify(code, severity, msg)
   Log.warn(msg)
   Telegram.broadcast(msg)
-  MQTT.publish(prefix .. "/alert", msg)
+  MQTT.publish(prefix .. "/alert", string.format(
+    '{"severity":"%s","code":"%s","message":"%s"}',
+    severity, code, (msg:gsub('"', "'"))))
 end
 
 -- Temperature: sustained low temp alert
@@ -95,7 +97,7 @@ EventBus.subscribe("temperature", function(data)
     if s.name == "House Supply" and s.temp_c <= 55 then
       sustain[key] = (sustain[key] or 0) + 1
       if sustain[key] >= TEMP_SUSTAIN and can_alert(key) then
-        notify(s.name .. ": " .. s.temp .. unit .. " - Low temp")
+        notify("low_temp", "warn", s.name .. ": " .. s.temp .. unit .. " - Low temp")
         sustain[key] = 0
       end
     else
@@ -108,11 +110,13 @@ end)
 EventBus.subscribe("battery", function(data)
   if data.present and data.percent <= 20 and not data.charging then
     if can_alert("battery_low") then
-      notify("Battery low: " .. data.percent .. "%")
+      notify("battery_low", "warn", "Battery low: " .. data.percent .. "%")
     end
   end
 end)
 ```
+
+The envelope matters: the platform keeps only JSON alerts with `severity` in `info`, `warn` or `crit` and reads `code` and `message` from them. A plain-string publish still reaches Telegram and the log, but the platform drops it at ingest. There is no `JSON.encode` binding, so the string is built by hand; the `gsub` keeps a stray double quote in the message from breaking the JSON.
 
 **EventBus data format (temperature):**
 

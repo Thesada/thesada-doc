@@ -8,6 +8,6 @@ description: "thesada-fw firmware architecture - self-registering modules, Event
 
 # Firmware Architecture
 
-`thesada-fw` is built on C++17 with the Arduino framework, compiled via PlatformIO for multiple ESP32 board targets. It uses self-registering modules with priority-based boot ordering and a lightweight **Event Bus** for inter-module communication.
+`thesada-fw` is built on C++14 (`gnu++14`) with the Arduino framework, compiled via PlatformIO for multiple ESP32 board targets. It uses self-registering modules with priority-based boot ordering and a lightweight **Event Bus** for inter-module communication.
 
 This section is split into sub-pages for easier navigation.
