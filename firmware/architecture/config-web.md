@@ -2,7 +2,7 @@
 title: Config & Web UI
 parent: Architecture
 grand_parent: Firmware
-nav_order: 6
+nav_order: 7
 description: "Compile-time config.h, runtime config.json, web dashboard, SD card logging, and log format."
 ---
 

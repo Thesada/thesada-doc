@@ -2,7 +2,7 @@
 title: Connectivity & OTA
 parent: Architecture
 grand_parent: Firmware
-nav_order: 4
+nav_order: 5
 description: "WiFi, cellular fallback, MQTT over TLS, OTA updates, CA certificate management, and MQTT subscriptions."
 ---
 

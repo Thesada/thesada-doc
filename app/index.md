@@ -1,6 +1,6 @@
 ---
 title: Web App
-nav_order: 4
+nav_order: 5
 has_children: true
 description: "thesada-app - the web application for managing devices: tenants, telemetry, alerts, config management, and the /api/v1 surface."
 ---

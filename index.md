@@ -22,6 +22,8 @@ Property monitoring is the example application it grew out of, and the module pa
 ## Where to start
 
 - [Getting started]({{ site.baseurl }}/getting-started.html) - flash a board and publish in 30 minutes
+- [Build your first module]({{ site.baseurl }}/tutorials/first-module.html) - a sensor of your own, on MQTT, with a Lua rule reacting to it
+- [Why this way]({{ site.baseurl }}/firmware/architecture/why-this-way.html) - the design decisions, as opinions
 - [Firmware architecture]({{ site.baseurl }}/firmware/)
 - [Modules]({{ site.baseurl }}/modules/)
 - [Web App]({{ site.baseurl }}/app/)

@@ -2,7 +2,7 @@
 title: Alerts & Webhook
 parent: Architecture
 grand_parent: Firmware
-nav_order: 5
+nav_order: 6
 description: "Lua-driven alerting with sustain, cooldown, and three output channels (MQTT, Telegram, webhook)."
 ---
 

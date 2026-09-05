@@ -2,7 +2,7 @@
 title: Security & Dependencies
 parent: Architecture
 grand_parent: Firmware
-nav_order: 7
+nav_order: 8
 description: "HTTP auth, rate limiting, WebSocket auth flow, adding new modules, and library dependency list."
 ---
 
