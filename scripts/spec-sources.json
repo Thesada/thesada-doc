@@ -2,7 +2,16 @@
   "thesada-fw": {
     "url": "https://github.com/Thesada/thesada-fw.git",
     "ref": "main",
-    "note": "Released firmware. Use ref=dev on a claim that describes unreleased work."
+    "note": "Released firmware. Use ref=dev on a claim that describes unreleased work.",
+    "deployed": {
+      "manifest": "https://ota.thesada.app/latest/firmware-{board}.json",
+      "boards": [
+        "owb",
+        "s3bare",
+        "carrier"
+      ],
+      "note": "Fleet channels a deployed= claim is checked against. owb-debug is the bench channel and lags on purpose."
+    }
   },
   "thesada-app": {
     "url": "https://github.com/Thesada/thesada-app.git",
