@@ -25,6 +25,7 @@ Property monitoring is the example application it grew out of, and the module pa
 - [Build your first module]({{ site.baseurl }}/tutorials/first-module.html) - a sensor of your own, on MQTT, with a Lua rule reacting to it
 - [Why this way]({{ site.baseurl }}/firmware/architecture/why-this-way.html) - the design decisions, as opinions
 - [Firmware architecture]({{ site.baseurl }}/firmware/)
+- [Examples]({{ site.baseurl }}/examples/) - the starter modules, walked through
 - [Modules]({{ site.baseurl }}/modules/)
 - [Web App]({{ site.baseurl }}/app/)
 - [Source code](https://github.com/Thesada/thesada-fw)

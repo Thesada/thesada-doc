@@ -1,6 +1,6 @@
 ---
 title: Modules
-nav_order: 6
+nav_order: 7
 description: "Applications built on the Thesada framework - OWB monitor, SHT31 monitor, well pump monitor. Wiring, BOM, and configuration for each."
 has_children: true
 ---
