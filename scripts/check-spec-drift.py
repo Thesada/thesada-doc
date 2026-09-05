@@ -18,6 +18,10 @@ Keys:
     ref     optional, git ref to read (default: the repo's ref in the map)
     match   optional, Python regex that MUST appear in the file
     absent  optional, Python regex that MUST NOT appear in the file
+    deployed optional, CalVer YY.0M.MICRO; every fleet channel in the repo's
+            `deployed` map must offer at least this version, read live from
+            the OTA manifests. A ref proves the code exists; this proves it
+            ships. Only repos with a `deployed` map accept it.
     why     optional, free text, ignored by the checker, read by humans
 
 With neither match nor absent, the claim asserts only that the file exists.
@@ -38,6 +42,8 @@ import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -50,7 +56,8 @@ CLAIM_RE = re.compile(r"<!--\s*claim:\s*(.*?)\s*-->", re.DOTALL)
 # hold spaces and equals signs.
 KV_RE = re.compile(r'(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|(\S+))')
 
-KNOWN_KEYS = {"repo", "file", "ref", "match", "absent", "why"}
+KNOWN_KEYS = {"repo", "file", "ref", "match", "absent", "deployed", "why"}
+CALVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 
 
 class Fail(Exception):
@@ -144,7 +151,7 @@ def parse_claim(raw, where):
     return fields
 
 
-def check_claim(fields, where, sources, fetched):
+def check_claim(fields, where, sources, fetched, manifests):
     repo = fields["repo"]
     if repo not in sources:
         raise Broken(f"{where}: unknown repo {repo!r}, add it to spec-sources.json")
@@ -194,6 +201,53 @@ def check_claim(fields, where, sources, fetched):
                 "which this page says is not there"
             )
 
+    if "deployed" in fields:
+        check_deployed(fields, where, spec, manifests)
+
+
+def calver(text, where):
+    """YY.0M.MICRO as a comparable tuple. Anything else cannot be compared."""
+    m = CALVER_RE.match(text.strip())
+    if not m:
+        raise Broken(f"{where}: {text!r} is not a CalVer YY.0M.MICRO version")
+    return tuple(int(g) for g in m.groups())
+
+
+def fetch_manifest(url, manifests):
+    """Live OTA manifest as a dict. Unreachable is Broken, never a pass."""
+    if url in manifests:
+        return manifests[url]
+    try:
+        with urllib.request.urlopen(url, timeout=10) as r:
+            data = json.loads(r.read().decode("utf-8"))
+    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as e:
+        raise Broken(f"cannot read OTA manifest {url}: {e}")
+    if "version" not in data:
+        raise Broken(f"OTA manifest {url} carries no version field")
+    manifests[url] = data
+    return data
+
+
+def check_deployed(fields, where, spec, manifests):
+    """Every fleet channel must offer at least the claimed version."""
+    dep = spec.get("deployed")
+    if not dep:
+        raise Broken(f"{where}: repo {fields['repo']!r} has no deployed map in spec-sources.json")
+    if not isinstance(dep.get("boards"), list) or not isinstance(dep.get("manifest"), str):
+        raise Broken(f"{where}: deployed map for {fields['repo']!r} needs a manifest template and a boards list")
+    want = calver(fields["deployed"], where)
+    behind = []
+    for board in dep["boards"]:
+        url = dep["manifest"].format(board=board)
+        live = fetch_manifest(url, manifests)
+        if calver(str(live["version"]), url) < want:
+            behind.append(f"{board}={live['version']}")
+    if behind:
+        raise Fail(
+            f"claims firmware {fields['deployed']} is deployed, but the fleet offers "
+            + ", ".join(behind)
+        )
+
 
 def markdown_files():
     """Readable tracked markdown. Some pages are symlinks into a private repo,
@@ -218,7 +272,7 @@ def main():
         return 2
 
     failures, broken, checked = [], [], 0
-    fetched = {}
+    fetched, manifests = {}, {}
 
     for path in markdown_files():
         text = path.read_text(encoding="utf-8")
@@ -229,7 +283,7 @@ def main():
             checked += 1
             try:
                 fields = parse_claim(m.group(1), where)
-                check_claim(fields, where, sources, fetched)
+                check_claim(fields, where, sources, fetched, manifests)
             except Fail as e:
                 failures.append((where, str(e)))
             except Broken as e:
