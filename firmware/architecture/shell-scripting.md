@@ -2,7 +2,7 @@
 title: Shell & Scripting
 parent: Architecture
 grand_parent: Firmware
-nav_order: 2
+nav_order: 3
 description: "Unified CLI across serial, WebSocket, HTTP, and MQTT. Lua 5.3 scripting with hot-reloadable event rules."
 ---
 

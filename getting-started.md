@@ -230,11 +230,15 @@ sensor is attached) follows on its own topics.
 
 You now have a device that boots, connects, and publishes. From here:
 
-- [Write your own alert rules]({{ site.baseurl }}/firmware/lua-scripting/) - the Lua
+- [Build your first module]({{ site.baseurl }}/tutorials/first-module.html) - a sensor
+  module of your own, publishing to MQTT, with a Lua rule reacting to it.
+- [Why this way]({{ site.baseurl }}/firmware/architecture/why-this-way.html) - the
+  design decisions behind the firmware, stated as opinions.
+- [Write your own alert rules]({{ site.baseurl }}/firmware/lua-scripting.html) - the Lua
   runtime lets you add rules without recompiling.
-- [Provisioning]({{ site.baseurl }}/firmware/provisioning/) - the serial-console and
+- [Provisioning]({{ site.baseurl }}/firmware/provisioning.html) - the serial-console and
   over-MQTT paths for configuring a device.
-- [Config Management]({{ site.baseurl }}/firmware/config/) - the full `config.json`
+- [Config Management]({{ site.baseurl }}/firmware/config.html) - the full `config.json`
   schema.
 - [Modules]({{ site.baseurl }}/modules/) - what each hardware module does and how to
   enable it.

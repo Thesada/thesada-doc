@@ -2,7 +2,7 @@
 title: Power & Sleep
 parent: Architecture
 grand_parent: Firmware
-nav_order: 3
+nav_order: 4
 description: "AXP2101 PMU management, battery charging config, heartbeat LED, and deep sleep with RTC memory persistence."
 ---
 
