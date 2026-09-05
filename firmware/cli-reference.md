@@ -96,10 +96,11 @@ Binary protocols (`fs.write`, `fs.append`, `cert.set`) read the raw payload dire
 
 - [Core](#core) - help, version, restart, heap, uptime, sensors, selftest, sleep, console.mode
 - [Filesystem](#filesystem) - fs.ls, fs.cat, fs.rm, fs.write, fs.append, fs.mv, fs.df, fs.format
-- [Config](#config) - config.get, config.set, config.save, config.reload, config.dump
+- [Config](#config) - config.get, config.set, config.del, config.save, config.reload, config.dump
+- [Secrets](#secrets) - secret.set, secret.info, secret.clear
 - [Network](#network) - net.ip, net.ping, net.ntp, net.mqtt, net.http
 - [OTA](#ota) - ota.check, ota.status
-- [Certificates](#certificates) - cert.info, cert.apply, cert.clear
+- [Certificates](#certificates) - cert.set, cert.info, cert.apply, cert.clear
 - [Cellular](#cellular) - cell.at, cell.reset, cell.cert.test, cell.cert.dump, cell.smconn.test
 - [Boot and system](#boot-and-system) - boot.info, partitions, chip.info, identity.info, identity.reset, sdkconfig
 - [Modules](#modules) - module.list, module.status
@@ -400,6 +401,17 @@ Prints partition layout (running slot vs target slot), rollback state, last OTA 
 
 Per-device mTLS client certificate stored in NVS, separate from `config.json` so a factory reset of config does not wipe the cert. PEM-encoded; ECDSA P-256 keys + certs fit comfortably in the 4000-byte NVS blob limit.
 
+### cert.set
+
+MQTT only, binary protocol: no JSON envelope, no `req_id`. The payload is the type, a newline, then the PEM:
+
+```text
+<type>\n<PEM>      type: client_cert | client_key
+```
+
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/MQTTClient.cpp match="type: client_cert\|client_key" -->
+Push the two halves as two publishes. Each is stored in NVS on its own and answered with `Client cert stored in NVS` or `Client key stored in NVS`; a payload without the newline, a type longer than 31 bytes, or a PEM of 4000 bytes or more is refused with the reason in `output`. `cert.set` does not check that the two halves belong together: the pair check runs when the next session loads them, after `cert.apply`, and a key that is not the private half of the cert is dropped there rather than handed to the TLS stack. `cert.info` shows which half is still missing. Nothing reconnects until `cert.apply`.
+
 ### cert.info
 
 Show stored cert metadata: CN, serial number (hex), notBefore, notAfter, issuer CN, and live status (inactive / active / about to expire).
@@ -588,12 +600,20 @@ Two commands accept large payloads via a chunked MQTT contract so the wire stays
 Read example, pulling an 80 KB file in 4 KB chunks:
 
 ```bash
+prefix=thesada/owb
 offset=0
 while :; do
-  resp=$(mosquitto_pub -t 'thesada/owb/cli/fs.cat' -m "/scripts/main.lua $offset 4096")
-  # ... parse JSON, append data, advance offset by length, stop when done==true
+  req=$(uuidgen)
+  mosquitto_sub -C 1 -W 10 -t "$prefix/cli_response" > resp.json &
+  sleep 0.2
+  mosquitto_pub -t "$prefix/cli/fs.cat" \
+    -m "{\"req_id\":\"$req\",\"args\":\"/scripts/main.lua $offset 4096\"}"
+  wait
+  # resp.json: check req_id == $req, append data, advance offset by length, stop when done==true
 done
 ```
+
+`mosquitto_pub` returns nothing; the response arrives on `<prefix>/cli_response`, so the subscriber has to be listening before the publish. The `req_id` is what tells this response apart from any other in flight, see [Request correlation](#request-correlation).
 
 The response envelope:
 

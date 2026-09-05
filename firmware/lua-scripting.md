@@ -11,7 +11,7 @@ description: "Lua 5.3 runtime for thesada-fw - alert rules, MQTT bridges, displa
 
 ## What you get
 
-- **Lua 5.3** with the standard `math`, `table`, `string`, `io` libraries explicitly loaded.
+- **Lua 5.3** with the standard `math`, `table` and `string` libraries explicitly loaded. `io`, `os`, `debug` and `package` are nil, see [Stdlib sandbox](#stdlib-sandbox).
 - **Hot reload**: `lua.reload` re-runs every script on the fly, dropping all subscriptions and timers from the previous generation cleanly.
 - **Up to 8 concurrent timers** via `Node.setTimeout`.
 - **Full MQTT publish + subscribe** with per-callback isolation.
@@ -294,7 +294,7 @@ If a script has a syntax error or runtime error during top-level execution, the 
 
 - **Heap pressure**. The Lua state itself costs ~30 KB plus per-script overhead. On a board without PSRAM, heavy table allocations during alert handlers can spike free-heap below the TLS reconnect floor and trigger a preventive reboot. Use `collectgarbage("collect")` from a periodic `Node.setTimeout` if you see linear heap decline.
 - **8 timer slots**. Concurrent `setTimeout` count is hard-capped. Long polling loops should re-arm one timer at a time, not stack many.
-- **No file I/O from Lua at all**. `io` is nil-out for sandbox reasons (see Stdlib sandbox above). Use the firmware bindings (`Config.set`, MQTT outbound, etc) for state writes; for LittleFS cleanup use the `fs.rm` shell command.
+- **No file I/O from Lua at all**. `io` is nil-out for sandbox reasons (see Stdlib sandbox above). Config is read-only from Lua (`Config.get`); a config change goes through the `config.set` shell command, and state leaves the device over MQTT. For LittleFS cleanup use the `fs.rm` shell command.
 - **Lua 5.3 integer / float semantics**. Numbers from `JSON.decode` come as floats; cast with `math.floor` or `n // 1` (integer division) before string formatting if you want an integer print.
 - **String concatenation in tight loops** allocates. Prefer `table.concat` for building large strings.
 - **Generation guard does not cover top-level side effects**. If `main.lua` allocates a global, hot-reload re-runs it from scratch in a new state - the previous state's global is gone, but any external resource the previous run held (a WiFi socket, a file handle) is also gone. Modules clean up their own resources on script-state teardown; Lua-side helpers should not hold resources that need explicit close.

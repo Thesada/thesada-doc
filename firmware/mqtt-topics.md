@@ -134,7 +134,7 @@ JSON payload, fired when a Lua alert rule matches.
 ```json
 {
   "device": "owb",
-  "alert_id": "boiler_overtemp",
+  "code": "boiler_overtemp",
   "severity": "crit",
   "message": "Boiler 78.4 C above 75 C threshold",
   "metric": "temperature.boiler",
@@ -144,7 +144,8 @@ JSON payload, fired when a Lua alert rule matches.
 }
 ```
 
-Severity is one of `info`, `warn`, `crit`. The `free_heap` field is the firmware's last sampled free heap at alert-publish time; useful when triaging whether an alert misfired during a low-heap period.
+<!-- claim: repo=thesada-app file=pkg/mqtt/mqtt_ingest.go match="alert dropped: bad or missing severity" -->
+Severity is one of `info`, `warn`, `crit`. The platform reads `severity`, `code` and `message` and stores the raw payload alongside; a payload that is not JSON, or whose `severity` is outside those three values, is dropped at ingest with a warning. The `free_heap` field is the firmware's last sampled free heap at alert-publish time; useful when triaging whether an alert misfired during a low-heap period.
 
 Cellular boards mirror alerts on the same topic via the cellular module's queue when WiFi is down, so subscribers do not need a separate cellular alert path.
 

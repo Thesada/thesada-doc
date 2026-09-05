@@ -127,7 +127,7 @@ thesada/node/cli/config.set       payload: "mqtt.ha_discovery true"
 thesada/node/cli/config.reload    payload: ""
 thesada/node/cli/ota.check        payload: ""
 thesada/node/cli/restart          payload: ""
-thesada/node/cli/battery          payload: ""
+thesada/node/cli/sensors          payload: "battery"   -> battery only
 thesada/node/cli/version          payload: ""
 ```
 

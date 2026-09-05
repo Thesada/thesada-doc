@@ -52,6 +52,7 @@ The full config lives on LittleFS at `/config.json`. Edit via the web UI, HTTP A
 
 ```json
 "temperature": {
+  "enabled": true,
   "pin": 12,
   "interval_s": 60,
   "auto_discover": true,
@@ -79,6 +80,7 @@ The full config lives on LittleFS at `/config.json`. Edit via the web UI, HTTP A
 
 ```json
 "temperature": {
+  "enabled": true,
   "buses": [ { "pin": 9 }, { "pin": 10 } ],
   "auto_discover": true
 }
@@ -92,6 +94,7 @@ The scalar `pin` form still works and is treated as a single bus.
 
 ```json
 "ads1115": {
+  "enabled": true,
   "i2c_sda": 1,
   "i2c_scl": 2,
   "address": 72,
@@ -112,6 +115,7 @@ The scalar `pin` form still works and is treated as a single bus.
 
 ```json
 "ads1115": {
+  "enabled": true,
   "i2c_sda": 1,
   "i2c_scl": 2,
   "interval_s": 60,
@@ -129,6 +133,7 @@ The scalar `address` + top-level `channels` form still works and is treated as a
 
 ```json
 "telegram": {
+  "enabled": true,
   "bot_token": "your-bot-token",
   "chat_ids": ["your-chat-id"]
 }
@@ -141,7 +146,6 @@ Alert logic is in `/scripts/rules.lua` on LittleFS (hot-reloadable, no recompile
 **First flash (USB):**
 
 ```bash
-cd base
 cp examples/config.json.example data/config.json
 # edit config.json with your WiFi, MQTT, sensor names
 pio run -e esp32-owb --target upload

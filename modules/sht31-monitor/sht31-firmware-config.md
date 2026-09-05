@@ -21,6 +21,7 @@ Add the `sht31` section to `config.json`:
 ```json
 {
   "sht31": {
+    "enabled": true,
     "sda": 11,
     "scl": 12,
     "address": 68,
@@ -32,6 +33,7 @@ Add the `sht31` section to `config.json`:
 }
 ```
 
+- `enabled` - optional modules are off unless this is `true`; without it the sensor never initializes
 - `sda` / `scl` - I2C pins (Freenove S3: SDA=11, SCL=12)
 - `address` - I2C address in decimal (0x44 = 68, 0x45 = 69)
 - `interval_s` - read interval in seconds
@@ -42,7 +44,6 @@ Add the `sht31` section to `config.json`:
 ## Build and flash
 
 ```bash
-cd base
 pio run -e esp32-s3-debug --target upload
 pio run -e esp32-s3-debug --target uploadfs
 ```
