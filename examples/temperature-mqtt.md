@@ -14,7 +14,7 @@ The smallest sensor module in the tree. One DS18B20 probe on a 1-Wire pin, read 
 | Thing | Where in the code |
 |---|---|
 | Config in `begin()`, nothing in the constructor | `begin()` reads `pin`, `interval_s`, `name` and allocates the bus driver there |
-| The periodic `loop()` shape | compare `millis()` against the interval, return early, work when due |
+| The periodic `loop()` shape | compare `millis()` against the interval, return early, work when due. Two phases: the conversion is requested in one pass and read 800 ms later, so `loop()` never blocks |
 | Two publish paths | a bare number on `<prefix>/sensor/temperature/<name>` for dashboards, a JSON event named `temperature` on the bus for Lua rules and the SD logger |
 | `module.status` | one line: `name=<n> last_c=<c>` |
 | Registration | `MODULE_REGISTER(ExampleTemperatureMqtt, PRIORITY_SENSOR)`, guarded by `ENABLE_EXAMPLE_TEMPERATURE_MQTT` so an unbuilt example costs nothing |
@@ -89,8 +89,12 @@ private:
 
   OneWire*           _wire    = nullptr;
   DallasTemperature* _sensors = nullptr;
-  uint32_t           _intervalMs = 60000;
-  uint32_t           _lastRead   = 0;
+  // 12-bit DS18B20 conversion takes up to 750 ms; wait a little longer.
+  static constexpr uint32_t kConversionMs = 800;
+
+  uint32_t           _intervalMs  = 60000;
+  uint32_t           _lastRead    = 0;
+  uint32_t           _requestedAt = 0;   // 0 = no conversion in flight
   float              _lastC      = 0.0f;   // set to the driver sentinel in begin()
   char               _name[32]   = "example";
 };
@@ -111,6 +115,7 @@ private:
 #include <ArduinoJson.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <string.h>
 
 #ifdef ENABLE_EXAMPLE_TEMPERATURE_MQTT
 
@@ -130,25 +135,34 @@ void ExampleTemperatureMqtt::begin() {
   _wire    = new OneWire(pin);
   _sensors = new DallasTemperature(_wire);
   _sensors->begin();
+  // Never block loop(): request the conversion, come back for the result.
+  _sensors->setWaitForConversion(false);
 
   Log::kvf(TAG, "example_temp.ready pin=%d interval_s=%lu name=%s",
            pin, (unsigned long)(_intervalMs / 1000), _name);
 }
 
-// loop() runs every main-loop pass, so it must not block. The timer is the
-// whole scheduler: do the work when the interval has elapsed, otherwise return.
-// in: none. out: one readAndPublish() per interval.
+// loop() runs every main-loop pass, so it must not block. Two phases per
+// interval: kick the conversion, then read it once the probe has had its
+// conversion time. The timer is the whole scheduler.
+// in: none. out: one readAndPublish() per interval, ~800 ms after the request.
 void ExampleTemperatureMqtt::loop() {
   uint32_t now = millis();
+  if (_requestedAt != 0) {
+    if (now - _requestedAt < kConversionMs) return;
+    _requestedAt = 0;
+    readAndPublish();
+    return;
+  }
   if (now - _lastRead < _intervalMs) return;
   _lastRead = now;
-  readAndPublish();
+  _sensors->requestTemperatures();
+  _requestedAt = now ? now : 1;
 }
 
 // Read the first probe on the bus and publish it on MQTT and the event bus.
 // in: none. out: <prefix>/sensor/temperature/<name> + EventBus "temperature".
 void ExampleTemperatureMqtt::readAndPublish() {
-  _sensors->requestTemperatures();
   float c = _sensors->getTempCByIndex(0);
   if (c == DEVICE_DISCONNECTED_C) {
     Log::kvfw(TAG, "example_temp.sensor_disconnected");
@@ -162,7 +176,11 @@ void ExampleTemperatureMqtt::readAndPublish() {
   JsonObject  cfg    = Config::get();
   const char* prefix = cfg["mqtt"]["topic_prefix"] | "thesada/node";
   char topic[96];
-  snprintf(topic, sizeof(topic), "%s/sensor/temperature/%s", prefix, _name);
+  int n = snprintf(topic, sizeof(topic), "%s/sensor/temperature/%s", prefix, _name);
+  if (n < 0 || n >= (int)sizeof(topic)) {
+    Log::kvfw(TAG, "example_temp.topic_too_long prefix_len=%u", (unsigned)strlen(prefix));
+    return;
+  }
   char val[16];
   snprintf(val, sizeof(val), "%.2f", _lastC);
   MQTTClient::publish(topic, val);
