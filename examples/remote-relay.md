@@ -16,7 +16,7 @@ The actuator shape. A GPIO, one shell command that drives it, and a state publis
 | An event-driven module | `loop()` is empty; all the work hangs off the command |
 | One command, every transport | `Shell::registerCommand("relay.set", ...)` in `begin()`; the same handler answers on the serial console, `POST /api/cmd`, and the MQTT topic `<prefix>/cli/relay.set` (anchored below) |
 | The argv convention | `argv[0]` is the command name, so the argument is `argv[1]` |
-| Active-low hardware | `active_low` in config flips the pin polarity without touching the logic |
+| Active-low hardware | `active_low` in config flips the pin polarity without touching the logic; the idle level is written before the pin becomes an output so the load never sees a power-on pulse |
 | State out both paths | `<prefix>/sensor/relay` carries `{"on":true}`, and the bus event `relay` carries the same |
 | Registration | `MODULE_REGISTER(ExampleRemoteRelay, PRIORITY_OUTPUT)`, guarded by `ENABLE_EXAMPLE_REMOTE_RELAY` |
 
@@ -128,6 +128,9 @@ void ExampleRemoteRelay::begin() {
   JsonObject cfg = Config::get();
   _pin       = cfg["example_remote_relay"]["pin"]        | 4;
   _activeLow = cfg["example_remote_relay"]["active_low"] | false;
+  // Idle level first, then output mode: an active-low load would otherwise
+  // see the pin's power-on LOW as a pulse until set(false) runs.
+  digitalWrite(_pin, _activeLow ? HIGH : LOW);
   pinMode(_pin, OUTPUT);
   set(false);
 
@@ -164,7 +167,11 @@ void ExampleRemoteRelay::publishState() {
   JsonObject  cfg    = Config::get();
   const char* prefix = cfg["mqtt"]["topic_prefix"] | "thesada/node";
   char topic[96];
-  snprintf(topic, sizeof(topic), "%s/sensor/relay", prefix);
+  int n = snprintf(topic, sizeof(topic), "%s/sensor/relay", prefix);
+  if (n < 0 || n >= (int)sizeof(topic)) {
+    Log::kvfw(TAG, "example_relay.topic_too_long prefix_len=%u", (unsigned)strlen(prefix));
+    return;
+  }
   MQTTClient::publish(topic, _on ? "{\"on\":true}" : "{\"on\":false}");
 
   JsonDocument doc;

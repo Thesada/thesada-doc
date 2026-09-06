@@ -78,6 +78,7 @@ private:
   int      _wet        = 1200;
   uint32_t _intervalMs = 60000;
   uint32_t _lastRead   = 0;
+  int      _raw        = -1;
   int      _percent    = -1;
   char     _name[32]   = "bed1";
 };
@@ -116,8 +117,8 @@ void SoilModule::begin() {
   SensorRegistry::add("soil", "capacitive soil moisture",
     [](ShellOutput out, void* ctx) {
       SoilModule* m = static_cast<SoilModule*>(ctx);
-      char line[48];
-      snprintf(line, sizeof(line), "  %s: %d %%", m->_name, m->_percent);
+      char line[64];
+      snprintf(line, sizeof(line), "  %s: %d %% (raw %d)", m->_name, m->_percent, m->_raw);
       out(line);
     }, this, true);
 
@@ -138,6 +139,7 @@ void SoilModule::loop() {
 // in: none. out: <prefix>/sensor/soil/<name> and EventBus "soil".
 void SoilModule::readAndPublish() {
   int raw  = analogRead(_pin);
+  _raw     = raw;
   int span = _dry - _wet;
   _percent = span > 0 ? constrain((_dry - raw) * 100 / span, 0, 100) : 0;
 
@@ -151,7 +153,7 @@ void SoilModule::readAndPublish() {
 
   JsonDocument doc;
   doc["name"]    = _name;
-  doc["raw"]     = raw;
+  doc["raw"]     = _raw;
   doc["percent"] = _percent;
   EventBus::publish("soil", doc.as<JsonObject>());
 }
@@ -200,7 +202,7 @@ Every module lists itself in `lib_deps` because self-registering code is never r
 }
 ```
 
-`dry` and `wet` are the raw ADC readings of the probe in air and in water; measure yours once with `sensors soil` and write them back. The percent is linear between them and clamped.
+`dry` and `wet` are the raw ADC readings of the probe in air and in water. `sensors soil` prints the last raw reading next to the percent, so hold the probe in air, read the number, hold it in water, read again, and write both back. The percent is linear between them and clamped.
 
 ## 5. The loop hook
 
@@ -253,7 +255,7 @@ end)
 ```
 
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/MQTTClient.cpp match="fs.append" -->
-Append it to `/scripts/rules.lua` and reload, all over MQTT. `fs.append` takes the path, a newline, then the content as one raw payload (`fs.write` has the same shape but truncates the file first):
+Append it to `/scripts/rules.lua` and reload, all over MQTT. `prefix` is your device's `mqtt.topic_prefix` from `config.json` (`thesada/sht31` on the getting-started board). `fs.append` takes the path, a newline, then the content as one raw payload (`fs.write` has the same shape but truncates the file first):
 
 ```bash
 prefix=thesada/sht31
