@@ -133,7 +133,29 @@ curl -s -u admin:wrong -X POST http://[ip]/api/login
 curl -s -u "admin:$WEB_PASS" -X POST http://[ip]/api/cmd \
   -H "Content-Type: application/json" -d '{"cmd":"version"}'
 # -> {"ok":true,...}
+
+# ...but not when a browser reports the request as cross-site
+curl -s -u "admin:$WEB_PASS" -X POST http://[ip]/api/cmd \
+  -H "Sec-Fetch-Site: cross-site" \
+  -H "Content-Type: application/json" -d '{"cmd":"version"}'
+# -> 401. Device logs web.basic_refused reason=cross_site method=POST
+#    url=/api/cmd, throttled to one line per minute.
+
+# A plain cross-site GET is unaffected - it changes nothing
+curl -s -u "admin:$WEB_PASS" -H "Sec-Fetch-Site: cross-site" http://[ip]/api/config
+# -> {"ok":true,...}
+
+# ...but the two side-effect GETs are refused
+curl -s -u "admin:$WEB_PASS" -H "Sec-Fetch-Site: cross-site" http://[ip]/api/ws/token
+curl -s -u "admin:$WEB_PASS" -H "Sec-Fetch-Site: cross-site" http://[ip]/api/auth/check
+# -> 401 for both, and neither counts toward the login lockout
 ```
+
+The 5-failure lockout counts only a credential that was actually offered
+and wrong. A cross-site refusal never reached the password check, and a
+request carrying no credential attempted nothing, so neither is counted -
+otherwise a page on another origin could lock an operator out of their own
+device with five requests it cannot read.
 
 ---
 

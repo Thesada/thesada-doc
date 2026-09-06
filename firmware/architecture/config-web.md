@@ -71,8 +71,8 @@ Accessible at `http://[device-ip]/` - requires login (credentials from `web` con
 | `/` | GET | public | Live sensor dashboard with MQTT status bar |
 | `/api/info` | GET | public | Firmware version, build date, device name |
 | `/api/state` | GET | public | Current sensor readings as JSON (includes `_mqtt` metadata) |
-| `/api/login` | POST | Basic | Exchange Basic Auth for a 1-hour Bearer token (max 4 concurrent) |
-| `/api/auth/check` | GET | Basic | Verify credentials (200 or 401, no token issued) |
+| `/api/login` | POST | yes | Exchange credentials for a 1-hour Bearer token (max 4 concurrent) |
+| `/api/auth/check` | GET | yes | Verify credentials (200 or 401, no token issued) |
 | `/api/config` | GET | yes | Read `config.json` |
 | `/api/config` | POST | yes | Write `config.json`, restart device (page auto-refreshes after 10s) |
 | `/api/backup` | POST | yes | Copy `config.json` to SD card |
@@ -86,7 +86,26 @@ Accessible at `http://[device-ip]/` - requires login (credentials from `web` con
 | `/ota` | POST | yes | Upload firmware `.bin` (push OTA, page auto-refreshes after 10s) |
 | `/ws/serial` | WS | token | Bidirectional terminal - log stream + all Shell commands |
 
-"yes" = Bearer token OR Basic Auth (backwards compatible). "Basic" = Basic Auth only.
+"yes" = Bearer token OR Basic Auth (backwards compatible). Every gated route
+resolves through the same check, so Bearer is accepted everywhere Basic is.
+
+**Cross-site rule.** The browser replays cached Basic credentials on a
+cross-origin request by itself, with no cooperation from the page. A Bearer
+token has to be set by script, and this device sends no CORS headers, so a
+cross-origin script cannot attach one. That asymmetry is the whole rule:
+Basic does not count when the browser reports `Sec-Fetch-Site: cross-site`.
+
+| Request shape | Basic | Bearer |
+|---|---|---|
+| Same-origin, or no `Sec-Fetch-Site` (curl, scripts, pre-2020 browsers) | accepted | accepted |
+| Cross-site, GET/HEAD/OPTIONS | accepted | accepted |
+| Cross-site, state-changing method | **401** | accepted |
+| Cross-site `GET /api/ws/token` or `GET /api/auth/check` | **401** | accepted |
+
+The last row is not about the method: `/api/ws/token` mints a 30 s WS
+grant and `/ws/serial` reaches the shell, and `/api/auth/check` tells a
+caller whether cached credentials work on this device. Both declare the
+side effect so the rule covers them.
 
 ![Sensor dashboard]({{ site.baseurl }}/assets/img/firmware/dashboard-sensors.png)
 
