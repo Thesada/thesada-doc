@@ -125,7 +125,34 @@ Compiling a module into the firmware does not run it. Each module reads its own 
 
 So a minimal config is just `device`, `wifi`, and `mqtt` - and on such a device every optional module is off. To enable an optional sensor or service, add its section with `"enabled": true`.
 
-The recovery shell (serial/MQTT CLI) is always available and has no `enabled` gate - a bad config can never lock you out of it.
+The shell itself has no `enabled` gate - it is always compiled in and always running, so a bad config can never remove it. What a config can do is close the transports that reach it, with `shell.mode`. Setting `off` closes all of them, which does leave a device you can no longer talk to interactively:
+
+| `shell.mode` | Serial | MQTT `cli/#` | HTTP (`POST /api/cmd`, `/ws/serial`) |
+|---|---|---|---|
+| `full` (default, and what an absent key means) | on | on | on |
+| `serial-only` | on | off | off |
+| `mqtt-only` | off | on | off |
+| `off` | off | off | off |
+
+```json
+"shell": { "mode": "serial-only" }
+```
+
+OTA is deliberately untouched in every mode: it has its own `cmd/ota` subscription, so a device you have hardened too far is still recoverable over the air.
+
+Two things to know before setting it:
+
+- **Every narrowing mode also closes the HTTP command surface.** `POST /api/cmd` and the `/ws/serial` terminal reach the same shell as the other two transports, and they are the broadest of the three. Only `full` keeps them.
+- **A misspelt value is treated as `off`, not `full`.** `"mode": "of"` closes everything and logs `shell.mode_unrecognised`. A hardening request the firmware cannot read exactly must not quietly serve the whole surface. An absent key is different - that is a config written before the key existed, and means `full`.
+
+With the MQTT CLI closed, the CLI config path goes with it - config changes normally go through `fs.write /config.json` + `config.reload`. What remains depends on the web module:
+
+| | Config push still available via |
+|---|---|
+| `web.enabled: true` | `POST /api/config` - auth-gated, and deliberately **not** covered by `shell.mode`, because pushing config is not running a command |
+| `web.enabled: false` | serial (in `serial-only`), otherwise a reflash or an OTA |
+
+So a headless device keeps a way in as long as the web module is up. `shell.mode: off` plus `web.enabled: false` is the combination that leaves only serial, reflash and the periodic OTA poll. The mode is read once at boot, so a change takes effect on restart.
 
 > **Upgrading from a firmware build before module gating**: optional modules used to run whenever they were compiled in and their section was present. They now require `"enabled": true`. Before flashing, add the key to every optional section a device actively uses (commonly `web` for the dashboard, plus whatever sensors it carries), or that module will go silent after the update. Core sections need no change.
 
