@@ -148,8 +148,14 @@ curl -s -u "admin:$WEB_PASS" -H "Sec-Fetch-Site: cross-site" http://[ip]/api/con
 # ...but the two side-effect GETs are refused
 curl -s -u "admin:$WEB_PASS" -H "Sec-Fetch-Site: cross-site" http://[ip]/api/ws/token
 curl -s -u "admin:$WEB_PASS" -H "Sec-Fetch-Site: cross-site" http://[ip]/api/auth/check
-# -> 401 for both
+# -> 401 for both, and neither counts toward the login lockout
 ```
+
+The 5-failure lockout counts only a credential that was actually offered
+and wrong. A cross-site refusal never reached the password check, and a
+request carrying no credential attempted nothing, so neither is counted -
+otherwise a page on another origin could lock an operator out of their own
+device with five requests it cannot read.
 
 ---
 
