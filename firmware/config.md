@@ -125,7 +125,27 @@ Compiling a module into the firmware does not run it. Each module reads its own 
 
 So a minimal config is just `device`, `wifi`, and `mqtt` - and on such a device every optional module is off. To enable an optional sensor or service, add its section with `"enabled": true`.
 
-The recovery shell (serial/MQTT CLI) is always available and has no `enabled` gate - a bad config can never lock you out of it.
+The recovery shell has no `enabled` gate - a bad config can never remove it. What it does have is `shell.mode`, which decides only which transports may reach it:
+
+| `shell.mode` | Serial | MQTT `cli/#` | HTTP (`POST /api/cmd`, `/ws/serial`) |
+|---|---|---|---|
+| `full` (default, and what an absent key means) | on | on | on |
+| `serial-only` | on | off | off |
+| `mqtt-only` | off | on | off |
+| `off` | off | off | off |
+
+```json
+"shell": { "mode": "serial-only" }
+```
+
+OTA is deliberately untouched in every mode: it has its own `cmd/ota` subscription, so a device you have hardened too far is still recoverable over the air.
+
+Two things to know before setting it:
+
+- **Every narrowing mode also closes the HTTP command surface.** `POST /api/cmd` and the `/ws/serial` terminal reach the same shell as the other two transports, and they are the broadest of the three. Only `full` keeps them.
+- **A misspelt value is treated as `off`, not `full`.** `"mode": "of"` closes everything and logs `shell.mode_unrecognised`. A hardening request the firmware cannot read exactly must not quietly serve the whole surface. An absent key is different - that is a config written before the key existed, and means `full`.
+
+With the MQTT CLI off there is no remote config path: config changes normally go through the CLI (`fs.write /config.json` + `config.reload`). In `off` and `serial-only`, reconfiguring means serial, a reflash, or an OTA. The mode is read once at boot, so a change takes effect on restart.
 
 > **Upgrading from a firmware build before module gating**: optional modules used to run whenever they were compiled in and their section was present. They now require `"enabled": true`. Before flashing, add the key to every optional section a device actively uses (commonly `web` for the dashboard, plus whatever sensors it carries), or that module will go silent after the update. Core sections need no change.
 
