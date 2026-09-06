@@ -88,6 +88,23 @@ Accessible at `http://[device-ip]/` - requires login (credentials from `web` con
 
 "yes" = Bearer token OR Basic Auth (backwards compatible). "Basic" = Basic Auth only.
 
+**Cross-site rule.** A page on another origin cannot set an
+`Authorization: Bearer` header, but the browser replays cached Basic
+credentials by itself. So Basic Auth does not count when the browser
+reports `Sec-Fetch-Site: cross-site`:
+
+| Request shape | Basic | Bearer |
+|---|---|---|
+| Same-origin, or no `Sec-Fetch-Site` (curl, scripts, pre-2020 browsers) | accepted | accepted |
+| Cross-site, GET/HEAD/OPTIONS | accepted | accepted |
+| Cross-site, state-changing method | **401** | accepted |
+| Cross-site `GET /api/ws/token` or `GET /api/auth/check` | **401** | accepted |
+
+The last row is not about the method: `/api/ws/token` mints a 30 s WS
+grant and `/ws/serial` reaches the shell, and `/api/auth/check` tells a
+caller whether cached credentials work on this device. Both declare the
+side effect so the rule covers them.
+
 ![Sensor dashboard]({{ site.baseurl }}/assets/img/firmware/dashboard-sensors.png)
 
 **Dashboard** - public read-only view:
