@@ -46,6 +46,8 @@ List endpoints accept `?limit=` - default **100**, maximum **500**. Out-of-range
 | Method | Path | Auth | OK | Purpose |
 |---|---|---|---|---|
 | GET | `/healthz` | none | 200 | liveness probe |
+| GET | `/readyz` | none | 200 / 503 | readiness probe (DB + broker) |
+| GET | `/version` | none | 200 | running CalVer, commit, and build time |
 | POST | `/auth/login` | none | 200 | password login - returns a bearer token + user |
 | POST | `/auth/logout` | optional | 200 | revoke the presented token and/or cookie |
 | POST | `/auth/signup` | none | 200 | join the waitlist |

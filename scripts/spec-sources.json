@@ -16,6 +16,13 @@
   "thesada-app": {
     "url": "https://github.com/Thesada/thesada-app.git",
     "ref": "main",
-    "note": "Deployed app. Use ref=dev on a claim that describes unreleased work."
+    "note": "Deployed app. Use ref=dev on a claim that describes unreleased work.",
+    "deployed": {
+      "manifest": "https://app.thesada.app/api/v1/version",
+      "boards": [
+        "production"
+      ],
+      "note": "Live app version the deployed= gate checks. Single channel; no {board} substitution needed."
+    }
   }
 }
