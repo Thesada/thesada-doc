@@ -24,7 +24,7 @@ mermaid:
   version: "10.9.0"
 nav_sort: case_insensitive
 
-footer_content: "Thesada - AGPL-3.0-only (app) / GPL-3.0-only (firmware) / CC BY-NC-SA 4.0 (docs) - <a href='/legal/license.html'>License</a>"
+footer_content: "Thesada - AGPL-3.0-only (app) / GPL-3.0-only (firmware) / CC BY-NC-SA 4.0 (docs) - <a href='/legal/license.html'>License</a> - <a href='https://foothillsbuilds.com/about/' target='_blank' rel='noopener noreferrer'>About</a>"
 
 aux_links:
   "GitHub":
@@ -35,6 +35,12 @@ aux_links:
     - "https://foothillsbuilds.com"
 
 aux_links_new_tab: true
+
+nav_external_links:
+  - title: Blog
+    url: https://foothillsbuilds.com
+
+nav_external_links_new_tab: true
 
 defaults:
   - scope:
