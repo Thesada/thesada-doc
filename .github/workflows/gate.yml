@@ -22,7 +22,7 @@ jobs:
           ruby-version: "3.4"
           bundler-cache: true
       - name: build
-        run: bundle exec jekyll build --strict_front_matter --trace
+        run: make build
 
   style:
     name: style rules
@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: em dashes and forbidden words
-        run: scripts/check-style.sh
+        run: make lint
 
   spec-drift:
     name: spec vs code
@@ -51,4 +51,4 @@ jobs:
       - name: verify claims
         env:
           SPEC_SRC_DIR: ${{ github.workspace }}/sources
-        run: python3 scripts/check-spec-drift.py
+        run: make test
