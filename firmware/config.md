@@ -138,7 +138,16 @@ The shell itself has no `enabled` gate - it is always compiled in and always run
 "shell": { "mode": "serial-only" }
 ```
 
-OTA is deliberately untouched in every mode: it has its own `cmd/ota` subscription, so a device you have hardened too far is still recoverable over the air.
+OTA is deliberately untouched in every mode: it has its own `cmd/ota` subscription, so a device you have hardened too far is still recoverable over the air. `<prefix>/cmd/config` is the same kind of path for a full config document. It stays subscribed when `shell.mode` is `off`.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cmd_config_policy.h match="CMD_CONFIG_REFUSE_TLS" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cmd_config_policy.h match="is not a verified session" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cmd_config_policy.h match="CMD_CONFIG_REFUSE_BROKER" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="setFallbackTlsVerified" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="reason=connection_keys" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/mqtt_rollback_policy.h match="mqttRollbackShould" -->
+
+Publish one JSON object to that topic. The broker session that delivers it must have verified the server certificate. A password on that TLS session is enough. The push is refused when that session did not check the broker certificate. That covers `mqtt.allow_insecure` and a cellular session that connected without a CA. The document has to keep a non-empty `mqtt.broker`, so a push cannot drop the only way back. A change to broker, port, user, or password reconnects, and the existing last-good rollback covers a broker the device then cannot reach. Other keys are written and take effect on the next restart. The push does not reboot the device. A failed write leaves the previous file in place.
 
 Two things to know before setting it:
 
@@ -150,9 +159,9 @@ With the MQTT CLI closed, the CLI config path goes with it - config changes norm
 | | Config push still available via |
 |---|---|
 | `web.enabled: true` | `POST /api/config` - auth-gated, and deliberately **not** covered by `shell.mode`, because pushing config is not running a command |
-| `web.enabled: false` | serial (in `serial-only`), otherwise a reflash or an OTA |
+| `web.enabled: false` | serial (in `serial-only`), `<prefix>/cmd/config` on a verified TLS session, otherwise a reflash or an OTA |
 
-So a headless device keeps a way in as long as the web module is up. `shell.mode: off` plus `web.enabled: false` is the combination that leaves only serial, reflash and the periodic OTA poll. The mode is read once at boot, so a change takes effect on restart.
+So a headless device keeps a way in through `cmd/config` even with the web module off, as long as the MQTT session checked the broker certificate. `shell.mode: off` plus `web.enabled: false` plus an unverified MQTT session is the combination that leaves only serial, reflash and the periodic OTA poll. The mode is read once at boot, so a change takes effect on restart. A `cmd/config` push of keys other than the connection-critical mqtt ones also waits for that restart.
 
 > **Upgrading from a firmware build before module gating**: optional modules used to run whenever they were compiled in and their section was present. They now require `"enabled": true`. Before flashing, add the key to every optional section a device actively uses (commonly `web` for the dashboard, plus whatever sensors it carries), or that module will go silent after the update. Core sections need no change.
 
