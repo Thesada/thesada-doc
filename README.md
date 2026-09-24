@@ -9,10 +9,11 @@ SPDX-License-Identifier: CC-BY-NC-SA-4.0
 ## Local Development
 
 ```bash
-bundle install
-bundle exec jekyll serve
-# → http://localhost:4000
+make setup
+make run
 ```
+
+`make` prints the recipe list. The site is at http://localhost:4000.
 
 ## Related
 
