@@ -141,7 +141,7 @@ The shell itself has no `enabled` gate - it is always compiled in and always run
 OTA is deliberately untouched in every mode: it has its own `cmd/ota` subscription, so a device you have hardened too far is still recoverable over the air. `<prefix>/cmd/config` is the same kind of path for a full config document. It stays subscribed when `shell.mode` is `off`.
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cmd_config_policy.h match="CMD_CONFIG_REFUSE_TLS" -->
-<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cmd_config_policy.h match="allow_insecure is not a verified session" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cmd_config_policy.h match="is not a verified session" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cmd_config_policy.h match="CMD_CONFIG_REFUSE_BROKER" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="setFallbackTlsVerified" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="reason=connection_keys" -->
