@@ -422,7 +422,8 @@ If both halves of the cert+key are present in NVS, schedules a deferred reboot ~
 
 ### cert.clear
 
-Erase the stored cert + key from NVS. Connection falls back to password auth on the next reconnect.
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="rebooting in 3s" deployed=26.09.3 why="reboot after a cert was stored; the gate holds until the fleet OTA offers it" -->
+Erase the stored cert and key from NVS. When a cert was stored, the unit reboots about 3 seconds later so the reply can publish first, and the next boot starts enrollment if it is configured. With no cert stored, nothing is cleared and there is no reboot.
 
 ## Cellular
 
