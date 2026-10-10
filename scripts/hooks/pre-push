@@ -1,0 +1,9 @@
+#!/bin/sh
+# Run the local CI jobs before a push. THESADA_CI_SKIP=1 pushes anyway.
+
+set -eu
+
+[ -n "${THESADA_CI_SKIP:-}" ] && exit 0
+
+cd "$(git rev-parse --show-toplevel)"
+exec make ci

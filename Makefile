@@ -37,6 +37,9 @@ test: ## Prove the claim comments against the firmware and app source
 lint: ## Em dashes and the other style rules
 	scripts/check-style.sh
 
+.PHONY: ci
+ci: lint test build ## Local CI: style, claim checks, strict Jekyll build
+
 ##@ Housekeeping
 
 .PHONY: clean
