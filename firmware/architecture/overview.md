@@ -30,11 +30,11 @@ thesada-fw/
 ├── tests/
 │   └── test_firmware.py            <- automated + manual test suite (pyserial)
 ├── src/
-│   ├── main.cpp                    <- zero module includes, just beginAll()/loopAll()
+│   ├── main.cpp                    <- boot, plus Cellular.h when cellular is enabled
 │   └── thesada_config.h            <- compile-time module enables + version
 ├── data/
 │   ├── config.json                 <- runtime config (LittleFS)
-│   ├── ca.crt                      <- TLS CA cert (required for cert verification)
+│   ├── ca.crt                      <- TLS CA. Missing file falls back to the bundle baked into the firmware
 │   └── scripts/
 │       ├── main.lua                <- Lua boot script (runs once at startup)
 │       └── rules.lua               <- Lua event rules (hot-reloadable)
@@ -69,22 +69,24 @@ thesada-fw/
 
 ```mermaid
 flowchart TD
-    A[Power On] --> WDT[Watchdog init 30s]
+    A[Power On] --> WDT[Watchdog init]
     WDT --> B[Config::load]
-    B --> C[WiFiManager::begin]
-    C --> D{WiFi connected?}
-    D -->|Yes| E[MQTTClient::begin WiFi path]
-    D -->|No| G[CellularModule::begin]
-    G --> H[MQTTClient::begin modem path]
-    E --> I[OTAUpdate::begin]
-    H --> I
-    I --> J[Shell::begin]
-    J --> K["ModuleRegistry::beginAll()"]
+    B --> ID[Identity::begin]
+    ID --> C{WiFi enabled and no network yet?}
+    C -->|Yes| D[WiFiManager::begin]
+    C -->|No| E{Network up and OTA enabled?}
+    D --> E
+    E -->|Yes| F[OTAUpdate check now]
+    E -->|No| G[MQTTClient::begin if MQTT enabled]
+    F --> G
+    G --> H[Shell::begin]
+    H --> EN[Enroll::begin]
+    EN --> K["ModuleRegistry::beginAll()"]
     K --> L[SleepManager::begin]
     L --> M[Ready]
 ```
 
-`ModuleRegistry::beginAll()` iterates the self-registered module list sorted by priority. `main.cpp` has zero module includes - it just calls `beginAll()` at startup and `loopAll()` each cycle.
+`ModuleRegistry::beginAll()` iterates the self-registered module list sorted by priority. Cellular starts there, not before MQTT. When a network is already up, the update check runs before `MQTTClient::begin`. `main.cpp` includes `Cellular.h` when cellular is enabled, then calls `beginAll()` and `loopAll()`.
 
 ---
 
@@ -122,7 +124,7 @@ MODULE_REGISTER(TemperatureModule, ModulePriority::SENSOR);
 | OUTPUT | 60 | SD logger, PWM |
 | LAST | 100 | SleepManager |
 
-`ModuleRegistry` uses a static array with insertion sort by priority. `main.cpp` has zero module includes - it calls `ModuleRegistry::beginAll()` and `ModuleRegistry::loopAll()`. Adding a new module means creating the source files and adding a `MODULE_REGISTER` line. Nothing else changes.
+`ModuleRegistry` uses a static array with insertion sort by priority. Adding a new module means creating the source files and adding a `MODULE_REGISTER` line. Nothing else changes.
 
 All includes use angle brackets (`#include <Log.h>`) instead of relative paths.
 

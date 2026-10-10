@@ -75,7 +75,7 @@ flowchart TD
 
 **Triggers:**
 1. Periodic interval check (default 6 h, configurable via `ota.check_interval_s`)
-2. First check runs 30 seconds after boot
+2. First check runs at boot when a network is already up
 3. Shell command `ota.check [--force] [url]` - over serial, WebSocket, HTTP POST `/api/cmd`, or MQTT CLI topic `<prefix>/cli/ota.check`
 4. MQTT message to `ota.cmd_topic` (any payload) - defaults to `<topic_prefix>/cmd/ota`
 

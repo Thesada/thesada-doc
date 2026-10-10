@@ -16,7 +16,7 @@ description: "Unified CLI across serial, WebSocket, HTTP, and MQTT. Lua 5.3 scri
 - Serial: `main.cpp` reads characters, calls `Shell::execute(line, serialOut)` on newline
 - WebSocket: `HttpServer.cpp` receives WS data, calls `Shell::execute(cmd, [client](line){ client->text(line); })`
 - HTTP: `POST /api/cmd` with `{"cmd":"..."}` collects output lines into a JSON array and returns `{"ok":true,"output":[...]}`
-- MQTT: publish the command to `thesada/<device>/cli/<cmd>` (payload is the argument string, empty payload for argless commands). `MQTTClient.cpp` subscribes to `thesada/<device>/cli/#`, parses the suffix as the command name, and calls `Shell::execute("<cmd> <payload>", out)` where `out` collects lines into a JSON array published back on `thesada/<device>/cli_response` as `{"cmd":"...","ok":true,"output":["..."]}`. This is the primary remote-debug path for devices with no serial access.
+- MQTT: publish the command to `<topic_prefix>/cli/<cmd>` (payload is the argument string, empty payload for argless commands). `MQTTClient.cpp` subscribes to `<topic_prefix>/cli/#`, parses the suffix as the command name, and calls `Shell::execute("<cmd> <payload>", out)` where `out` collects lines into a JSON array published back on `<topic_prefix>/cli_response` as `{"cmd":"...","ok":true,"output":["..."]}`. The prefix comes from config. The default is `thesada/node`. This is the primary remote-debug path for devices with no serial access.
 
 Example MQTT usage:
 

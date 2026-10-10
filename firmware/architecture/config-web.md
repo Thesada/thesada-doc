@@ -64,7 +64,7 @@ See `examples/config.json.example` for all fields. Key sections:
 
 ## Web Interface
 
-Accessible at `http://[device-ip]/` - requires login (credentials from `web` config).
+Accessible at `http://[device-ip]/`. The sensor dashboard is public. Admin routes use the `web` credentials.
 
 | Route | Method | Auth | Description |
 |---|---|---|---|

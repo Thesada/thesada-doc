@@ -68,7 +68,8 @@ The device fetches a JSON manifest from a URL it holds in config, compares the v
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="OTA_CA_PROGMEM" -->
 The CA for that TLS session is a file on the filesystem, with a bundle baked into the firmware underneath it for the case where someone flashed without the data partition. A push model would need the device reachable and awake at the moment the server chose; a device on a solar budget and a cellular fallback chooses its own moment.
 
-Two limits, stated in the [README](https://github.com/Thesada/thesada-fw#known-limitations-and-ugly-corners) as well: the SHA256 proves the download arrived intact, not who built it, since there is no signing; and the rollback partition is enabled but the application does not mark itself valid after a boot, so the first self-reboot after an update rests on what the Arduino core does, which is unverified.
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="confirmIfHealthy" -->
+A pending image is marked valid once it has shown it can run. The SHA256 still only proves the download arrived intact, not who built it, since there is no signing.
 
 ## Where it departs from the neighbours
 

@@ -63,10 +63,11 @@ curl -o data/ca.crt https://test.mosquitto.org/ssl/mosquitto.org.crt
   Keep `web.enabled: true` as shipped (without it the HTTP server, dashboard,
   and captive portal never start), and leave the placeholder WiFi in place for
   now - you will set the real SSID over the web UI in step 5.
-- `data/ca.crt` is the CA the device trusts for MQTT over TLS. The firmware always
-  uses TLS, so the broker's CA must be present. This walkthrough uses the public
-  `test.mosquitto.org` broker, so its CA goes here. For your own broker, use that
-  broker's CA instead.
+- `data/ca.crt` is the CA the device trusts for MQTT over TLS. If the file is
+  missing, the firmware uses the public roots baked into the image. This
+  walkthrough uses `test.mosquitto.org`, whose CA is not in that bundle, so
+  `mosquitto.org.crt` still has to be here. For your own broker, use that
+  broker's CA when it is not one of those baked roots.
 
 ## 3. Build and flash
 
@@ -101,7 +102,7 @@ Building FS image from 'data' directory to .pio/build/esp32-s3-debug/littlefs.bi
 Wrote ... Hash of data verified.
 ```
 
-The `/ca.crt` is what lets the TLS broker connection verify in step 6.
+The `/ca.crt` is what lets this walkthrough's broker verify in step 6. A broker signed by a baked root can connect without it.
 
 ## 4. Open the serial console
 
@@ -223,7 +224,7 @@ sensor is attached) follows on its own topics.
 | `Could not find port` / permission denied (Linux) | Missing udev rules | Install `99-platformio-udev.rules` (see the PlatformIO udev-rules docs) |
 | AP never appears | WiFi actually connected, or AP timed out | Check the log for a connect line; wait for the 5 min retry |
 | AP never appears, log says `wifi.ap_refused` | `wifi.ap_password` absent, under 8 chars, or still `changeme` | Set a real passphrase in `config.json`, or `secret.set wifi.ap_password <value>` over serial, then reboot |
-| MQTT never connects | Missing or wrong `ca.crt` | Re-run the `uploadfs` step with the broker's CA in `data/ca.crt` |
+| MQTT never connects | Broker CA is not in the baked bundle, and `ca.crt` is missing or wrong | Re-run the `uploadfs` step with that broker's CA in `data/ca.crt` |
 | `mosquitto_sub` sees nothing | Prefix mismatch | Match the `-t` filter to the `topic_prefix` you set |
 
 ## Next steps

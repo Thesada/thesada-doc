@@ -172,7 +172,7 @@ MODULE_REGISTER(SoilModule, PRIORITY_SENSOR)
 ```
 
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/ModuleRegistry.h match="define MODULE_REGISTER\(CLASS, PRIO\)" -->
-The last line is the registration. `MODULE_REGISTER(Class, Priority)` creates one static instance and adds it to the registry before `setup()` runs, so `main.cpp` never includes a module.
+The last line is the registration. `MODULE_REGISTER(Class, Priority)` creates one static instance and adds it to the registry before `setup()` runs. A module you add is not included from `main.cpp`. The cellular build does include `Cellular.h`.
 
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/Module.h match="PRIORITY_SENSOR   = 50" -->
 The priority orders `begin()` calls at boot: power (10), network (20), services (30), the Lua engine (40), sensors (50), outputs (60). A sensor wants `PRIORITY_SENSOR`, so the engine that will run rules against its events is already up when it first publishes.

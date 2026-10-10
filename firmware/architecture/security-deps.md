@@ -60,12 +60,13 @@ Unauthenticated WebSocket connections (e.g. direct curl or wscat) are accepted a
 
 ### TLS exceptions
 
-Not all outbound connections use `/ca.crt`. These paths use `setInsecure()` (TLS without certificate validation):
+MQTT and OTA load `/ca.crt` from LittleFS. If that file is missing or empty, both use the certificate bundle baked into the firmware. A boot clock floor is applied before the first MQTT handshake, so there is no unchecked connection while waiting for NTP.
+
+`setInsecure()` (TLS without certificate validation) is not the MQTT default.
 
 | Path | Reason | Risk |
 |---|---|---|
-| MQTT before NTP sync | Cert validation requires a valid system clock. Pre-NTP, the device connects insecure and upgrades to cert-validated once NTP syncs. | First-boot MITM on untrusted networks. Low risk on LAN. |
-| MQTT on low-heap boards | A board with less than ~40 KB max contiguous heap cannot allocate for the TLS cert context. The connection stays on `setInsecure()` permanently when the upgrade is unsafe. | No cert validation on constrained boards. |
+| MQTT with `mqtt.allow_insecure` set, and no CA at all | The file is missing and the baked bundle is empty. That is a build fault. The flag is opt-in. Without the flag the client refuses to connect. | No certificate check, and only because it was turned on. |
 | Webhook (operator endpoint) | Arbitrary URL configured by operator - no fixed CA to pin against by default. Uploading `/webhook-ca.crt` (endpoint root, self-signed included) switches the client to verified TLS; without it the client stays unverified. | Operator-chosen endpoint; treat as untrusted upstream unless a CA is uploaded. |
 
 The Telegram Bot API client now validates against Go Daddy Root G2 (baked into `telegram_ca_progmem.h` with a `/telegram-ca.crt` LittleFS override, mirroring the OTA CA pattern). If no CA is available the request fails closed instead of falling back to `setInsecure()`, so bot tokens stop leaking over unverified TLS.
@@ -147,10 +148,9 @@ esp_task_wdt_reset();          // fed every loop() cycle
 
 GitHub Actions pipeline (`.github/workflows/ci.yml`):
 
-- **Every push to `dev` or `main`**: builds the production OWB binary plus the debug variants (`esp32-owb`, `esp32-owb-debug`, `esp32-s3-debug`) and uploads them as artifacts.
+- **Every push to `dev` or `main`**: `make dist` builds every board env, including both rescue images and the carrier, plus the minimal core-only image, and uploads them as artifacts.
 - **Push to `main` with a new version**: auto-creates a GitHub release with the production binary, the rescue binary, and a manifest pointer.
 - **Existing version**: release step is skipped (no duplicates).
-- Rescue envs (`esp32-owb-rescue`, `esp32-s3-debug-rescue`) are built on demand only - manual recovery flow.
 
 **Git workflow:**
 1. Develop on `dev` - CI catches compile errors on every push

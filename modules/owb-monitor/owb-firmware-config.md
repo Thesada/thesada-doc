@@ -33,7 +33,7 @@ The full config lives on LittleFS at `/config.json`. Edit via the web UI, HTTP A
   "networks": [
     { "ssid": "YourIOT", "password": "your-password" }
   ],
-  "ap_password": "changeme",
+  "ap_password": "at-least-8-chars",
   "ap_timeout_s": 300
 },
 "mqtt": {
@@ -47,6 +47,8 @@ The full config lives on LittleFS at `/config.json`. Edit via the web UI, HTTP A
   "buffer_out": 4096
 }
 ```
+
+`ap_password` has to be at least 8 characters and must not be `changeme`. The fallback AP does not start otherwise. `web.password` has the same rejection.
 
 **Temperature sensors (DS18B20):**
 
@@ -161,7 +163,7 @@ The node checks GitHub releases every 6 hours and auto-updates. Or trigger manua
 mosquitto_pub ... -t 'thesada/owb/cli/ota.check' -m ''
 
 # Via HTTP (if on same network)
-curl -u admin:changeme -X POST http://<node-ip>/ota -F 'firmware=@build/firmware.bin'
+curl -u admin:your-password -X POST http://<node-ip>/ota -F 'firmware=@build/firmware.bin'
 ```
 
 **Push scripts remotely:**
@@ -199,4 +201,4 @@ mosquitto_pub ... -t 'thesada/owb/cli/sensors' -m ''
 mosquitto_pub ... -t 'thesada/owb/cli/selftest' -m ''
 ```
 
-Or via the web dashboard at `http://<node-ip>/` (login: admin/changeme).
+Or via the web dashboard at `http://<node-ip>/`. The sensor page is public. Admin login rejects `changeme`, an empty password, and a missing one.

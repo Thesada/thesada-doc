@@ -63,7 +63,7 @@ The heartbeat LED is always available (core, not a module). It supports two back
 }
 ```
 
-**Implementation:** `HeartbeatLED` lives in `src/core/` (always compiled). Uses `Wire1` (SDA=15 SCL=7) for AXP2101 path - independent of `Wire` (I2C bus 0, used by ADS1115). No RTOS tasks or timers; LED state is managed in `loop()`.
+**Implementation:** `HeartbeatLED` lives in `lib/thesada-core/src/HeartbeatLED.cpp` (always compiled). `PowerManager` opens `Wire1` (SDA=15, SCL=7) for the AXP2101, independent of `Wire` (I2C bus 0, used by ADS1115). HeartbeatLED calls `PowerManager` when the PMU is up, and a GPIO pin otherwise. No RTOS tasks or timers; LED state is managed in `loop()`.
 
 Reference: [Xinyuan-LilyGO/LilyGo-T-SIM7080G](https://github.com/Xinyuan-LilyGO/LilyGo-T-SIM7080G) examples (MIT licence).
 
