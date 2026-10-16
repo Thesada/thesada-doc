@@ -1,15 +1,21 @@
 ---
 layout: home
-title: Home
+title: Thesada
 nav_order: 1
 description: "Modular ESP32 firmware framework for production IoT products - OTA with rollback, telemetry, runtime config, MQTT, Lua."
 ---
 
-# Thesada Documentation
+# Open-source ESP32 firmware for production IoT
 
 Thesada is an open-source modular ESP32 firmware framework for building production IoT products. Custom C++ firmware gives you OTA with rollback, telemetry, runtime config, multi-board support, MQTT over TLS, cellular fallback, a remote shell, and a Lua runtime, so a new product is a module rather than a fork.
 
 Property monitoring is the example application it grew out of, and the module pages below document that build.
+
+## Built with it
+
+- [OWB Monitor]({{ site.baseurl }}/modules/owb-monitor/owb-index.html) - outdoor wood boiler temperatures, pump current and alerts. Running.
+- [SHT31 Monitor]({{ site.baseurl }}/modules/sht31-monitor/sht31-index.html) - indoor temperature and humidity. Running.
+- [Well Pump Monitor]({{ site.baseurl }}/modules/well-pump/) - pump current, tank pressure and short-cycle alerts. On the bench.
 
 ## What the framework gives you
 
