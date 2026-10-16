@@ -1,4 +1,5 @@
 title: "Thesada"
+tagline: "Open-source ESP32 firmware for production IoT"
 description: "Open-source modular ESP32 firmware framework for production IoT products: pull OTA with SHA256 verification, telemetry, runtime config, MQTT over TLS, cellular fallback, a remote shell and a Lua runtime. Grew out of off-grid property monitoring."
 url: "https://thesada.io"
 baseurl: ""

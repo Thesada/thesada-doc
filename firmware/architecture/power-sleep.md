@@ -1,12 +1,12 @@
 ---
-title: Power & Sleep
+title: Power & Sleep (AXP2101)
 parent: Architecture
 grand_parent: Firmware
 nav_order: 4
 description: "AXP2101 PMU management, battery charging config, heartbeat LED, and deep sleep with RTC memory persistence."
 ---
 
-# Power & Sleep
+# ESP32-S3 Power & Sleep: AXP2101 PMU and Deep Sleep
 
 ## Power Manager (PowerManager)
 

@@ -7,8 +7,7 @@ description: "Well pump monitoring system - current draw, pressure tank, short-c
 
 # Well Pump Monitor
 
-> **Work in progress.** This module is in the design phase. Hardware has not been built or tested yet. Specifications and BOM may change.
-{: .warning }
+> **On the bench, not in the field yet.** This monitor is still being designed. If you look after wells or pumps and want to know more, or would like to try it in a test setup, get in touch: [info@hit-con.ca](mailto:info@hit-con.ca)
 
 Monitors a submersible well pump system - pump current draw, pressure tank pressure, short-cycle detection, and freeze risk alerting.
 
@@ -198,3 +197,7 @@ Order the pressure transducer early - AliExpress lead time is 2-4 weeks. Verify 
       physical distance between the deployment sites)
 - [ ] Determine short-cycle threshold (starts per hour) from baseline
       data after deployment
+
+---
+
+> **On the bench, not in the field yet.** This monitor is still being designed. If you look after wells or pumps and want to know more, or would like to try it in a test setup, get in touch: [info@hit-con.ca](mailto:info@hit-con.ca)
