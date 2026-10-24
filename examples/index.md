@@ -15,7 +15,6 @@ The modules are on the firmware `dev` branch and ship with the next release; unt
 |---|---|---|
 | [temperature-mqtt]({{ site.baseurl }}/examples/temperature-mqtt.html) | sensor | a timed read, one publish to MQTT, one to the event bus |
 | [remote-relay]({{ site.baseurl }}/examples/remote-relay.html) | actuator | one shell command reachable over serial, HTTP and MQTT, state published on every change |
-
-A third, `blink-led`, is being contributed and gets its page when it lands.
+| [blink-led]({{ site.baseurl }}/examples/blink-led.html) | periodic output | a non-blocking timer in `loop()`, no publish, state read back through `module.status` |
 
 Turning one on takes two switches, the same as for any module: its `ENABLE_EXAMPLE_*` line in `src/thesada_config.h`, and `"enabled": true` in its `config.json` block.
