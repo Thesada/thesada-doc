@@ -164,8 +164,13 @@ JSON state events. Published on every OTA code path so operators can drive dashb
 |---|---|---|
 | `updating` | Manifest fetched and a flash is in progress. | not present |
 | `up-to-date` | Manifest matches the running version; nothing to do. | not present |
-| `refused` | OTA aborted before the download started. | one of `no-transport`, `no-manifest-url`, `no-ca`, `heap-low`, `manifest-fetch-failed` |
+| `refused` | OTA aborted before the download started. | one of `no-transport`, `no-manifest-url`, `no-ca`, `heap-low`, `manifest-fetch-failed`, `fled-release` |
 | `failed` | Download or flash phase failed. | free-form short string |
+
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"fled-release\"\)" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_SKIP_S \(24u \* 60u \* 60u\)" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_TRIES 2u" -->
+`fled-release` means the manifest offers the release a crash-loop slot switch left. `ota.check --force` installs it, and a newer manifest version or a firmware upload installs as usual. The device skips it for 24 hours of skip age, then installs it again, at most twice before another 24 hours start. A power-on does not end the skip. See [The fled-release skip]({{ site.baseurl }}/firmware/architecture/connectivity.html#the-fled-release-skip).
 
 `reason` values are kebab-case stable identifiers. Add new reasons by extending `publishOtaRefusal()` in `OTAUpdate.cpp`.
 

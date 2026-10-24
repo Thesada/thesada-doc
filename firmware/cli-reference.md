@@ -122,6 +122,9 @@ Print the firmware version, build timestamp, and the SHA of the bundled CA cert.
 
 Reboot the device. No confirmation - issued from MQTT, the response publishes before the actual restart so the operator sees a clean acknowledgement.
 
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/Shell.cpp match="out\(\"Restarting...\"\);\n  delay\(100\);\n  OTAUpdate::plannedRestart\(\);" -->
+On a confirmed image this restart does not count toward the OTA crash streak, and the next boot logs `ota.crash_streak_held reason=planned_restart`. On a pending image it counts. See [Rollback and the crash streak]({{ site.baseurl }}/firmware/architecture/connectivity.html#rollback-and-the-crash-streak).
+
 ### heap
 
 Print free heap, minimum free since boot, largest free contiguous block, and free PSRAM (where present). Reads the same numbers the periodic 5-minute heap telemetry publishes.
@@ -392,6 +395,9 @@ ota.check --force https://...firmware.json
 ```
 
 The actual download + flash + reboot sequence runs from the OTA module's loop on the main task, so this command returns immediately ("download started"). Watch `boot.info` after the device comes back to confirm.
+
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="ota.force_reflash version=fled" -->
+A plain check refuses the release a crash-loop slot switch fled, with `status/ota` reason `fled-release`, for as long as the [fled-release skip]({{ site.baseurl }}/firmware/architecture/connectivity.html#the-fled-release-skip) runs. `--force` installs it and logs `ota.force_reflash version=fled`.
 
 ### ota.status
 

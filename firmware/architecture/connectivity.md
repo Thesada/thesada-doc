@@ -56,7 +56,9 @@ flowchart TD
     J -->|Yes| K{force?}
     K -->|No| L{Newer version?}
     L -->|No| M[publish status/ota up-to-date]
-    L -->|Yes| N[publish status/ota updating]
+    L -->|Yes| FL{Fled release, skip still running?}
+    FL -->|Yes| R5[publish status/ota refused: fled-release]
+    FL -->|No| N[publish status/ota updating]
     K -->|Yes| N
     N --> O[Download .bin]
     O --> P{SHA256 match?}
@@ -94,7 +96,8 @@ mosquitto_pub ... -t '<prefix>/cli/ota.check' -m 'https://example.com/firmware.j
 mosquitto_pub ... -t '<prefix>/cli/ota.check' -m '--force https://example.com/firmware.json'
 ```
 
-Force mode bypasses `isNewer()` so dev iteration does not need a `FIRMWARE_VERSION` bump every test cycle. Intended for development and for recovering a stuck device without version juggling.
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="Log::warn\(TAG, \"ota.force_reflash version=fled\"\);" -->
+Force mode bypasses `isNewer()` and the [fled-release skip](#the-fled-release-skip), so dev iteration does not need a `FIRMWARE_VERSION` bump every test cycle. Intended for development and for recovering a stuck device without version juggling.
 
 **Watchdog-safe download loop**: the per-chunk download path feeds the task watchdog after each `Update.write()` and uses short socket + handshake timeouts (10 s) on the local `WiFiClientSecure`. This prevents a slow `readBytes()` on a flaky upstream from blocking the client past the ~5 s task watchdog window and panic-rebooting mid-flash. Required for OTA reliability on weak wireless links.
 
@@ -109,6 +112,135 @@ Force mode bypasses `isNewer()` so dev iteration does not need a `FIRMWARE_VERSI
   "cmd_topic":        "thesada/node/cmd/ota"
 }
 ```
+
+### Rollback and the crash streak
+
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/ota_health_policy.h match="#define OTA_HEALTH_MIN_MS \(5u \* 60u \* 1000u\)" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="ota.state_change from=pending to=valid reason=healthy" -->
+A new image boots pending. It is marked valid after the first MQTT session of that boot, WiFi or cellular, or after five minutes up, whichever comes first, and logs `ota.state_change from=pending to=valid reason=healthy`. An image flashed over USB is never pending.
+
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/ota_health_policy.h match="#define OTA_HEALTH_CRASH_LIMIT 3u" -->
+<!-- claim: repo=thesada-fw file=src/main.cpp match="crash_streak=%lu" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/ota_health_policy.h match="if \(crashStreak >= OTA_HEALTH_CRASH_LIMIT\) return false;" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="ota.state_change from=pending to=valid reason=no_other_image" -->
+Every boot updates a crash streak, NVS namespace `boot` key `crash_n`, and the `boot.reset_info` line logs it as `crash_streak=`. At three, `setup` leaves the running image before the serial wait and before MQTT can confirm it. The health gate never confirms a pending image at the limit. The one exception is a pending image with no rollback target: the guard confirms it, so the bootloader cannot boot the slot just refused ([At the limit](#at-the-limit)).
+
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/ota_health_policy.h match="planned == OTA_PLANNED_OPERATOR \|\| \(planned == OTA_PLANNED_BROKER && proven\)" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/Shell.cpp match="out\(\"Restarting...\"\);\n  delay\(100\);\n  OTAUpdate::plannedRestart\(\);" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/MQTTClient.cpp match="OTAUpdate::brokerRestart\(\);" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/OTAUpdate.cpp match="bool confirmed = planned != OTA_PLANNED_NONE && runningImage(Valid\(\)|Is\(ESP_OTA_IMG_VALID\));" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/OTAUpdate.cpp match="ota.phase_change from=apply to=reboot version=%s\", remoteVersion.c_str\(\)\);\n    delay\(500\);\n    plannedRestart\(\);" -->
+
+| Reset that started this boot | Crash streak |
+|---|---|
+| Power-on, deep-sleep wake | cleared |
+| Panic, any watchdog | +1 |
+| Software restart without a marker, the heap watchdog included | +1 |
+| Operator restart: `restart`, `fs.format`, `identity.reset`, the web restart, config save, `Node.restart()`, the cert reboot | held on a confirmed image, +1 on any other |
+| Firmware upload, OTA apply | +1, once per install: they carry the operator marker, but the image they boot is pending |
+| MQTT budget reboot: the reboot after `mqtt.reboot_after_fails` failed connects, the TLS low-heap defrag reboot | held on a confirmed image that is proven on the broker, +1 on any other |
+| Brownout, external pin, SDIO, unknown | held |
+
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/ota_health_policy.h match="#define OTA_HEALTH_SETTLE_MS \(60u \* 60u \* 1000u\)" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/OTAUpdate.cpp match="ota.crash_streak_cleared reason=healthy_uptime" -->
+A healthy confirm and a slot switch write the streak back to zero, so the image that comes up next does not start at the limit. A confirmed image that stays up one hour does too and logs `ota.crash_streak_cleared reason=healthy_uptime`, so restarts weeks apart never add up. A loop that crashes within the hour of every boot still reaches the limit.
+
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/OTAUpdate.cpp match="prefs.putBytes\(\"proven_id\", id, sizeof\(id\)\)" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/OTAUpdate.cpp match="ota.image_proven reason=mqtt_up" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/OTAUpdate.cpp match="if \(_otaProvenDone \|\| !_otaMqttUp\) return;" -->
+An image is proven on the broker while NVS `boot` key `proven_id` names it: the slot address and the app ELF sha256. An unproven image writes the record at its first MQTT session, WiFi or cellular (`ota.image_proven reason=mqtt_up`). There is one record, for the last image that connected, so any other image reads unproven until it connects: a new build, the same build in the other slot, or an image that connected before another one did. A new image is confirmed at five minutes, long before its first budget reboot, so a build with broken MQTT or TLS counts its budget reboots: with the default `mqtt.max_exhaust_reboots` of 3, the third one reaches the limit and boots the previous slot. With a budget below 3 the reboots stop first and that image stays. A broker outage holds the streak only on the image that connected last.
+
+#### At the limit
+
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="ota.state_change from=pending to=previous reason=crash_streak" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="ota.state_change from=valid to=other reason=crash_streak" -->
+
+| Running image | Other slot is a target | No target |
+|---|---|---|
+| Pending | marked invalid, the bootloader boots the other slot: `ota.state_change from=pending to=previous reason=crash_streak` | confirmed, so the bootloader cannot boot the slot just refused: `ota.state_change from=pending to=valid reason=no_other_image` |
+| Confirmed | streak zeroed, release recorded as fled, other slot booted: `ota.state_change from=valid to=other reason=crash_streak` | stays: `ota.image_rollback_failed reason=no_other_image` |
+| Neither, or unreadable | no switch: `ota.image_rollback_failed reason=state_not_valid` or `reason=state_unknown` | no switch |
+
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="esp_image_verify\(ESP_IMAGE_VERIFY_SILENT, &pos, &meta\)" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="prefs.putBytes\(\"left_id\", id, sizeof\(id\)\)" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="ota.left_image_cleared reason=slot_running" -->
+The other slot is a target only when otadata reads it valid, the image in it verifies whole (`esp_image_verify`), and it is not the slot the last switch came from. An interrupted download leaves a slot valid in otadata with the new image's descriptor already readable, so the state alone is not enough (`ota.image_rollback_failed reason=image_invalid`).
+
+The image a switch boots records where it came from: NVS `boot` key `left_id`, the other slot's address and app ELF sha256, written on arrival (`ota.left_image_recorded rescue=2`), so a failed switch leaves no record. Any boot of the recorded slot removes it (`ota.left_image_cleared reason=slot_running`): that slot was rewritten or fallen back to, so a reinstalled build is a rollback target again. Two images that both crash-loop switch once, not back and forth.
+
+#### The fled-release skip
+
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="prefs.putString\(\"fled_ver\", FIRMWARE_VERSION\)" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="reason=fled_release version=%s" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"fled-release\"\)" -->
+Once the boot slot is set, the fleeing image writes its own version to NVS `boot` key `fled_ver` (`ota.fled_release_recorded version=...`) and restarts. The update check then refuses a manifest with that version, compared as N.N.N: it logs `ota.phase_change from=fetch_manifest to=idle reason=fled_release version=... age_s=...` and publishes `{"state":"refused","reason":"fled-release"}` on `status/ota`. Without the skip, the older image the switch booted sees the broken build as newer and pulls it straight back at its first check, a full download and a slot rewrite per cycle.
+
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="ota.force_reflash version=fled" -->
+A newer manifest version installs as usual, and a firmware upload installs without the check. `ota.check --force` installs the fled release and logs `ota.force_reflash version=fled`. A forced build that loops again is fled again. A missing or unreadable record refuses nothing. Only a confirmed image records a fled release: a pending build that the bootloader or the guard rolls back is pulled again at the next check.
+
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_SKIP_S \(24u \* 60u \* 60u\)" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_TRIES 2u" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="if \(force\) return OTA_FLED_FORCED;\n  if \(ageS < OTA_FLED_SKIP_S\) return OTA_FLED_SKIP;\n  return tries \+ 1u < OTA_FLED_TRIES \? OTA_FLED_RETRY : OTA_FLED_LAST;" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="if \(fled == OTA_FLED_LAST\) saveFled\(0, 0\);" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="ota.fled_release_retry version=%s try=%u" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="reason=fled_release version=%s age_s=%lu" -->
+The refusal lasts 24 hours of skip age, and its log line ends in `age_s=`. Then the check installs the release again and logs `ota.fled_release_retry version=... try=1`. If that try is rolled back, the next check installs it once more with `try=2`, and the second try starts a new 24 hours. `--force` installs at any age and spends no try.
+
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_SAVE_S \(10u \* 60u\)" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="return value < 2u \* OTA_FLED_SAVE_S \? value : 2u \* OTA_FLED_SAVE_S;" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="return firstThisBoot \|\| unsavedS >= OTA_FLED_SAVE_S;" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="return ageS < OTA_FLED_SKIP_S && !otaSameVersion\(fled, running\);" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="return WiFiManager::ntpSynced\(\) \? \(uint32_t\)time\(nullptr\) : 0u;" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="if \(!firstThisBoot \|\| seenEpoch == 0 \|\| nowEpoch <= seenEpoch\) return upS;" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_GAP_MAX_S \(60u \* 60u\)" -->
+The skip age is uptime. RTC memory carries the unsaved seconds over a software reset or deep sleep, capped at 20 minutes, two save intervals. NVS gets the age at a boot's first refusal and then at most every 10 minutes awake, and only while the record names another build than the running one and the 24 hours are not spent. When SNTP had synced the clock at the last save and has again, the first save of a boot also adds the time the unit was off, at most one hour per reset, and a clock behind the last save adds nothing.
+
+A unit without a synced clock, cellular-only or with SNTP blocked, counts uptime only. A power-on loses what was not saved yet, under 10 minutes, so a boot shorter than about 10 minutes counts only the seconds before its first refusing check. With that check 15 s after power-on, a unit power-cycled every 50 minutes reaches the 24 hours about 30 hours after the switch, one power-cycled every 5 minutes about 20 days after it. Deep sleep counts the time awake, so at 30 s awake and 300 s asleep the 24 hours take about 11 days. A power-on never ends the skip.
+
+<!-- claim: repo=thesada-fw ref=26.09.3 file=lib/thesada-core/src/ota_health_policy.h absent="OTA_HEALTH_CRASH_LIMIT" -->
+<!-- claim: repo=thesada-fw ref=26.10.1 file=lib/thesada-core/src/ota_health_policy.h match="#define OTA_HEALTH_CRASH_LIMIT 3u" -->
+<!-- claim: repo=thesada-fw ref=26.10.1 file=lib/thesada-core/src/OTAUpdate.cpp absent="plannedRestart|proven_id|left_id|fled_ver" -->
+<!-- claim: repo=thesada-fw ref=26.10.2 file=lib/thesada-core/src/ota_health_policy.h absent="OTA_HEALTH_SETTLE_MS" -->
+<!-- claim: repo=thesada-fw ref=26.10.2 file=lib/thesada-core/src/OTAUpdate.cpp absent="plannedRestart|proven_id|left_id|fled_ver" -->
+The crash streak and the switch at the limit ship from 26.10.1. Firmware 26.10.1 and 26.10.2 count every software restart and have no one-hour clear, proven record or fled-release skip. When a switch boots an image from 26.10.2 or older, that image pulls the fled build again until the manifest changes.
+
+<!-- claim: repo=thesada-fw ref=26.10.1 file=lib/thesada-core/src/OTAUpdate.cpp match="prefs.putString\(\"left_ver\", desc.version\);" -->
+<!-- claim: repo=thesada-fw ref=26.10.2 file=lib/thesada-core/src/OTAUpdate.cpp match="prefs.putString\(\"left_ver\", desc.version\);" -->
+<!-- claim: repo=thesada-fw ref=26.10.2 file=lib/thesada-core/src/ota_health_policy.h match="return strcmp\(version, badVersion\) == 0 && strcmp\(date, badDate\) == 0 &&" -->
+<!-- claim: repo=thesada-fw ref=26.10.2 file=lib/thesada-core/src/OTAUpdate.cpp absent="remove\(\"left_" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="left_ver/left_date/left_time are not read: they hold prebuilt IDF strings\n  // that match every build." -->
+The left-slot record of 26.10.1 and 26.10.2 is the leaving image's descriptor version, date and time, in NVS `boot` keys `left_ver`, `left_date` and `left_time`. Those strings come from the prebuilt IDF and match every build on the same platform, and 26.10.x never removes them, so after one switch from a confirmed image 26.10.x accepts no later rollback target. This guard never reads, writes or removes those keys.
+
+#### Log events
+
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/OTAUpdate.cpp match="ota.crash_streak_held reason=%s" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/OTAUpdate.cpp match="ota.crash_streak_counted reason=broker_restart_unproven" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="ota.left_image_recorded rescue=%u" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp absent="ota.abandoned_unrecorded" -->
+<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="ota.fled_age_unsaved reason=nvs_write" -->
+
+| Event | Meaning |
+|---|---|
+| `ota.crash_streak_held reason=planned_restart` or `reason=broker_restart` | a restart on a confirmed image that did not count |
+| `ota.crash_streak_counted reason=broker_restart_unproven` | a budget reboot on a confirmed image that is not the last one to connect, counted |
+| `ota.crash_streak_cleared reason=healthy_uptime` | a confirmed image one hour up, streak written to zero |
+| `ota.crash_streak_unread` | the streak could not be read or stored; confirm stays shut and nothing switches |
+| `ota.image_proven reason=mqtt_up` | the proven record was written |
+| `ota.image_proven_unrecorded reason=no_image_id`, `nvs` or `nvs_write` | the proven record was not written; the next boot tries again |
+| `ota.left_image_recorded rescue=N` | a switch arrival recorded the slot it came from |
+| `ota.left_image_cleared reason=slot_running` | the recorded slot booted, record removed |
+| `ota.left_image_kept reason=nvs_write` | that record could not be removed |
+| `ota.left_image_unrecorded reason=no_image_id`, `older_guard` or `nvs_write` | a switch arrival recorded nothing |
+| `ota.fled_release_recorded version=...` | the fleeing image recorded its release |
+| `ota.fled_release_unrecorded reason=nvs_write` | that write failed; the next check can pull the release once more |
+| `ota.fled_release_unread reason=nvs` | the record could not be read; nothing is skipped |
+| `ota.phase_change from=fetch_manifest to=idle reason=fled_release version=... age_s=...` | the check refused the fled release; `age_s` is the skip age |
+| `ota.fled_release_retry version=... try=1` or `try=2` | the 24 hours ran out and the check installs the fled release again |
+| `ota.fled_age_unsaved reason=nvs_write` | the skip age was not saved; it stays in RAM and the next save is due 10 minutes later |
+| `ota.force_reflash version=fled` | `--force` installs the fled release |
+| `ota.image_rollback_failed reason=...` | no switch: `state_unknown`, `state_not_valid`, `no_other_image`, `image_invalid`, `no_description`, `no_image_id`, `nvs`, `nvs_write`, `cancel_failed`. With no reason, setting the boot slot or marking the image invalid failed |
+| `ota.rescue_left_set reason=nvs_write` | a failed switch could not clear its rescue flag |
+| `ota.image_confirm_failed` | the IDF confirm of a pending image failed; it is retried |
 
 ---
 
@@ -209,6 +341,9 @@ Several mechanisms prevent connection drops after extended uptime:
 **TLS heap guard** - the cert upgrade is skipped when free heap is below ~40 KB at connect time. `WiFiClientSecure`'s SSL allocation needs a large contiguous block; attempting it on a tight heap causes OOM crashes. The connection stays insecure with a warning logged.
 
 **Bounded exhaustion reboots** - after `mqtt.reboot_after_fails` consecutive failed reconnects (default 30) the client used to call `ESP.restart()` indefinitely, so a misconfigured broker turned into a perpetual ~30 min reboot loop with no remote recovery path. The reboot still happens, but an NVS counter (`thesada-boot` namespace, keys `mqtt_reboots` + `mqtt_rb_at`) tracks consecutive exhaustion reboots and stops them once `mqtt.max_exhaust_reboots` (default 3) is reached. The device stays up and keeps retrying at the capped backoff so local serial/HTTP/shell remain usable. The counter clears on the first successful connect; a streak older than 6 h (`RB_STALE_WINDOW_S`) ages out so a one-off outage does not accumulate toward a halt.
+
+<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/MQTTClient.cpp match="mqttRebootCountBump\(count \+ 1\);\n        delay\(1000\);\n        OTAUpdate::brokerRestart\(\);" -->
+These reboots count toward the OTA crash streak unless the running image is confirmed and proven on the broker, that is, the last image that had an MQTT session. So a long outage on that image cannot switch slots, while a new image that never connects still escapes. See [Rollback and the crash streak](#rollback-and-the-crash-streak).
 
 Connection uptime is logged on disconnect to help diagnose patterns (consistent ~3600s = NAT timeout, random = WiFi instability).
 
