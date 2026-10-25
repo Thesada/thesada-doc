@@ -16,28 +16,25 @@ The periodic output shape. One GPIO, toggled on a timer, nothing published. `lib
 | Config in `begin()`, nothing in the constructor | `begin()` reads `pin` and `interval_ms` and sets the pin up as an output |
 | A non-blocking `loop()` | compare `millis()` against the interval, return early, toggle when due. No `delay()`, so every other module keeps running between toggles |
 | Output only | no MQTT publish, no bus event, no shell command; the pin level is the whole result |
-| `module.status` | one line: `pin=2 state=on interval_ms=500` |
+| `module.status` | one line: `pin=21 state=on interval_ms=500` |
 | Registration | `MODULE_REGISTER(ExampleBlinkLed, PRIORITY_OUTPUT)`, guarded by `ENABLE_EXAMPLE_BLINK_LED` |
 
-<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-example-blink-led/src/ExampleBlinkLed.cpp match="\[\"pin\"\]\s+\| 2;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-example-blink-led/src/ExampleBlinkLed.cpp match="\[\"pin\"\]\s+\| 21;" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-example-blink-led/src/ExampleBlinkLed.cpp match="\[\"interval_ms\"\]\s+\| 500;" -->
-A missing key falls back to the default in `begin()`: pin 2, 500 ms.
+A missing key falls back to the default in `begin()`: pin 21, 500 ms.
 
 ## Config
 
 ```json
 "example_blink_led": {
   "enabled":     true,
-  "pin":         2,
+  "pin":         21,
   "interval_ms": 500
 }
 ```
 
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/ModuleRegistry.cpp match="registry.module_skip priority=%d name=%s reason=disabled" -->
 `enabled` is required: optional modules default off, and without `"enabled": true` the registry logs `registry.module_skip ... reason=disabled` instead of starting the module.
-
-<!-- claim: repo=thesada-fw file=lib/thesada-mod-ads1115/src/ADS1115Module.cpp match="\[\"i2c_scl\"\]\s+\| 2;" -->
-> **Pin 2 is the ADS1115 clock on some builds.** `esp32-owb`, `esp32-owb-debug` and `esp32-s3-carrier` compile the ADS1115 module, and its I2C SCL defaults to GPIO 2 (`ads1115.i2c_scl`). With `ads1115` enabled on those, set `pin` to a free GPIO, or the blink takes over the I2C clock line.
 
 ## Turn it on
 
@@ -47,17 +44,17 @@ Uncomment `ENABLE_EXAMPLE_BLINK_LED` in `src/thesada_config.h`, build and flash 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-example-blink-led/src/ExampleBlinkLed.cpp match="example_blink\.ready pin=%d interval_ms=%u" -->
 ```text
 [INF][Registry] registry.module_init priority=60 name=ExampleBlinkLed
-[INF][ExBlink] example_blink.ready pin=2 interval_ms=500
+[INF][ExBlink] example_blink.ready pin=21 interval_ms=500
 ```
 
 ## Expected output
 
-The pin flips every `interval_ms`, so with the defaults an LED on pin 2 blinks at 1 Hz. Toggles are not logged. `module.status` shows the current level, one line among the other modules:
+The pin flips every `interval_ms`, so with the defaults an LED on pin 21 blinks at 1 Hz. Toggles are not logged. `module.status` shows the current level, one line among the other modules:
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-example-blink-led/src/ExampleBlinkLed.cpp match="pin=%d state=%s interval_ms=%u" -->
 ```text
 module.status
-  ExampleBlinkLed pin=2 state=on interval_ms=500
+  ExampleBlinkLed pin=21 state=on interval_ms=500
 ```
 
 ## The code
@@ -86,7 +83,7 @@ public:
 private:
   uint32_t _intervalMs = 500;
   uint32_t _last       = 0;
-  int      _pin        = 2;
+  int      _pin        = 21;
   bool     _on         = false;
 };
 ```
@@ -114,7 +111,7 @@ static const char* TAG = "ExBlink";
 void ExampleBlinkLed::begin() {
   JsonObject cfg = Config::get();
   _intervalMs = cfg["example_blink_led"]["interval_ms"] | 500;
-  _pin        = cfg["example_blink_led"]["pin"]         | 2;
+  _pin        = cfg["example_blink_led"]["pin"]         | 21;
 
   pinMode(_pin, OUTPUT);
   digitalWrite(_pin, _on ? HIGH : LOW);
