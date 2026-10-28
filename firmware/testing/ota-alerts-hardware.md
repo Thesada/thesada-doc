@@ -31,6 +31,26 @@ description: "OTA update testing (pull and push), temperature alerts, webhook, S
 | `cli/chip.info` payload `""` | Chip model (ESP32-S3), revision, cores, flash size, PSRAM size + free, CPU frequency |
 | `cli/net.mqtt` payload `""` | Connection state, broker, prefix, subscription table with active flags, RX ring of recent incoming topics with age |
 
+### 9b. Rollback and the crash streak
+
+Run these on an image installed by OTA or web upload and then confirmed. A USB flash leaves the otadata state undefined, so that image never reads as confirmed and every restart counts. The streak is `crash_streak=` on the `boot.reset_info` line. Behaviour: [Rollback and the crash streak]({{ site.baseurl }}/firmware/architecture/connectivity.html#rollback-and-the-crash-streak).
+
+The left-record and fled-release rows need both images to carry this guard, the crash-looping one and the one the switch boots: an image from 26.10.2 or older records no `left_id` and has no fled-release skip. Run the fled-release rows top to bottom: each starts from the state the row above left. The interrupted-download row serves a newer release only until that download fails, then puts the manifest back on the fled version before the network returns, so the newer release never installs and the 24 h rows start from the fled version.
+
+| Check | Expected |
+|---|---|
+| `restart` three times on a confirmed image | Each boot logs `ota.crash_streak_held reason=planned_restart`; `crash_streak` does not rise |
+| Confirmed image with `crash_streak` above 0, up over an hour | `ota.crash_streak_cleared reason=healthy_uptime` |
+| New image with a wrong broker host compiled in, WiFi only, no earlier slot switch recorded | Confirmed at 5 min; each budget reboot logs `ota.crash_streak_counted reason=broker_restart_unproven`; the third ends in `ota.state_change from=valid to=other`. A host changed only in config does not test this: the MQTT last-good rollback restores the old broker first |
+| Broker outage on the image that connected last | The budget reboot logs `ota.crash_streak_held reason=broker_restart` |
+| Confirmed image that crash-loops (a bench build that panics a few minutes after its first MQTT session) | Before the switch restart: `ota.fled_release_recorded version=<its version>`. The booted image logs `ota.left_image_recorded rescue=2`, its boot check logs `reason=fled_release`, `status/ota` shows `refused` / `fled-release`, no download |
+| Power-cycle that unit | The left record stays; the next check still refuses |
+| Reinstall the left build with `ota.check --force` or a web upload; a plain check refuses it | It goes into the left slot, and its boot logs `ota.left_image_cleared reason=slot_running`. `--force` also logs `ota.force_reflash version=fled`. The crash build loops again and is fled again: `ota.fled_release_recorded`, then `ota.left_image_recorded rescue=2` |
+| Serve a newer release and cut the network once the download is past its first few KB (before that the other slot still holds the fled build, and the log reads `reason=no_other_image`). Once the log shows `ota.update_failed`, put the manifest back on the fled version, restore the network, then drive the running image to the limit | `ota.image_rollback_failed reason=image_invalid`; no switch, and the next check refuses `fled-release` again. Leave the unit up an hour, to `ota.crash_streak_cleared reason=healthy_uptime`, so the next install does not boot at the limit |
+| 24 hours of skip age after the last fled release | Refusals before that log `age_s=`. Then the check logs `ota.fled_release_retry version=<its version> try=1` and installs it; the crash build loops again and is fled again, with a new 24 hours |
+| Serve the same version as a build that panics before it confirms, then wait 24 hours of skip age after the last fled release | `try=1` boots pending and is rolled back, by the bootloader or the guard; the next check logs `try=2` and installs it again; after that rollback the check refuses again with `age_s` started over |
+| Newer manifest version after a fled release | Installs normally |
+
 ---
 
 ## 10. OTA (push via web)

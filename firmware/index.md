@@ -50,6 +50,7 @@ Custom firmware (`thesada-fw`) for all Thesada nodes. Supports multiple ESP32 bo
 | OTA - pull | Fetch manifest, SHA256 verify, auto-install. Watchdog-safe download loop tolerates flaky wireless links without panicking mid-flash |
 | OTA - PROGMEM CA fallback | Common public TLS roots baked into the firmware. OTA + MQTT stay TLS-verified even when `/ca.crt` on LittleFS is missing or wiped |
 | OTA - structured events | `<prefix>/status/ota` publishes `updating`, `up-to-date`, `refused` (with kebab reason), or `failed` JSON on every OTA code path |
+| OTA - crash-loop rollback | A new image is confirmed after its first MQTT session or five minutes up; three crash resets switch to the other slot when it holds a valid, verified image that was not just left. See [Rollback and the crash streak]({{ site.baseurl }}/firmware/architecture/connectivity.html#rollback-and-the-crash-streak) |
 | OTA force mode | `ota.check --force` bypasses version check - dev iteration without version bumps, and recovery of stuck devices |
 | PSRAM support | 8 MB external PSRAM on ESP32-S3 targets via `memory_type=qio_opi`; heap-hungry modules (Lua, TLS buffers) can route to PSRAM |
 | Heap + PSRAM telemetry | Free / min free / max alloc block / PSRAM free published to MQTT every 5 min with HA auto-discovery for each metric |
