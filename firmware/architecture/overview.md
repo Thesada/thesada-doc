@@ -147,6 +147,7 @@ EventBus::publish("temperature", doc.as<JsonObject>());
 EventBus::subscribe("temperature", [](JsonObject data) {
   JsonArray sensors = data["sensors"].as<JsonArray>();
   for (JsonObject s : sensors) {
+    if (s["stale"] | false) continue;  // no reading this cycle
     float temp = s["temp_c"] | -999.0f;
     // react to reading
   }
@@ -157,7 +158,7 @@ EventBus::subscribe("temperature", [](JsonObject data) {
 
 | Event | Publisher | Payload |
 |---|---|---|
-| `temperature` | TemperatureModule | `{ "sensors": [ { "name": "x", "address": "...", "temp_c": 18.4 } ] }` |
+| `temperature` | TemperatureModule | `{ "sensors": [ { "name": "x", "address": "...", "temp_c": 18.4 } ] }`; a probe without a reading is `{ "name": "x", "address": "...", "stale": true }` |
 | `current` | ADS1115Module | `{ "channels": [ { "name": "x", "voltage_v": 0.012, "raw": 123 } ] }` |
 | `battery` | BatteryModule | `{ "present": true, "voltage_v": 3.91, "percent": 35, "charging": false }` |
 | `alert` | TelegramModule | `{ "value": "alert message text" }` (MQTTClient and CellularModule subscribe) |

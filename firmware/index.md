@@ -35,11 +35,11 @@ Custom firmware (`thesada-fw`) for all Thesada nodes. Supports multiple ESP32 bo
 | Feature | Notes |
 |---|---|
 | WiFi multi-SSID | Ranked by RSSI; NTP synced on connect |
-| LTE-M/NB-IoT fallback | SIM7080G modem-native MQTT over TLS; reverts to WiFi automatically |
+| LTE-M/NB-IoT fallback | MQTT and HTTPS over SIM7080G TCP sockets, with the same TLS stack and checks as WiFi; reverts to WiFi automatically |
 | TLS MQTT | CA cert from LittleFS (`/ca.crt`); PROGMEM bundle (Let's Encrypt + GitHub roots) takes over if the file is missing |
 | MQTT connection reliability | 10 min watchdog, TCP keepalive (30s/10s/3), auto-reconnect on half-open sockets |
 | HA MQTT discovery | Auto-registers all sensors in Home Assistant on connect; no manual YAML needed |
-| DS18B20 temperature | OneWire, multi-sensor, auto-discovery, retry on disconnect, last-known-value fallback |
+| DS18B20 temperature | OneWire, multi-sensor, auto-discovery, retry on disconnect, stale flag on a failed or held reading |
 | SHT31 temperature + humidity | I2C, raw driver (no external library), configurable interval [ENABLE_SHT31] |
 | ADS1115 current sensing | RMS sampling (30 samples over 2 cycles at 60Hz), outputs amps for SCT-013-030 |
 | Battery monitoring | AXP2101 voltage, state of charge, charge status; MQTT publish + low-battery alert |

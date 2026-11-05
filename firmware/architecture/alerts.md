@@ -94,7 +94,7 @@ end
 EventBus.subscribe("temperature", function(data)
   for _, s in ipairs(data.sensors) do
     local key = "low_temp:" .. s.name
-    if s.name == "House Supply" and s.temp_c <= 55 then
+    if s.name == "House Supply" and s.temp_c and s.temp_c <= 55 then
       sustain[key] = (sustain[key] or 0) + 1
       if sustain[key] >= TEMP_SUSTAIN and can_alert(key) then
         notify("low_temp", "warn", s.name .. ": " .. s.temp .. unit .. " - Low temp")
@@ -131,6 +131,8 @@ The envelope matters: the platform keeps only JSON alerts with `severity` in `in
 - `temp_c` - always Celsius (use for thresholds)
 - `temp` - display unit (C or F depending on `temperature.unit` config)
 
+A probe without a usable reading is listed as `{ "name": "House Supply", "address": "28...", "stale": true }`, with no `temp_c` or `temp`. Rules guard the field (`s.temp_c and ...`) as above, or test `s.stale`; an unguarded compare throws and ends the loop over the remaining probes. The sustain counter resets when the field is missing, so a dead probe cannot raise a low-temp alert - alert on the stale state itself if that matters.
+
 **Sustain pattern:** alert only fires after N consecutive readings cross the threshold. Prevents false alerts from single sensor glitches or brief temperature dips when loading fuel.
 
 **Cooldown pattern:** after an alert fires, the same key won't fire again for `COOLDOWN_MS` milliseconds. Prevents alert spam when a condition persists.
@@ -149,6 +151,8 @@ Optional HTTP POST fired from Lua or TelegramModule on every alert:
 ```
 
 `{% raw %}{{value}}{% endraw %}` is replaced with the full alert message. Supports `http://` and `https://`. Leave `url` empty to disable.
+
+A query on the host root is kept: `https://host?key=abc` posts to `/?key=abc`. TCP connect and each write are capped at 5 s for the webhook and Telegram clients.
 
 HTTPS webhook endpoints are unverified by default (the URL is arbitrary, so there is no CA to pin ahead of time). To verify TLS, upload the endpoint's root certificate - self-signed works - as `/webhook-ca.crt` via the file API, then restart:
 

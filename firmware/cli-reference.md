@@ -48,6 +48,15 @@ Response shape:
 }
 ```
 
+`ok` is `false` on `cli_response` and in the `/api/cmd` reply when the line is refused, the command is unknown, or the handler failed: `config.set`, `config.del`, `config.save`, `secret.set` and `lua.exec` report a failed write or run this way. Other commands report their own errors in `output` with `ok: true`. A reply paged over several messages carries `ok: false` on the last page (`more: false`) only.
+
+| Shell limit | Value |
+|---|---|
+| Line | 1023 bytes, 16 words; past either, the line is refused and nothing runs |
+| Nesting | 2 levels: the outer command plus one console line typed while it blocks (OTA, `net.http`, cellular waits); a third is refused with `Shell busy (nested command) - not run` |
+
+`config.set` and `secret.set` (from the second argument), `fs.write` and `fs.append` (from the second argument), and `cell.at`, `lora.send` and `lua.exec` (from the first argument) take their value as the rest of the line. Inner spaces and tabs are kept, trailing ones cut. A value that must end in whitespace is quoted; `config.set` and `secret.set` strip one pair of quotes.
+
 Over MQTT the command surface depends on how the broker session authenticated. An mTLS session reaches every command on this page; a session on the shared password credential reaches only what pairing and recovery need:
 
 | Session auth | Command surface |
@@ -101,7 +110,7 @@ Binary protocols (`fs.write`, `fs.append`, `cert.set`) read the raw payload dire
 - [Network](#network) - net.ip, net.ping, net.ntp, net.mqtt, net.http
 - [OTA](#ota) - ota.check, ota.status
 - [Certificates](#certificates) - cert.set, cert.info, cert.apply, cert.clear
-- [Cellular](#cellular) - cell.at, cell.reset, cell.cert.test, cell.cert.dump, cell.smconn.test
+- [Cellular](#cellular) - cell.at, cell.reset
 - [Boot and system](#boot-and-system) - boot.info, partitions, chip.info, identity.info, identity.reset, sdkconfig
 - [Modules](#modules) - module.list, module.status
 - [Temperature](#temperature) - temp.discover
@@ -122,7 +131,7 @@ Print the firmware version, build timestamp, and the SHA of the bundled CA cert.
 
 Reboot the device. No confirmation - issued from MQTT, the response publishes before the actual restart so the operator sees a clean acknowledgement.
 
-<!-- claim: repo=thesada-fw ref=fix/ota-valid-streak-clear file=lib/thesada-core/src/Shell.cpp match="out\(\"Restarting...\"\);\n  delay\(100\);\n  OTAUpdate::plannedRestart\(\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="out\(\"Restarting...\"\);\n  delay\(100\);\n  OTAUpdate::plannedRestart\(\);" -->
 On a confirmed image this restart does not count toward the OTA crash streak, and the next boot logs `ota.crash_streak_held reason=planned_restart`. On a pending image it counts. See [Rollback and the crash streak]({{ site.baseurl }}/firmware/architecture/connectivity.html#rollback-and-the-crash-streak).
 
 ### heap
@@ -203,7 +212,7 @@ Remove a file. No globs, no recursion. `fs.rm <path>`.
 
 Truncate-and-write a file with content from the command payload.
 
-- **Serial / WebSocket**: `fs.write <path> <content>` (content is the rest of the line, single-line only).
+- **Serial / WebSocket**: `fs.write <path> <content>` (content is the rest of the line with inner whitespace kept, single-line only).
 - **MQTT**: payload format is `<path>\n<content>`. The first newline separates path from body. Multi-line content is preserved.
 
 ### fs.append
@@ -212,7 +221,7 @@ Same shape as `fs.write` but appends instead of truncating.
 
 ### fs.mv
 
-Rename or move a file. `fs.mv <src> <dst>`.
+Rename or move a file. `fs.mv <src> <dst>`. Both paths must resolve to the same filesystem; a move between LittleFS and `/sd` is refused with `Cannot move between filesystems`.
 
 ### fs.df
 
@@ -396,7 +405,7 @@ ota.check --force https://...firmware.json
 
 The actual download + flash + reboot sequence runs from the OTA module's loop on the main task, so this command returns immediately ("download started"). Watch `boot.info` after the device comes back to confirm.
 
-<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="ota.force_reflash version=fled" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.force_reflash version=fled" -->
 A plain check refuses the release a crash-loop slot switch fled, with `status/ota` reason `fled-release`, for as long as the [fled-release skip]({{ site.baseurl }}/firmware/architecture/connectivity.html#the-fled-release-skip) runs. `--force` installs it and logs `ota.force_reflash version=fled`.
 
 ### ota.status
@@ -433,43 +442,30 @@ Erase the stored cert and key from NVS. When a cert was stored, the unit reboots
 
 ## Cellular
 
-Available only when the firmware was built with the cellular module enabled (`-DENABLE_CELLULAR`). The cell module talks AT to a SIM7080G modem over UART; commands here are operator-facing diagnostics, not the runtime publish path.
+Available only when the firmware was built with the cellular module enabled (`-DENABLE_CELLULAR`). The cell module talks AT to a SIM7080G modem over UART. The modem only carries TCP: MQTT and HTTPS run their TLS on the ESP32, the same stack as on WiFi. Commands here are operator-facing diagnostics, not the runtime publish path.
 
 ### cell.at
 
-Send a raw AT command to the modem and capture the response lines.
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-cellular/src/CellularModule.cpp match="usage: cell.at <command-without-AT-prefix>" -->
+Send a raw AT command to the modem and capture the response lines. Leave out the `AT` prefix, the command adds it.
 
 ```text
-cell.at AT+CSQ          # signal quality
-cell.at AT+COPS?        # current operator
-cell.at AT+CGNSPWR=1    # enable GNSS power
+cell.at +CSQ          # signal quality
+cell.at +COPS?        # current operator
+cell.at +CGNSPWR=1    # enable GNSS power
 ```
 
-Each invocation acquires the modem AT bus mutex for the duration, so a long-running AT command blocks runtime telemetry briefly. Use sparingly when the device is actively publishing.
+Each invocation holds the modem AT bus mutex for up to 5 s (180 s for `+COPS=?`), so it briefly blocks runtime telemetry. A reply that arrives after the timeout shows up in the next command's output.
 
 ### cell.reset
 
-Power-cycle the modem via its DC3 enable pin (200 ms gap to drain the bulk caps; without the delay the modem latches state across the toggle). Equivalent to pulling the modem from the board and reseating it. Use after a failed PDP activation or when the modem stops responding to AT.
+Hardware-reset the modem: DC3 and BLDO2 off for 1 s, back on, PWRKEY pulse, then wait for AT. Bring-up re-runs on the next loop. Use after a failed PDP activation or when the modem stops answering AT.
 
-### cell.cert.test
+### Checking TLS over cellular
 
-Verify that the device's mTLS client certificate + private key are present in NVS and that the PEM round-trips through the modem's file-system upload path. Reads NVS, writes the PEM to the modem at `/customer/client.crt` + `/customer/client.key`, reads back, compares.
+There is no cellular-only TLS probe: the modem does no TLS. To check what a host presents over the modem link, run [net.http](#nethttp) with WiFi down. A refused certificate logs `tls.handshake_failed` with the mbedTLS error and the verify cause, for example `verify=0x00000004` for a name the certificate does not cover. The MQTT session logs the same line when its broker is refused.
 
-Cellular-debug command - only registered in builds with the `THESADA_CELL_DEBUG` flag (the `esp32-owb-debug` bench env). Not present in production builds.
-
-### cell.cert.dump
-
-Print the PEM stored in NVS for `client_cert` and `client_key`. Returns full PEM payload over MQTT cli response.
-
-Cellular-debug command - only registered in builds with the `THESADA_CELL_DEBUG` flag (the `esp32-owb-debug` bench env). Not present in production builds.
-
-### cell.smconn.test
-
-Force a modem-native MQTT (SMCONN) connect attempt against the broker configured in `mqtt.broker` / `mqtt.port`, using the mTLS cert pair already written to the modem. Reports connect result + the modem's `+SMSTATE` register value. Use to isolate "cellular up, modem AT happy, but MQTT not connecting" from broader transport-layer faults.
-
-Cellular-debug command - only registered in builds with the `THESADA_CELL_DEBUG` flag (the `esp32-owb-debug` bench env). Not present in production builds.
-
-There is no `cell.http` command - HTTPS GET over the modem is reached through [net.http](#nethttp), which auto-routes WiFi vs cellular. The modem-side implementation (`Cellular::httpsGet`, CAOPEN / CASEND / CARECV) still backs the OTA cellular fallback and the `net.http` cellular branch.
+There is no `cell.http` command - HTTPS GET over the modem is reached through [net.http](#nethttp), which auto-routes WiFi vs cellular. `Cellular::httpsGet` backs it and the OTA cellular fallback.
 
 ## Boot and system
 

@@ -102,7 +102,7 @@ mosquitto_pub -t '<prefix>/cli/fs.cat' -m '/scripts/rules.lua 2048 2048'
 # Response: {"cmd":"fs.cat","ok":true,"total":3858,"offset":2048,"length":1810,"done":true,"data":"..."}
 ```
 
-For writes, `fs.write` and `fs.append` use a binary payload format via MQTT (path + newline + content). These bypass the Shell's 256-byte parse buffer:
+For writes, `fs.write` and `fs.append` use a binary payload format via MQTT (path + newline + content). These bypass the Shell's 1024-byte parse buffer (1023-byte line, 16 words):
 
 ```bash
 # Build payload file: first line is path, rest is content
@@ -179,7 +179,7 @@ EventBus.subscribe("temperature", function(data)
   local sensors = data.sensors
   for i = 1, #sensors do
     local s = sensors[i]
-    if s.temp_c > 40 then
+    if s.temp_c and s.temp_c > 40 then
       Log.warn("High temp: " .. s.name .. " " .. s.temp_c .. "C")
       MQTT.publish("thesada/node/alert", s.name .. " overheating")
     end

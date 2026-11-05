@@ -68,7 +68,7 @@ Per-device runtime info plus a small timer queue.
 ```lua
 Node.restart()                   -- reboot the device
 Node.version()                   -- firmware version string
-Node.uptime()                    -- millis since boot, integer
+Node.uptime()                    -- ms since boot, 64-bit float, no wrap
 Node.ip()                        -- WiFi IP as "192.168.1.42" or empty
 Node.setTimeout(5000, function() -- one-shot timer, ms
   Log.info("5 seconds passed")
@@ -76,6 +76,14 @@ end)
 ```
 
 Timer queue is 8 slots. A `setTimeout` when full logs a warning and returns `false`; the callback is dropped. Build periodic loops by re-arming inside the callback.
+
+`Node.uptime()` and `setTimeout` deadlines count 64-bit uptime, so neither breaks at the 49.7-day `millis()` wrap. Lua numbers are 32-bit floats here, so uptime stays monotonic but its step grows with it (512 ms past 49.7 days, 2 s past 199 days) - fine for second-scale cooldowns.
+
+| `setTimeout` delay | Result |
+|---|---|
+| NaN | refused, returns `false` |
+| negative | fires on the next pass |
+| past 30 days (including `math.huge`) | capped at 30 days |
 
 ### `Config`
 
@@ -117,12 +125,14 @@ Common events (varies by build):
 
 | Event | Source | Payload shape |
 |---|---|---|
-| `temperature` | TemperatureModule, SHT31Module | `{ sensors = [{ name, address, temp_c, temp }] }` (SHT31 row adds `humidity`, name `SHT31`) |
+| `temperature` | TemperatureModule, SHT31Module | `{ sensors = [{ name, address, temp_c, temp }] }` (SHT31 row adds `humidity`, name `SHT31`); a probe without a reading is `{ name, address, stale = true }` with no `temp_c` or `temp` |
 | `current` | ADS1115Module | `{ channels = [{ name, address, raw, voltage_v, current_a, power_w, line_v }] }` |
 | `battery` | BatteryModule | `{ present, voltage_v, percent, charging }` |
 | `alert` | any module / Lua publish | `{ severity, code, message, metric, value, ts }` |
 
 The C++ side publishes to the EventBus as soon as a sensor read completes; subscribing in Lua is the lowest-latency way to react.
+
+Every DS18B20 probe is listed each cycle. One whose read failed, or whose reading the `max_delta_c` guard held back, carries `stale = true` and no `temp_c` or `temp`; it is never filled with its last value. Guard every temperature field (`if s.temp_c then`) or skip `s.stale`: comparing or concatenating a missing field throws, and the throw ends the callback's loop over the remaining probes.
 
 ### `JSON`
 
@@ -185,14 +195,14 @@ local triggered = false
 EventBus.subscribe("temperature", function(data)
   for _, s in ipairs(data.sensors or {}) do
     if s.name == "boiler" then
-      if s.temp_c > 75 and not triggered then
+      if s.temp_c and s.temp_c > 75 and not triggered then
         triggered = true
         local prefix = Config.get("mqtt.topic_prefix")
         local payload = string.format(
           '{"severity":"crit","metric":"temperature.boiler","value":%.1f,"message":"Boiler over 75 C"}',
           s.temp_c)
         MQTT.publish(prefix .. "/alert", payload)
-      elseif s.temp_c < 70 and triggered then
+      elseif s.temp_c and s.temp_c < 70 and triggered then
         triggered = false
       end
     end
