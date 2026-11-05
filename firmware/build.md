@@ -2,7 +2,7 @@
 title: Build and Field Notes
 parent: Firmware
 nav_order: 8
-description: "Build targets, the release and versioning workflow, and hardware-integration notes - including the SIM7080G cellular mTLS AT sequence."
+description: "Build targets, the release and versioning workflow, and hardware-integration notes, including SIM7080G cellular TLS."
 ---
 
 # Build and Field Notes
@@ -21,23 +21,11 @@ Bump `FIRMWARE_VERSION` in `src/thesada_config.h` **before** the merge commit th
 
 The source of truth for the running version is `thesada_config.h` plus the git tags - never a version line written into prose docs. Bumping before the merge avoids having to force-move a tag that was placed ahead of the version constant.
 
-## Cellular mTLS (SIM7080G)
+## Cellular TLS (SIM7080G)
 
-mTLS over the SIM7080G is sensitive to the exact AT-command order. SIM7080G modem firmware `1951B17` silently fails the TLS handshake with the "obvious" concatenated-PEM approach.
-
-Upload the CA, client certificate, and client key to the modem filesystem as **three separate files** (`server-ca.crt`, `client.crt`, `client.key`), then:
-
-```text
-+CSSLCFG="SSLVERSION",0,3                        # TLS 1.2 on SSL context 0
-+CSSLCFG="CONVERT",2,"server-ca.crt"             # convert CA (type 2)
-+CSSLCFG="CONVERT",1,"client.crt","client.key"   # convert client cert + key (type 1, 4-arg)
-+CSSLCFG="sni",0,"<broker>"                       # optional; ignored harmlessly on a direct broker
-+SMSSL=1,"server-ca.crt","client.crt"            # mode 1 = mutual TLS
-```
+TLS over cellular runs on the ESP32 (mbedTLS, `TlsClient`) over a plain modem TCP socket, the same stack and client cert as WiFi. Nothing is uploaded to the modem filesystem and no modem TLS setup exists.
 
 Field notes:
 
-- **Do not** concatenate cert and key into one PEM and use `+SMSSL=2`. It returns `OK` but the handshake never completes on fw `1951B17`. The 4-arg `CONVERT,1` flow above is the working pattern.
-- The client key must be **PKCS#8**, not SEC1. Validated with both RSA-2048 and ECDSA P-256 client certs.
-- Yield the AT bus between cellular MQTT retries. If the modem loops on `SMCONN` failure without releasing the bus, the main loop starves.
-- Reference AT samples: LilyGo's published T-SIM7080G SSL and MQTT example sketches at `github.com/Xinyuan-LilyGO/LilyGo-T-SIM7080G`.
+- TinyGSM registers a socket client in a table when it is constructed and never removes it, so the firmware keeps its two modem sockets for the whole program instead of allocating them per request.
+- Reference AT samples: LilyGo's published T-SIM7080G sketches at `github.com/Xinyuan-LilyGO/LilyGo-T-SIM7080G`.

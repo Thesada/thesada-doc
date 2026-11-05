@@ -32,7 +32,7 @@ The chunked protocol itself is filesystem-agnostic - same wire format works whet
 |---|---|---|
 | `mqtt.buffer_in` | 4096 (configurable, max 8192) | `config.json` |
 | `mqtt.buffer_out` | 4096 (configurable, max 8192) | `config.json` |
-| Shell parse buffer | 256 bytes | hardcoded in firmware |
+| Shell parse buffer | 1024 bytes (1023-byte line, 16 words) | hardcoded in firmware |
 | Max chunk size (read) | 2048 bytes | hardcoded in firmware |
 
 `fs.write` and `fs.append` bypass the Shell parse buffer via a special-case path in the firmware's MQTT CLI handler. The effective max write payload is `buffer_in` minus path length minus one (newline separator) minus a small JSON envelope overhead.

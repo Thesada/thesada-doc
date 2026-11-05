@@ -45,3 +45,5 @@ ci: lint test build ## Local CI: style, claim checks, strict Jekyll build
 .PHONY: clean
 clean: ## Remove the Jekyll build output
 	rm -rf _site .jekyll-cache
+
+-include .forgejo/publish.mk

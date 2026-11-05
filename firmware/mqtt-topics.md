@@ -66,7 +66,7 @@ Retained JSON blob describing the device. Published once per successful connect,
   "chip_model": "esp32-s3",
   "chip_revision": 0,
   "chip_cores": 2,
-  "mac": "48:27:e2:e8:b4:34",
+  "mac": "02:00:00:aa:bb:cc",
   "psram": true,
   "build_time": "<build timestamp>",
   "config_hash": "a3b1...e2",
@@ -167,9 +167,9 @@ JSON state events. Published on every OTA code path so operators can drive dashb
 | `refused` | OTA aborted before the download started. | one of `no-transport`, `no-manifest-url`, `no-ca`, `heap-low`, `manifest-fetch-failed`, `fled-release` |
 | `failed` | Download or flash phase failed. | free-form short string |
 
-<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"fled-release\"\)" -->
-<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_SKIP_S \(24u \* 60u \* 60u\)" -->
-<!-- claim: repo=thesada-fw ref=fix/ota-abandoned-identity file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_TRIES 2u" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"fled-release\"\)" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_SKIP_S \(24u \* 60u \* 60u\)" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_TRIES 2u" -->
 `fled-release` means the manifest offers the release a crash-loop slot switch left. `ota.check --force` installs it, and a newer manifest version or a firmware upload installs as usual. The device skips it for 24 hours of skip age, then installs it again, at most twice before another 24 hours start. A power-on does not end the skip. See [The fled-release skip]({{ site.baseurl }}/firmware/architecture/connectivity.html#the-fled-release-skip).
 
 `reason` values are kebab-case stable identifiers. Add new reasons by extending `publishOtaRefusal()` in `OTAUpdate.cpp`.
@@ -234,7 +234,11 @@ homeassistant/<component>/<device_id>/<unique_id>/config
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/Identity.h match="deviceId" deployed=26.08.1 -->
 Firmware before 26.08.1 keyed both on `Identity::nodeName()`, so a device that ran an earlier build has retained configs under its old name still sitting on the broker. They will show as a duplicate device in HA until they are cleared: read `<prefix>/info/retained_topics` from the older firmware, or subscribe `homeassistant/sensor/+/+/config`, then publish an empty retained payload on each stale topic.
 
-Each config payload references the sensor's state topic from the table above and an availability topic of `<prefix>/status`, so HA marks the entity unavailable when the device drops offline. Worked-out example for an SHT31 humidity sensor on a device named `sht31`:
+Each config payload references the sensor's state topic from the table above and an availability topic of `<prefix>/status`, so HA marks the entity unavailable when the device drops offline.
+
+DS18B20 entities also carry `expire_after` of three `temperature.interval_s` (180 s at the default 60 s). A stale probe skips its per-sensor topic, so HA marks the entity unavailable instead of showing the last value.
+
+Worked-out example for an SHT31 humidity sensor on a device named `sht31`:
 
 ```json
 {
