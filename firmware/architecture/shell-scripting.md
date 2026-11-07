@@ -174,14 +174,37 @@ Alert logic should go in `rules.lua`, not a separate file. Only `main.lua` and `
 - MQTT CLI: `cli/lua.reload`
 
 **Example rules.lua:**
+
+<!-- claim: repo=thesada-app file=pkg/mqtt/mqtt_ingest.go match="severity != \"info\" && severity != \"warn\" && severity != \"crit\"" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-mod-scriptengine/src/ScriptEngine.cpp match="\{\"decode\", lua_json_decode\}" absent="\"encode\"" -->
+The app reads `<prefix>/alert` as a JSON object with a `severity` of `info`, `warn` or `crit`, plus `code` and `message`. Plain text is dropped. The Lua `JSON` table only decodes, so a script escapes its own strings.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.h match="char payload\[256\];" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="mqtt.queue_rejected reason=oversize" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="cfg\[\"mqtt\"\]\[\"send_interval_s\"\]" -->
+Keep an alert under 256 bytes. The device queues a publish while it is offline or inside `mqtt.send_interval_s`, and the queue drops a longer payload with `mqtt.queue_rejected reason=oversize`.
+
 ```lua
+local prefix = Config.get("mqtt.topic_prefix") or "thesada/node"
+
+-- JSON string literal: escape quote, backslash and control characters.
+local function json_str(s)
+  local body = tostring(s):gsub('[%c"\\]', function(c)
+    if c == '"' or c == "\\" then return "\\" .. c end
+    return ("\\u%04x"):format(c:byte())
+  end)
+  return '"' .. body .. '"'
+end
+
 EventBus.subscribe("temperature", function(data)
   local sensors = data.sensors
   for i = 1, #sensors do
     local s = sensors[i]
     if s.temp_c and s.temp_c > 40 then
       Log.warn("High temp: " .. s.name .. " " .. s.temp_c .. "C")
-      MQTT.publish("thesada/node/alert", s.name .. " overheating")
+      MQTT.publish(prefix .. "/alert",
+        ('{"severity":"warn","code":"overheat","message":%s}'):format(
+          json_str(s.name .. " overheating")))
     end
   end
 end)

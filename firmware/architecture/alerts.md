@@ -82,12 +82,21 @@ local function can_alert(key)
   return true
 end
 
+-- JSON string literal: escape quote, backslash and control characters.
+local function json_str(s)
+  local body = tostring(s):gsub('[%c"\\]', function(c)
+    if c == '"' or c == "\\" then return "\\" .. c end
+    return ("\\u%04x"):format(c:byte())
+  end)
+  return '"' .. body .. '"'
+end
+
 local function notify(code, severity, msg)
   Log.warn(msg)
   Telegram.broadcast(msg)
-  MQTT.publish(prefix .. "/alert", string.format(
-    '{"severity":"%s","code":"%s","message":"%s"}',
-    severity, code, (msg:gsub('"', "'"))))
+  MQTT.publish(prefix .. "/alert",
+    ('{"severity":%s,"code":%s,"message":%s}'):format(
+      json_str(severity), json_str(code), json_str(msg)))
 end
 
 -- Temperature: sustained low temp alert
@@ -116,7 +125,7 @@ EventBus.subscribe("battery", function(data)
 end)
 ```
 
-The envelope matters: the platform keeps only JSON alerts with `severity` in `info`, `warn` or `crit` and reads `code` and `message` from them. A plain-string publish still reaches Telegram and the log, but the platform drops it at ingest. There is no `JSON.encode` binding, so the string is built by hand; the `gsub` keeps a stray double quote in the message from breaking the JSON.
+The envelope matters: the platform keeps only JSON alerts with `severity` in `info`, `warn` or `crit` and reads `code` and `message` from them. A plain-string publish still reaches Telegram and the log, but the platform drops it at ingest. There is no `JSON.encode` binding, so the script builds the string by hand. `json_str` escapes quote, backslash and control characters, so a sensor name cannot break the JSON.
 
 **EventBus data format (temperature):**
 

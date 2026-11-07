@@ -245,11 +245,20 @@ The event-bus door pays off here. This rule alerts when the bed dries out, with 
 ```lua
 local prefix = Config.get("mqtt.topic_prefix")
 
+-- JSON string literal: escape quote, backslash and control characters.
+local function json_str(s)
+  local body = tostring(s):gsub('[%c"\\]', function(c)
+    if c == '"' or c == "\\" then return "\\" .. c end
+    return ("\\u%04x"):format(c:byte())
+  end)
+  return '"' .. body .. '"'
+end
+
 EventBus.subscribe("soil", function(d)
   if d.percent < 20 then
-    MQTT.publish(prefix .. "/alert", string.format(
-      '{"severity":"warn","code":"soil_dry","message":"%s at %d%%"}',
-      d.name, d.percent))
+    MQTT.publish(prefix .. "/alert",
+      ('{"severity":"warn","code":"soil_dry","message":%s}'):format(
+        json_str(("%s at %d%%"):format(d.name, d.percent))))
   end
 end)
 ```

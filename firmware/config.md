@@ -143,11 +143,12 @@ OTA is deliberately untouched in every mode: it has its own `cmd/ota` subscripti
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cmd_config_policy.h match="CMD_CONFIG_REFUSE_TLS" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cmd_config_policy.h match="is not a verified session" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cmd_config_policy.h match="CMD_CONFIG_REFUSE_BROKER" -->
-<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="setFallbackTlsVerified" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="_dispatchTlsVerified = _tlsVerified && s_tls\.verified\(\)" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="s_tls\.setTransport\(transportClient\(transport\)\)" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="reason=connection_keys" -->
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/mqtt_rollback_policy.h match="mqttRollbackShould" -->
 
-Publish one JSON object to that topic. The broker session that delivers it must have verified the server certificate. A password on that TLS session is enough. The push is refused when that session did not check the broker certificate. That covers `mqtt.allow_insecure` and a cellular session that connected without a CA. The document has to keep a non-empty `mqtt.broker`, so a push cannot drop the only way back. A change to broker, port, user, or password reconnects, and the existing last-good rollback covers a broker the device then cannot reach. Other keys are written and take effect on the next restart. The push does not reboot the device. A failed write leaves the previous file in place.
+Publish one JSON object to that topic. The broker session that delivers it must have verified the server certificate. A password on that TLS session is enough. The push is refused when that session did not check the broker certificate. That covers `mqtt.allow_insecure`, on WiFi and cellular alike, since both run the same ESP32 TLS session. The document has to keep a non-empty `mqtt.broker`, so a push cannot drop the only way back. A change to broker, port, user, or password reconnects, and the existing last-good rollback covers a broker the device then cannot reach. Other keys are written and take effect on the next restart. The push does not reboot the device. A failed write leaves the previous file in place.
 
 Two things to know before setting it:
 
