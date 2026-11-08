@@ -36,7 +36,7 @@ Alert logic lives in `/scripts/rules.lua` on LittleFS - hot-reloadable without r
 |---|---|
 | `EventBus.subscribe(event, fn)` | Subscribe to sensor events (`temperature`, `current`, `battery`) |
 | `Telegram.send(chat_id, msg)` | Send to a specific Telegram chat |
-| `Telegram.broadcast(msg[, code])` | Send to all configured `chat_ids`, the webhook, and `<prefix>/alert` as `{"severity":"warn","code":code,"message":...}`. `code` defaults to `telegram` |
+| `Telegram.broadcast(msg[, code])` | Publish `<prefix>/alert` as `{"severity":"warn","code":code,"message":...}` at once, and queue the send to all configured `chat_ids` and the webhook. `code` defaults to `telegram`. Returns `true` when queued. For another severity, publish your own alert JSON with `MQTT.publish` and use `Telegram.send` per chat instead |
 | `MQTT.publish(topic, payload)` | Publish alert to MQTT |
 | `Config.get(key)` | Read config values (supports dot notation and array indices) |
 | `Node.uptime()` | Current uptime in ms (for cooldown/sustain timing) |
@@ -66,7 +66,6 @@ Telegram.send(user1, "critical alert")
 ## Example rules.lua
 
 ```lua
-local prefix = Config.get("mqtt.topic_prefix")
 local unit   = Config.get("temperature.unit") or "C"
 
 local sustain = {}
@@ -83,21 +82,11 @@ local function can_alert(key)
   return true
 end
 
--- JSON string literal: escape quote, backslash and control characters.
-local function json_str(s)
-  local body = tostring(s):gsub('[%c"\\]', function(c)
-    if c == '"' or c == "\\" then return "\\" .. c end
-    return ("\\u%04x"):format(c:byte())
-  end)
-  return '"' .. body .. '"'
-end
-
-local function notify(code, severity, msg)
+-- One alert per firing: broadcast publishes <prefix>/alert with this code and
+-- severity warn, and queues the Telegram and webhook sends.
+local function notify(code, msg)
   Log.warn(msg)
-  Telegram.broadcast(msg)
-  MQTT.publish(prefix .. "/alert",
-    ('{"severity":%s,"code":%s,"message":%s}'):format(
-      json_str(severity), json_str(code), json_str(msg)))
+  Telegram.broadcast(msg, code)
 end
 
 -- Temperature: sustained low temp alert
@@ -107,7 +96,7 @@ EventBus.subscribe("temperature", function(data)
     if s.name == "House Supply" and s.temp_c and s.temp_c <= 55 then
       sustain[key] = (sustain[key] or 0) + 1
       if sustain[key] >= TEMP_SUSTAIN and can_alert(key) then
-        notify("low_temp", "warn", s.name .. ": " .. s.temp .. unit .. " - Low temp")
+        notify("low_temp", s.name .. ": " .. s.temp .. unit .. " - Low temp")
         sustain[key] = 0
       end
     else
@@ -120,13 +109,13 @@ end)
 EventBus.subscribe("battery", function(data)
   if data.present and data.percent <= 20 and not data.charging then
     if can_alert("battery_low") then
-      notify("battery_low", "warn", "Battery low: " .. data.percent .. "%")
+      notify("battery_low", "Battery low: " .. data.percent .. "%")
     end
   end
 end)
 ```
 
-The envelope matters: the platform keeps only JSON alerts with `severity` in `info`, `warn` or `crit` and reads `code` and `message` from them. A plain-string publish still reaches Telegram and the log, but the platform drops it at ingest. There is no `JSON.encode` binding, so the script builds the string by hand. `json_str` escapes quote, backslash and control characters, so a sensor name cannot break the JSON.
+The envelope matters: the platform keeps only JSON alerts with `severity` in `info`, `warn` or `crit` and reads `code` and `message` from them. `Telegram.broadcast` builds that JSON itself. A script that publishes its own alert with `MQTT.publish` builds the string by hand, since there is no `JSON.encode` binding, and must escape quote, backslash and control characters so a sensor name cannot break it. A plain-string publish reaches the log, but the platform drops it at ingest.
 
 **EventBus data format (temperature):**
 

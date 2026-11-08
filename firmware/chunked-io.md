@@ -151,7 +151,7 @@ Opens the file in append mode (`"a"`), adding content to the end.
 ```
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="fileWriteLanded\(written, \*onDisk, len\)" -->
-When the file did not grow by the whole chunk (a full filesystem), the reply is `ok: false` with the bytes that landed:
+The check counts from the size before the chunk: zero for the first chunk, which replaces the file, and the previous size for every later one. When the file did not grow by the whole chunk (a full filesystem), the reply is `ok: false` with the bytes that landed:
 
 ```json
 {
