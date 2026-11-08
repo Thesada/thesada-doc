@@ -55,7 +55,7 @@ Response shape:
 | Line | 1023 bytes, 16 words; past either, the line is refused and nothing runs |
 | Nesting | 2 levels: the outer command plus one console line typed while it blocks (OTA, `net.http`, cellular waits); a third is refused with `Shell busy (nested command) - not run` |
 
-`config.set` and `secret.set` (from the second argument), `fs.write` and `fs.append` (from the second argument), and `cell.at`, `lora.send` and `lua.exec` (from the first argument) take their value as the rest of the line. Inner spaces and tabs are kept, trailing ones cut. A value that must end in whitespace is quoted; `config.set` and `secret.set` strip one pair of quotes.
+`config.set` and `secret.set` (from the second argument), `fs.write` and `fs.append` (from the second argument), and `cell.at`, `lora.send` and `lua.exec` (from the first argument) take their value as the rest of the line. Inner spaces and tabs are kept, trailing ones cut. A value that must end in whitespace is quoted. `config.set` and `secret.set` strip one pair of quotes, the other commands keep them (`fs.write` writes them to the file).
 
 Over MQTT the command surface depends on how the broker session authenticated. An mTLS session reaches every command on this page; a session on the shared password credential reaches only what pairing and recovery need:
 
@@ -215,9 +215,12 @@ Truncate-and-write a file with content from the command payload.
 - **Serial / WebSocket**: `fs.write <path> <content>` (content is the rest of the line with inner whitespace kept, single-line only).
 - **MQTT**: payload format is `<path>\n<content>`. The first newline separates path from body. Multi-line content is preserved.
 
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="Write failed: %u of %u bytes landed in %s \(filesystem full\?\)" -->
+The reply counts the bytes read back from the file after close, not the bytes handed to it. When the file did not grow by the full payload (a full filesystem), the reply is `Write failed: <landed> of <sent> bytes landed in <path> (filesystem full?)` and, over MQTT, `ok: false` with a `bytes` field holding what landed.
+
 ### fs.append
 
-Same shape as `fs.write` but appends instead of truncating.
+Same shape as `fs.write` but appends instead of truncating. The same read-back rule applies.
 
 ### fs.mv
 
@@ -225,7 +228,7 @@ Rename or move a file. `fs.mv <src> <dst>`. Both paths must resolve to the same 
 
 ### fs.df
 
-Print LittleFS used / total / free in bytes. SD card capacity is reported separately by the SD module via `module.status`.
+Print used / total bytes and the free share for LittleFS and, when a card is mounted, for `/sd` on its own line.
 
 ### fs.format
 
@@ -381,7 +384,7 @@ Print the live MQTT state: broker, port, connection state, the transport current
 
 ### net.http
 
-HTTPS GET against a URL, routed by active transport: WiFi up uses `HTTPClient` over `WiFiClientSecure` with the CA loaded from `/ca.crt`; WiFi down with cellular up uses the modem SSL socket. Prints the status code, body length, and the first 1 KB of the body as a preview.
+HTTPS GET against a URL, routed by active transport: WiFi up uses `HTTPClient` over `WiFiClientSecure` with the CA loaded from `/ca.crt`; WiFi down with cellular up runs the same TLS on the ESP32 over a plain modem TCP socket. Prints the status code, body length, and the first 1 KB of the body as a preview.
 
 ```text
 net.http https://ota.example.com/latest/firmware.json

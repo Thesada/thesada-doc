@@ -71,7 +71,8 @@ python tests/test_firmware.py --web-pass "$WEB_PASS"
 
 ## 6. Security
 
-**Rate limiting** - 5 failed logins lock out the source IP for 30 s:
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="static bool _authOrReply\(" -->
+**Rate limiting** - 5 wrong credentials from one source IP lock it out of every authenticated route for 30 s, with `429`. The count is shared, so guesses on `/api/config` or `/api/cmd` count the same as on `/api/login`:
 
 ```bash
 for i in $(seq 1 6); do

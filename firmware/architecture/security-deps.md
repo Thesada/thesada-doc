@@ -29,7 +29,7 @@ No other files touched. `ModuleRegistry.cpp` has zero module-specific code - sel
 | Dashboard + `/api/state` + `/api/info` | Public (read-only sensor data) |
 | All admin endpoints | Bearer token or HTTP Basic Auth (backwards compatible) |
 | Token auth | `POST /api/login` with Basic Auth returns a 1-hour Bearer token (max 4 concurrent tokens) |
-| Rate limiting | `/api/login` and `/api/auth/check`: 5 failed attempts per source IP triggers a 30 s lockout (returns 429). Table holds 16 IPs. |
+| Rate limiting | every authenticated route: 5 wrong credentials per source IP trigger a 30 s lockout (returns 429). Table holds 16 IPs plus one shared overflow entry. |
 | WebSocket terminal | Requires prior `GET /api/ws/token` (auth-gated); server records caller IP as authorized for 30 s (one-time use) |
 | Path traversal | `/api/file` rejects any path containing `..` |
 | TLS | MQTT and OTA load the CA from `/ca.crt` on LittleFS. If that file is missing or empty, both subsystems fall back to a PROGMEM bundle baked into the firmware (common public TLS roots). The rotation path stays flash-based; the bundle is a safety net for wiped data partitions. See TLS exceptions below. |

@@ -170,7 +170,7 @@ The image a switch boots records where it came from: NVS `boot` key `left_id`, t
 
 #### The fled-release skip
 
-<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="prefs.putString\(\"fled_ver\", FIRMWARE_VERSION\)" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="putFledRecord\(FIRMWARE_VERSION\)" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="reason=fled_release version=%s" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"fled-release\"\)" -->
 Once the boot slot is set, the fleeing image writes its own version to NVS `boot` key `fled_ver` (`ota.fled_release_recorded version=...`) and restarts. The update check then refuses a manifest with that version, compared as N.N.N: it logs `ota.phase_change from=fetch_manifest to=idle reason=fled_release version=... age_s=...` and publishes `{"state":"refused","reason":"fled-release"}` on `status/ota`. Without the skip, the older image the switch booted sees the broken build as newer and pulls it straight back at its first check, a full download and a slot rewrite per cycle.

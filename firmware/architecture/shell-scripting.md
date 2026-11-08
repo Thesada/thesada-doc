@@ -135,7 +135,7 @@ Lua 5.3 runtime via the [ESP-Arduino-Lua](https://github.com/sfranzyshen/ESP-Ard
 | `EventBus.subscribe(event, func)` | Subscribe to named event; func receives a table |
 | `MQTT.publish(topic, payload)` | Publish a message to MQTT |
 | `MQTT.subscribe(topic, fn)` | Subscribe to MQTT topic; fn(topic, payload) called on message |
-| `Telegram.broadcast(msg)` | Send message to all configured Telegram chat IDs. Returns true/false. |
+| `Telegram.broadcast(msg[, code])` | Send message to all configured Telegram chat IDs and publish it as an app alert with `code` (default `telegram`). Returns true/false. |
 | `Telegram.send(chatID, msg)` | Send message to a specific chat ID. Returns true/false. |
 | `JSON.decode(str)` | Parse JSON string into a Lua table |
 | `Config.get(key)` | Read config value by dot-notation key (e.g. `"mqtt.broker"`) |

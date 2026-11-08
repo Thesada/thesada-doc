@@ -150,6 +150,18 @@ Opens the file in append mode (`"a"`), adding content to the end.
 }
 ```
 
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="fileWriteLanded\(written, \*onDisk, len\)" -->
+When the file did not grow by the whole chunk (a full filesystem), the reply is `ok: false` with the bytes that landed:
+
+```json
+{
+  "cmd": "fs.append",
+  "ok": false,
+  "bytes": 0,
+  "output": ["Write failed: 0 of 1200 bytes landed in /scripts/rules.lua (filesystem full?)"]
+}
+```
+
 ### Write loop
 
 ```text

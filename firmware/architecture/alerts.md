@@ -29,13 +29,14 @@ flowchart TD
 
 Alert logic lives in `/scripts/rules.lua` on LittleFS - hot-reloadable without recompiling. The firmware provides the bindings; the script defines the rules.
 
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-telegram/src/TelegramModule.cpp match="luaL_optstring\(L, 2, \"telegram\"\)" -->
 **Available Lua bindings for alerts:**
 
 | Function | Description |
 |---|---|
 | `EventBus.subscribe(event, fn)` | Subscribe to sensor events (`temperature`, `current`, `battery`) |
 | `Telegram.send(chat_id, msg)` | Send to a specific Telegram chat |
-| `Telegram.broadcast(msg)` | Send to all configured `chat_ids` |
+| `Telegram.broadcast(msg[, code])` | Send to all configured `chat_ids`, the webhook, and `<prefix>/alert` as `{"severity":"warn","code":code,"message":...}`. `code` defaults to `telegram` |
 | `MQTT.publish(topic, payload)` | Publish alert to MQTT |
 | `Config.get(key)` | Read config values (supports dot notation and array indices) |
 | `Node.uptime()` | Current uptime in ms (for cooldown/sustain timing) |
