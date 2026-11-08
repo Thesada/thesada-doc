@@ -93,7 +93,7 @@ Set an alert rule with `function: "gte"` and `value` just below current room tem
 |---|---|
 | Enable one alert rule, save + restart | `Ready - 1 alert rule(s) enabled` |
 | Reading crosses threshold (function/value) | `[overheat] sensor: XX.XX C - OVERHEAT (>= YY.Y C)` |
-| MQTT monitor receives `<prefix>/alert` | `{"value":"[overheat] ..."}` |
+| MQTT monitor receives `<prefix>/alert` | `{"severity":"warn","code":"telegram","message":"[overheat] ... [heap=N]"}` |
 | Alert fires only once | Hysteresis - second reading doesn't re-trigger |
 | Reading returns to normal | `back to normal`; alert fires again on next cross |
 | Cooldown: re-trigger within `cooldown_s` | Alert suppressed until cooldown expires |

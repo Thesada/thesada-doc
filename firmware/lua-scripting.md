@@ -68,7 +68,7 @@ Per-device runtime info plus a small timer queue.
 ```lua
 Node.restart()                   -- reboot the device
 Node.version()                   -- firmware version string
-Node.uptime()                    -- ms since boot, 64-bit float, no wrap
+Node.uptime()                    -- ms since boot, 32-bit float, no wrap
 Node.ip()                        -- WiFi IP as "192.168.1.42" or empty
 Node.setTimeout(5000, function() -- one-shot timer, ms
   Log.info("5 seconds passed")
@@ -157,7 +157,7 @@ For LittleFS cleanup that the shell parser cannot reach (filenames with embedded
 
 Modules optionally register their own Lua libraries when their compile flag is set. The most common today:
 
-- `Telegram.send(chatID, msg)` / `Telegram.broadcast(msg)` - direct Telegram Bot API output (compile flag `ENABLE_TELEGRAM`).
+- `Telegram.send(chatID, msg)` / `Telegram.broadcast(msg[, code])` - direct Telegram Bot API output (compile flag `ENABLE_TELEGRAM`). `broadcast` also publishes the app alert JSON with `code` (default `telegram`).
 
 If a binding is missing on the running build, referencing it raises a Lua error. Guard with `if Telegram then ... end` for scripts that may run on a build where the module is disabled.
 
