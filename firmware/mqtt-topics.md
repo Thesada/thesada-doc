@@ -236,7 +236,7 @@ Firmware before 26.08.1 keyed both on `Identity::nodeName()`, so a device that r
 
 Each config payload references the sensor's state topic from the table above and an availability topic of `<prefix>/status`, so HA marks the entity unavailable when the device drops offline.
 
-DS18B20 entities also carry `expire_after` of three `temperature.interval_s` (180 s at the default 60 s). A stale probe skips its per-sensor topic, so HA marks the entity unavailable instead of showing the last value.
+DS18B20 entities also carry `expire_after` of three `temperature.interval_s` (180 s at the default 60 s). The firmware bounds `interval_s` to 5 s .. 1 day for both the sampler and this expiry. A stale probe skips its per-sensor topic, so HA marks the entity unavailable instead of showing the last value.
 
 Worked-out example for an SHT31 humidity sensor on a device named `sht31`:
 

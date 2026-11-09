@@ -57,7 +57,7 @@ curl -s -u admin:wrong \
 |---|---|
 | POST `/api/cmd` `{"cmd":"version"}` with correct password | `{"ok":true,"output":["thesada-fw v1.x ..."]}` |
 | POST `/api/cmd` `{"cmd":"heap"}` | `{"ok":true,"output":["Free: XXXXXX B ..."]}` |
-| POST `/api/cmd` `{"cmd":"xyzzy"}` | `{"ok":true,"output":["Unknown command: xyzzy"]}` |
+| POST `/api/cmd` `{"cmd":"xyzzy"}` | `{"ok":false,"output":["Unknown command: xyzzy  (type 'help')"]}` (firmware from 2026-11-01 on, older releases answer `ok:true`) |
 | POST `/api/cmd` with wrong password | `401 Unauthorized` |
 | GET `/api/auth/check` while `web.password` is default or empty | `403`, error names the locked admin surface |
 | POST `/api/cmd` with malformed JSON body | `400` / `{"ok":false,"error":"..."}` |
@@ -72,15 +72,23 @@ python tests/test_firmware.py --web-pass "$WEB_PASS"
 ## 6. Security
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="static bool _authOrReply\(" -->
-**Rate limiting** - 5 wrong credentials from one source IP lock it out of every authenticated route for 30 s, with `429`. The count is shared, so guesses on `/api/config` or `/api/cmd` count the same as on `/api/login`:
+**Rate limiting** - 5 wrong credentials from one source IP lock it out of every authenticated route for 30 s, with `429`. The count is shared, so guesses on `/api/config` or `/api/cmd` count the same as on `/api/login`.
+
+Start with a clean counter for your IP (one valid login, or 10 min without a failure) and use a password that is not `web.password`. Request 7 checks that a valid login is refused during the lockout:
 
 ```bash
-for i in $(seq 1 6); do
-  curl -s -u admin:wrong http://[ip]/api/auth/check
-  echo
+for i in 1 2 3; do
+  curl -s -o /dev/null -w "$i GET /api/config %{http_code}\n" -u admin:wrong http://[ip]/api/config
 done
-# Attempts 1-5 -> {"ok":false,"error":"Unauthorized"}
-# Attempt 6   -> {"ok":false,"error":"Too many attempts - wait 30s"}
+for i in 4 5; do
+  curl -s -o /dev/null -w "$i POST /api/cmd %{http_code}\n" -u admin:wrong \
+    -H "Content-Type: application/json" -d '{"cmd":"heap"}' http://[ip]/api/cmd
+done
+curl -s -w " %{http_code}\n" -u admin:wrong http://[ip]/api/auth/check
+curl -s -o /dev/null -w "7 valid login %{http_code}\n" -u "admin:$WEB_PASS" http://[ip]/api/auth/check
+# 1-5 /api/config and /api/cmd -> 401 (before 2026-11-08 firmware, POST 5 already answers 429)
+# 6 /api/auth/check -> {"ok":false,"error":"Too many attempts - wait 30s"} 429
+# 7 valid login during the lockout -> 429
 ```
 
 **WebSocket auth** - unauthenticated direct connections are rejected:

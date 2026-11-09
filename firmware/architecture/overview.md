@@ -161,4 +161,4 @@ EventBus::subscribe("temperature", [](JsonObject data) {
 | `temperature` | TemperatureModule | `{ "sensors": [ { "name": "x", "address": "...", "temp_c": 18.4 } ] }`; a probe without a reading is `{ "name": "x", "address": "...", "stale": true }` |
 | `current` | ADS1115Module | `{ "channels": [ { "name": "x", "voltage_v": 0.012, "raw": 123 } ] }` |
 | `battery` | BatteryModule | `{ "present": true, "voltage_v": 3.91, "percent": 35, "charging": false }` |
-| `alert` | TelegramModule | `{ "severity": "warn", "code": "telegram", "message": "alert text [heap=N]" }`, cut to fit 256 bytes (MQTTClient publishes it to `<prefix>/alert`) |
+| `alert` | TelegramModule | `{ "severity": "warn", "code": "telegram", "message": "alert text [heap=N]" }`, cut to fit 256 bytes (MQTTClient publishes it to `<prefix>/alert`). No `metric`, `value` or `ts`: check they exist before using them |

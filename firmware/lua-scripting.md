@@ -113,7 +113,8 @@ EventBus.subscribe("temperature", function(data)
 end)
 
 EventBus.subscribe("alert", function(data)
-  -- data has .severity, .message, .metric, .value, .ts
+  -- data.severity and data.message are always set. data.code comes from
+  -- Telegram.broadcast, data.metric, data.value and data.ts only from scripts that add them
 end)
 ```
 
