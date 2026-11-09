@@ -55,7 +55,7 @@ Response shape:
 | Line | 1023 bytes, 16 words; past either, the line is refused and nothing runs |
 | Nesting | 2 levels: the outer command plus one console line typed while it blocks (OTA, `net.http`, cellular waits); a third is refused with `Shell busy (nested command) - not run` |
 
-`config.set` and `secret.set` (from the second argument), `fs.write` and `fs.append` (from the second argument), and `cell.at`, `lora.send` and `lua.exec` (from the first argument) take their value as the rest of the line. Inner spaces and tabs are kept, trailing ones cut. A value that must end in whitespace is quoted. `config.set` and `secret.set` strip one pair of quotes, the other commands keep them (`fs.write` writes them to the file).
+`config.set` and `secret.set` (from the second argument), `fs.write` and `fs.append` (from the second argument), and `cell.at`, `lora.send` and `lua.exec` (from the first argument) take their value as the rest of the line. Inner spaces and tabs are kept, trailing ones cut. A value that must end in whitespace is quoted. `config.set` and `secret.set` strip one pair of quotes, the other commands keep them (`fs.write` writes them to the file). File content that must end in whitespace goes through the [chunked write]({{ site.baseurl }}/firmware/chunked-io/) instead.
 
 Over MQTT the command surface depends on how the broker session authenticated. An mTLS session reaches every command on this page; a session on the shared password credential reaches only what pairing and recovery need:
 
@@ -216,7 +216,7 @@ Truncate-and-write a file with content from the command payload.
 - **MQTT**: payload format is `<path>\n<content>`. The first newline separates path from body. Multi-line content is preserved.
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="Write failed: %u of %u bytes landed in %s \(filesystem full\?\)" -->
-The reply counts the bytes read back from the file after close, not the bytes handed to it. When the file did not grow by the full payload (a full filesystem), the reply is `Write failed: <landed> of <sent> bytes landed in <path> (filesystem full?)` and, over MQTT, `ok: false` with a `bytes` field holding what landed.
+The reply counts the bytes read back from the file after close, not the bytes handed to it. `fs.write` replaces the file, so it counts from zero, and `fs.append` counts from the size before the append. It is a size check, not a content check: bytes that land changed but at full length still read as a success. When the file is short of the full payload (a full filesystem), the reply is `Write failed: <landed> of <sent> bytes landed in <path> (filesystem full?)` and, over MQTT, `ok: false` with a `bytes` field holding what landed.
 
 ### fs.append
 
