@@ -243,8 +243,6 @@ If `module.list` shows it but `registry.module_skip ... reason=disabled` is in t
 The event-bus door pays off here. This rule alerts when the bed dries out, with the same JSON envelope the platform ingests:
 
 ```lua
-local prefix = Config.get("mqtt.topic_prefix")
-
 -- JSON string literal: escape quote, backslash and control characters.
 local function json_str(s)
   local body = tostring(s):gsub('[%c"\\]', function(c)
@@ -254,17 +252,32 @@ local function json_str(s)
   return '"' .. body .. '"'
 end
 
+-- Alert JSON under 256 bytes, the offline queue drops a longer payload.
+-- Cuts the message on a UTF-8 character boundary.
+local function alert_json(code, msg)
+  local head = '{"severity":"warn","code":' .. json_str(code) .. ',"message":'
+  local m = tostring(msg)
+  local out = head .. json_str(m) .. '}'
+  while #out > 255 and #m > 0 do
+    local n = #m - 1
+    while n > 0 and m:byte(n + 1) >= 0x80 and m:byte(n + 1) < 0xC0 do n = n - 1 end
+    m = m:sub(1, n)
+    out = head .. json_str(m) .. '}'
+  end
+  return out
+end
+
 EventBus.subscribe("soil", function(d)
   if d.percent < 20 then
+    local prefix = Config.get("mqtt.topic_prefix") or "thesada/node"
     MQTT.publish(prefix .. "/alert",
-      ('{"severity":"warn","code":"soil_dry","message":%s}'):format(
-        json_str(("%s at %d%%"):format(d.name, d.percent))))
+      alert_json("soil_dry", ("%s at %d%%"):format(d.name, d.percent)))
   end
 end)
 ```
 
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/MQTTClient.cpp match="fs.append" -->
-Append it to `/scripts/rules.lua` and reload, all over MQTT. `prefix` is your device's `mqtt.topic_prefix` from `config.json` (`thesada/sht31` on the getting-started board). `fs.append` takes the path, a newline, then the content as one raw payload (`fs.write` has the same shape but truncates the file first):
+Append it to `/scripts/rules.lua` and reload, all over MQTT. `prefix` is your device's `mqtt.topic_prefix` from `config.json` (`thesada/sht31` on the getting-started board), or `thesada/node`, the firmware default, when the key is unset. `alert_json` keeps the payload under the 256-byte slot of the offline queue, which drops a longer one. `fs.append` takes the path, a newline, then the content as one raw payload (`fs.write` has the same shape but truncates the file first):
 
 ```bash
 prefix=thesada/sht31

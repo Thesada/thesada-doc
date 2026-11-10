@@ -22,6 +22,7 @@ description: "OTA update testing (pull and push), temperature alerts, webhook, S
 | Manifest version matches current, force mode | `[WRN][OTA] Force flag set - re-flashing same or older version` then flash |
 | Manifest version is newer | Download + verify + install + reboot |
 | Manifest SHA256 mismatch | `[ERR][OTA] SHA256 mismatch` - no flash |
+| `ota.check http://<host>/firmware.json`, then an `https://` manifest of a newer version whose `url` is `http://`, both with `ota.allow_insecure` unset | `ota.check_refused reason=insecure_url`, then `ota.phase_change from=fetch_manifest to=idle reason=insecure_url`. `status/ota` shows `refused` / `insecure-url` both times, and nothing is downloaded |
 
 ### 9a. Debug CLI (partition + chip + MQTT state)
 
@@ -46,10 +47,11 @@ The left-record and fled-release rows need both images to carry this guard, the 
 | Confirmed image that crash-loops (a bench build that panics a few minutes after its first MQTT session) | Before the switch restart: `ota.fled_release_recorded version=<its version>`. The booted image logs `ota.left_image_recorded rescue=2`, its boot check logs `reason=fled_release`, `status/ota` shows `refused` / `fled-release`, no download |
 | Power-cycle that unit | The left record stays; the next check still refuses |
 | Reinstall the left build with `ota.check --force` or a web upload; a plain check refuses it | It goes into the left slot, and its boot logs `ota.left_image_cleared reason=slot_running`. `--force` also logs `ota.force_reflash version=fled`. The crash build loops again and is fled again: `ota.fled_release_recorded`, then `ota.left_image_recorded rescue=2` |
-| Serve a newer release and cut the network once the download is past its first few KB (before that the other slot still holds the fled build, and the log reads `reason=no_other_image`). Once the log shows `ota.update_failed`, put the manifest back on the fled version, restore the network, then drive the running image to the limit | `ota.image_rollback_failed reason=image_invalid`; no switch, and the next check refuses `fled-release` again. Leave the unit up an hour, to `ota.crash_streak_cleared reason=healthy_uptime`, so the next install does not boot at the limit |
+| Serve a newer release and cut the network once the download is past its first few KB (before that the other slot still holds the fled build, and the log reads `reason=no_other_image`). Once the log shows `ota.update_failed`, put the manifest back on the fled version, restore the network, then drive the running image to the limit | `ota.image_rollback_failed reason=image_invalid`, no switch, and the next check refuses `fled-release` again. Leave the unit up an hour, to `ota.crash_streak_cleared reason=healthy_uptime`. The next install starts its own streak at one whatever this image holds: its boot logs `ota.crash_streak_restarted reason=install` |
 | 24 hours of skip age after the last fled release | Refusals before that log `age_s=`. Then the check logs `ota.fled_release_retry version=<its version> try=1` and installs it; the crash build loops again and is fled again, with a new 24 hours |
 | Serve the same version as a build that panics before it confirms, then wait 24 hours of skip age after the last fled release | `try=1` boots pending and is rolled back, by the bootloader or the guard; the next check logs `try=2` and installs it again; after that rollback the check refuses again with `age_s` started over |
-| Newer manifest version after a fled release | Installs normally |
+| Serve a newer version as a build that panics before it confirms | Before the install restart: `ota.install_recorded version=<its version>`. Its boot logs `ota.crash_streak_restarted reason=install previous=<n> streak=1`. After the rollback, every check for 24 h refuses it with `reason=fled_release` |
+| Newer manifest version after a fled release | Installs normally. Once it confirms it logs `ota.install_record_cleared version=<its version>` |
 
 ---
 
