@@ -17,6 +17,19 @@ Every Thesada device is configured by a single JSON file at `/config.json` on Li
 - Mutations stage in RAM and flush to flash on save.
 - A reload re-reads from flash and replaces the in-memory tree atomically (the old tree stays valid until the new one fully parses, then a swap happens).
 
+### Schema version
+
+`config.json` carries `"schema": 1`. A file without it counts as schema 0. At boot an older file is migrated in place: the old file is kept as `/config.json.bak`, the migrated one is written through the normal tmp-and-rename path, and the live config switches only after that write lands. Migration 0 to 1 fixes keys saved with a trailing colon (`"password:"`): a duplicate is dropped, a lone one is renamed.
+
+| Case | Behaviour |
+|---|---|
+| Older schema, write lands | migrated, `.bak` kept, `config.schema_migrated` logged |
+| Backup or write fails | runs on the unmigrated config, logs `config.schema_migrate_failed`, raises app alert `config_schema` |
+| Newer schema than the firmware knows | file untouched, `config.schema_newer`, alert `config_schema` |
+| `schema` not a whole number | file untouched, `config.schema_invalid`, alert `config_schema` |
+
+A config pushed without `schema` is migrated on the next boot, so its `config_hash` changes once.
+
 If `/config.json` is missing on first boot, the firmware writes a minimal default and continues. If the file exists but fails to parse, the firmware logs an error and falls back to the in-memory default. Recovery requires either pushing a fresh config (chunked write) or reformatting LittleFS (`fs.format --yes`) and starting clean.
 
 ## Shape
@@ -127,7 +140,7 @@ So a minimal config is just `device`, `wifi`, and `mqtt` - and on such a device 
 
 The shell itself has no `enabled` gate - it is always compiled in and always running, so a bad config can never remove it. What a config can do is close the transports that reach it, with `shell.mode`. Setting `off` closes all of them, which does leave a device you can no longer talk to interactively:
 
-| `shell.mode` | Serial | MQTT `cli/#` | HTTP (`POST /api/cmd`, `/ws/serial`) |
+| `shell.mode` | Serial | MQTT `cli/#` | HTTP (`POST /api/cmd`, `/ws/serial`, `POST` and `DELETE /api/file`) |
 |---|---|---|---|
 | `full` (default, and what an absent key means) | on | on | on |
 | `serial-only` | on | off | off |
@@ -152,7 +165,9 @@ Publish one JSON object to that topic. The broker session that delivers it must 
 
 Two things to know before setting it:
 
-- **Every narrowing mode also closes the HTTP command surface.** `POST /api/cmd` and the `/ws/serial` terminal reach the same shell as the other two transports, and they are the broadest of the three. Only `full` keeps them.
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/shell_mode_policy.h match="HTTP_SURFACE_FILE_WRITE,   // POST and DELETE /api/file" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/shell_mode_policy.h match="if \(s == HTTP_SURFACE_CONFIG_PUSH \|\| s == HTTP_SURFACE_OTA\) return true;" -->
+- **Every narrowing mode also closes the HTTP command surface.** `POST /api/cmd`, the `/ws/serial` terminal and the file writes, `POST` and `DELETE /api/file`, reach the same shell and file commands as the other two transports, and they are the broadest of the three. Only `full` keeps them. A closed route answers `403`. `POST /api/config` and the `/ota` upload stay open in every mode.
 - **A misspelt value is treated as `off`, not `full`.** `"mode": "of"` closes everything and logs `shell.mode_unrecognised`. A hardening request the firmware cannot read exactly must not quietly serve the whole surface. An absent key is different - that is a config written before the key existed, and means `full`.
 
 With the MQTT CLI closed, the CLI config path goes with it - config changes normally go through `fs.write /config.json` + `config.reload`. What remains depends on the web module:

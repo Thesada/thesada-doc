@@ -74,13 +74,13 @@ Accessible at `http://[device-ip]/`. The sensor dashboard is public. Admin route
 | `/api/login` | POST | yes | Exchange credentials for a 1-hour Bearer token (max 4 concurrent) |
 | `/api/auth/check` | GET | yes | Verify credentials (200 or 401, no token issued) |
 | `/api/config` | GET | yes | Read `config.json` |
-| `/api/config` | POST | yes | Write `config.json`, restart device (page auto-refreshes after 10s) |
+| `/api/config` | POST | yes | Write `config.json` (max 16 KB), restart device (page auto-refreshes after 10s) |
 | `/api/backup` | POST | yes | Copy `config.json` to SD card |
 | `/api/files` | GET | yes | List files (`?source=sd\|littlefs\|scripts`) |
-| `/api/file` | GET | yes | Read file (`?path=...&source=sd\|littlefs\|scripts`, max 64 KB) |
-| `/api/file` | POST | yes | Write file (`?path=...&source=...`, body = file content) |
+| `/api/file` | GET | yes | Read file (`?path=...&source=sd\|littlefs\|scripts`), streamed whole at any size |
+| `/api/file` | POST | yes | Write file (`?path=...&source=...`, body = file content, max 64 KB) |
 | `/api/file` | DELETE | yes | Delete file (`?path=...&source=...`) |
-| `/api/cmd` | POST | yes | Run any Shell command, get JSON output |
+| `/api/cmd` | POST | yes | Run any Shell command, get JSON output (body max 2 KB) |
 | `/api/restart` | POST | yes | Reboot device |
 | `/api/ws/token` | GET | yes | Issue a 30 s IP-bound WS auth grant (required before opening WebSocket) |
 | `/ota` | POST | yes | Upload firmware `.bin` (push OTA, page auto-refreshes after 10s) |
@@ -88,6 +88,20 @@ Accessible at `http://[device-ip]/`. The sensor dashboard is public. Admin route
 
 "yes" = Bearer token OR Basic Auth (backwards compatible). Every gated route
 resolves through the same check, so Bearer is accepted everywhere Basic is.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/http_body_policy.h match="HTTP_FILE_MAX = 65536;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/http_body_policy.h match="HTTP_BODY_CFG_MAX  = 16384;\nstatic const size_t HTTP_BODY_CMD_MAX  = 2048;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="req->send\(411, \"application/json\", \"\{\\\"ok\\\":false,\\\"error\\\":\\\"Content-Length required, chunked bodies are refused" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="req->send\(f, path, \"text/plain\"\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/dashboard.html.h match="const EDIT_MAX = 65536;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/dashboard.html.h match="Too large to edit here \(max 64 KB\), downloading it instead" -->
+**Request bodies.** A POST body must carry `Content-Length`. A chunked body (`Transfer-Encoding`) is refused with `411`, and a body over the route's cap with `413`: 16 KB for a config write, 64 KB for `POST /api/file`, 2 KB for `/api/cmd`. A body that does not arrive whole is refused with `400`, and nothing is written. Reads are not capped: `GET /api/file` streams the file whole at any size. The dashboard file editor opens files up to 64 KB, the most `POST /api/file` takes back, and downloads a larger file instead.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/shell_mode_policy.h match="if \(s == HTTP_SURFACE_CONFIG_PUSH \|\| s == HTTP_SURFACE_OTA\) return true;\n  return shellModeHttpAllowed\(m\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="shell.mode closes the HTTP command surface" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="shell.mode closes file writes over HTTP" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="web.ws_rejected reason=shell_mode" -->
+**`shell.mode` on HTTP.** Any `shell.mode` other than `full` closes the routes that reach the shell or its file commands. `POST /api/cmd` answers `403` with `shell.mode closes the HTTP command surface`, `POST` and `DELETE /api/file` answer `403` with `shell.mode closes file writes over HTTP`, and the `/ws/serial` upgrade is refused and logs `web.ws_rejected reason=shell_mode`. `POST /api/config` and `/ota` stay open in every mode, so a narrowed device can still be changed back. See [Configuration]({{ site.baseurl }}/firmware/config.html#module-activation).
 
 **Cross-site rule.** The browser replays cached Basic credentials on a
 cross-origin request by itself, with no cooperation from the page. A Bearer

@@ -80,6 +80,18 @@ With no subcommand the binary starts the long-running server.
 | Transactions | each file runs in its own transaction; the version row is inserted in the same transaction as the DDL |
 | Order | a failed migration aborts before the new server starts, leaving the prior version serving |
 
+<!-- claim: repo=thesada-app ref=dev file=migrations/0040_device_broker_identity.sql match="SET LOCAL ROLE thesada_app_admin;" -->
+<!-- claim: repo=thesada-app ref=dev file=migrations/0041_cert_pubkey_backfill_rls.sql match="Needs: GRANT thesada_app_admin TO thesada_app" -->
+<!-- claim: repo=thesada-app ref=dev file=docs/runbook.md match="permission denied to set role" -->
+<!-- claim: repo=thesada-app ref=dev file=docs/runbook.md match="`thesada-app migrate` runs as `thesada_app`, the owner of every table" -->
+Tenant tables enforce row-level security even for their owner, so a migration that changes rows in one switches to the bypass-RLS admin role with `SET LOCAL ROLE thesada_app_admin`. From migration 0040 on, the role `migrate` connects as (`thesada_app`, the owner of every table) needs a one-time grant, run as a superuser before the first such `migrate`:
+
+```sql
+GRANT thesada_app_admin TO thesada_app;
+```
+
+Without it, 0040 fails with `permission denied to set role "thesada_app_admin"`, the migration aborts, and the prior version keeps serving. Grant, then run `migrate` again.
+
 ## Configuration
 
 Secrets reach the app through the environment only. With Compose they live in `app.env` and `db.env` (mode `0600`, which is what `startup.sh` chmods them to); the standalone binary reads them from its process environment.
