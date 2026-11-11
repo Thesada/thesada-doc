@@ -3,6 +3,11 @@ tagline: "Open-source ESP32 firmware for production IoT"
 description: "Open-source modular ESP32 firmware framework for production IoT products: pull OTA with SHA256 verification, telemetry, runtime config, MQTT over TLS, cellular fallback, a remote shell and a Lua runtime. Grew out of off-grid property monitoring."
 url: "https://thesada.io"
 baseurl: ""
+# Extensionless URLs: Cloudflare Pages 308s every .html to them, so canonical and sitemap must match.
+permalink: /:path/:basename
+logo: /assets/img/thesada-icon-200.png
+twitter:
+  card: summary_large_image
 
 social:
   name: Thesada
@@ -26,7 +31,7 @@ mermaid:
   version: "10.9.0"
 nav_sort: case_insensitive
 
-footer_content: "Thesada - AGPL-3.0-only (app) / GPL-3.0-only (firmware) / CC BY-NC-SA 4.0 (docs) - <a href='/legal/license.html'>License</a> - <a href='https://foothillsbuilds.com/about/' target='_blank' rel='noopener noreferrer'>About</a>"
+footer_content: "Thesada - AGPL-3.0-only (app) / GPL-3.0-only (firmware) / CC BY-NC-SA 4.0 (docs) - <a href='/legal/license.html'>License</a> - <a href='https://foothillsbuilds.com/about/' target='_blank' rel='noopener noreferrer'>About</a> - A <a href='https://hit-con.ca'>Humpf IT</a> project"
 
 aux_links:
   "GitHub":
@@ -49,6 +54,11 @@ defaults:
       path: ""
     values:
       layout: default
+      image:
+        path: /assets/img/og-image.png
+        width: 1200
+        height: 630
+        alt: "Thesada: open-source ESP32 firmware for production IoT"
 
 exclude:
   - AGENTS.md
@@ -57,3 +67,5 @@ exclude:
   - Gemfile.lock
   - vendor
   - .jekyll-cache
+  - Makefile
+  - scripts

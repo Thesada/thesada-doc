@@ -37,8 +37,19 @@ test: ## Prove the claim comments against the firmware and app source
 lint: ## Em dashes and the other style rules
 	scripts/check-style.sh
 
+.PHONY: site-check
+site-check: ## SEO tags, sitemap, robots and internal links of the built _site (run after build)
+	python3 scripts/site-check.py _site --base https://thesada.io --skip 404.html
+
 .PHONY: ci
-ci: lint test build ## Local CI: style, claim checks, strict Jekyll build
+ci: lint test build site-check ## Local CI: style, claim checks, strict Jekyll build, SEO and links
+
+##@ Publish
+
+# Run after the publish PR is merged and Pages has deployed; DRY=1 prints the payload only.
+.PHONY: indexnow
+indexnow: ## Submit the live sitemap to IndexNow (Bing and others)
+	scripts/indexnow.sh https://thesada.io/sitemap.xml 0ef9ad72e19d6334c6f1fff52b14807b
 
 ##@ Housekeeping
 

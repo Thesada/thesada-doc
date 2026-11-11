@@ -168,24 +168,25 @@ Two things to know before setting it:
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/shell_mode_policy.h match="HTTP_SURFACE_FILE_WRITE,   // POST and DELETE /api/file" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/shell_mode_policy.h match="if \(s == HTTP_SURFACE_CONFIG_PUSH \|\| s == HTTP_SURFACE_OTA\) return true;" -->
 - **Every narrowing mode also closes the HTTP command surface.** `POST /api/cmd`, the `/ws/serial` terminal and the file writes, `POST` and `DELETE /api/file`, reach the same shell and file commands as the other two transports, and they are the broadest of the three. Only a value that resolves to `full` keeps them, see the next point. A closed route answers `403`. `POST /api/config` and the `/ota` upload stay open in every mode.
-<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="return shellModeResolve\(!v\.isNull\(\), v\.is<const char\*>\(\) \? v\.as<const char\*>\(\) : nullptr\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="return shellModeResolve\(shellModeKeyPresent\(\),\n\s+v\.is<const char\*>\(\) \? v\.as<const char\*>\(\) : nullptr\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="An explicit .mode.: null is present" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/shell_mode_policy.h match="if \(!keyPresent\) return SHELL_MODE_FULL;\n  if \(!stringValue\) return SHELL_MODE_OFF;" -->
-<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/shell_mode_policy.h match="if \(!s \|\| !\*s\) return SHELL_MODE_FULL;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/shell_mode_policy.h match="if \(!s\) return SHELL_MODE_FULL;\n  if \(strcmp\(s, \"full\"\) == 0\)" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/shell_mode_policy.h match="if \(strcmp\(s, \"mqtt-only\"\) == 0\)   return SHELL_MODE_MQTT_ONLY;\n  return SHELL_MODE_OFF;" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="shell.mode_not_a_string applied=off" -->
-<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="shell.mode_unrecognised value=%s applied=off" -->
-- **Only an exact name narrows, and a few values mean `full`.** The value resolves like this:
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="shell\.mode_unrecognised value=\\\"%s\\\" applied=off" -->
+- **Only a missing key means `full`, and only an exact name narrows.** The value resolves like this:
 
   | `shell.mode` in the file | Resolves to | Boot warning |
   |---|---|---|
   | key absent | `full` | none |
-  | `null` | `full` | none |
-  | `""` (empty string) | `full` | none |
   | `"full"`, `"serial-only"`, `"mqtt-only"`, `"off"` | that mode | none |
+  | `""` (empty string) | `off` | `shell.mode_unrecognised` |
   | any other string, a misspelling like `"of"` | `off` | `shell.mode_unrecognised` |
+  | `null` | `off` | `shell.mode_not_a_string` |
   | not a string (`true`, `0`, an object) | `off` | `shell.mode_not_a_string` |
 
-  An absent, `null` or empty value is read as a config written before the key existed, so it keeps the whole surface open. A value the firmware cannot read exactly closes everything instead, so a misspelt hardening request never serves the full surface. To narrow a device, write the mode name, never a blank.
+  A missing key is read as a config written before the key existed, so it keeps the whole surface open. A key that is present but blank, `null` or not a mode name closes everything instead, so a misspelt or half-written hardening request never serves the full surface. To keep the full surface, leave the key out or write `"full"`.
 
 With the MQTT CLI closed, the CLI config path goes with it - config changes normally go through `fs.write /config.json` + `config.reload`. What remains depends on the web module:
 
