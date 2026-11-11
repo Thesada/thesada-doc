@@ -35,7 +35,7 @@ WiFi is always tried first. Each SSID is retried up to `wifi.retries` times (def
 
 ## OTA Update (OTAUpdate)
 
-HTTP(S) pull-based OTA. The device fetches a JSON manifest, compares semver, and streams + verifies the firmware binary.
+HTTPS pull-based OTA, plain HTTP only with `ota.allow_insecure`. The device fetches a JSON manifest, compares semver, and streams + verifies the firmware binary.
 
 ```mermaid
 flowchart TD
@@ -47,8 +47,10 @@ flowchart TD
     D --> E{ca.crt on LittleFS?}
     E -->|Yes| G[Use file CA]
     E -->|No| F[Use PROGMEM CA bundle]
-    F --> H{Heap above floor?}
-    G --> H
+    F --> U{Manifest URL https, or http with allow_insecure?}
+    G --> U
+    U -->|No| R6[publish status/ota refused: insecure-url]
+    U -->|Yes| H{Heap above floor?}
     H -->|No| R3[publish status/ota refused: heap-low]
     H -->|Yes| I[Fetch manifest]
     I --> J{Fetch ok?}
@@ -56,10 +58,12 @@ flowchart TD
     J -->|Yes| K{force?}
     K -->|No| L{Newer version?}
     L -->|No| M[publish status/ota up-to-date]
-    L -->|Yes| FL{Fled release, skip still running?}
+    L -->|Yes| V{Binary URL https, or http with allow_insecure?}
+    K -->|Yes| V
+    V -->|No| R6
+    V -->|Yes| FL{Fled release, skip still running, not forced?}
     FL -->|Yes| R5[publish status/ota refused: fled-release]
     FL -->|No| N[publish status/ota updating]
-    K -->|Yes| N
     N --> O[Download .bin]
     O --> P{SHA256 match?}
     P -->|No| Q[publish status/ota failed]
@@ -103,13 +107,21 @@ Force mode bypasses `isNewer()` and the [fled-release skip](#the-fled-release-sk
 
 **TLS:** loads `/ca.crt` from LittleFS. If the file is missing or empty, the OTA client falls back to a PROGMEM bundle of common public TLS roots baked into the firmware. The OTA path stays cert-validated even when the LittleFS data partition has been wiped.
 
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="if \(strncmp\(url, \"https://\", 8\) == 0\) return true;\n  return allowInsecure && strncmp\(url, \"http://\", 7\) == 0;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.check_refused reason=insecure_url url=%.80s" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.phase_change from=fetch_manifest to=idle reason=insecure_url url=%.80s" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"insecure-url\"\)" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="bool ok = Cellular::httpsGet\(host, path, port, otaCellularCa\(\), wrap, outStatus\);" -->
+**URL scheme:** the manifest URL, configured or an `ota.check <url>` override, and the binary `url` in the manifest must start with `https://`. The manifest is not signed, so over plain HTTP an on-path host could set the binary and its `sha256` together. `http://` passes only with `ota.allow_insecure` set, and any other scheme never does. `--force` does not skip the check. A refused manifest URL logs `ota.check_refused reason=insecure_url url=...`, and a refused binary URL logs `ota.phase_change from=fetch_manifest to=idle reason=insecure_url url=...`. Both publish `{"state":"refused","reason":"insecure-url"}` on `status/ota` and fetch nothing. The binary check runs before the [fled-release skip](#the-fled-release-skip), so it spends no try. Over cellular every OTA fetch is TLS, so an `http://` URL fails there even when allowed.
+
 **config.json keys:**
 ```json
 "ota": {
   "enabled":          true,
   "manifest_url":     "https://github.com/Thesada/thesada-fw/releases/latest/download/firmware.json",
   "check_interval_s": 21600,
-  "cmd_topic":        "thesada/node/cmd/ota"
+  "cmd_topic":        "thesada/node/cmd/ota",
+  "allow_insecure":   false
 }
 ```
 
@@ -130,6 +142,9 @@ Every boot updates a crash streak, NVS namespace `boot` key `crash_n`, and the `
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="OTAUpdate::brokerRestart\(\);" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="bool confirmed = planned != OTA_PLANNED_NONE && runningImageConfirmed\(\);" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.phase_change from=apply to=reboot version=%s\", remoteVersion.c_str\(\)\);\n    delay\(500\);\n    plannedRestart\(\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_health_policy.h match="if \(reason == OTA_RST_SW && planned != OTA_PLANNED_NONE && pending\) return OTA_RESET_FRESH;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_health_policy.h match="if \(kind == OTA_RESET_FRESH\) return 1;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.crash_streak_restarted reason=install previous=%lu streak=%lu" -->
 
 | Reset that started this boot | Crash streak |
 |---|---|
@@ -137,7 +152,7 @@ Every boot updates a crash streak, NVS namespace `boot` key `crash_n`, and the `
 | Panic, any watchdog | +1 |
 | Software restart without a marker, the heap watchdog included | +1 |
 | Operator restart: `restart`, `fs.format`, `identity.reset`, the web restart, config save, `Node.restart()`, the cert reboot | held on a confirmed image, +1 on any other |
-| Firmware upload, OTA apply | +1, once per install: they carry the operator marker, but the image they boot is pending |
+| Firmware upload, OTA apply | set to 1, whatever the installer had: they carry the operator marker into an image that boots pending, which starts its own streak (`ota.crash_streak_restarted reason=install`) |
 | MQTT budget reboot: the reboot after `mqtt.reboot_after_fails` failed connects, the TLS low-heap defrag reboot | held on a confirmed image that is proven on the broker, +1 on any other |
 | Brownout, external pin, SDIO, unknown | held |
 
@@ -176,7 +191,13 @@ The image a switch boots records where it came from: NVS `boot` key `left_id`, t
 Once the boot slot is set, the fleeing image writes its own version to NVS `boot` key `fled_ver` (`ota.fled_release_recorded version=...`) and restarts. The update check then refuses a manifest with that version, compared as N.N.N: it logs `ota.phase_change from=fetch_manifest to=idle reason=fled_release version=... age_s=...` and publishes `{"state":"refused","reason":"fled-release"}` on `status/ota`. Without the skip, the older image the switch booted sees the broken build as newer and pulls it straight back at its first check, a full download and a slot rewrite per cycle.
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.force_reflash version=fled" -->
-A newer manifest version installs as usual, and a firmware upload installs without the check. `ota.check --force` installs the fled release and logs `ota.force_reflash version=fled`. A forced build that loops again is fled again. A missing or unreadable record refuses nothing. Only a confirmed image records a fled release: a pending build that the bootloader or the guard rolls back is pulled again at the next check.
+A newer manifest version installs as usual, and a firmware upload installs without the check. `ota.check --force` installs the fled release and logs `ota.force_reflash version=fled`. A forced build that loops again is fled again. A missing or unreadable record refuses nothing.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="if \(applyUpdate\(binUrl, sha256, binSize\)\) \{\n    recordInstalledBuild\(remoteVersion.c_str\(\)\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.install_recorded version=%s" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="return !otaSameVersion\(fled, installing\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.install_record_cleared version=%s" -->
+The OTA check also records the build it installs, once the update has set the boot slot (`ota.install_recorded version=...`). A build that is aborted or rolled back before it confirms, by a crash, a power cut or a restart, is then refused as `fled-release` for 24 h by the image that comes back, instead of downloaded again at every check. A record that already names the build stays as it is, so a fled-release try keeps its age and tries. A confirmed image drops a record that names its own build (`ota.install_record_cleared version=...`). There is one record: an install replaces a fled record of another build, which is then no longer skipped. A firmware upload records nothing.
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_SKIP_S \(24u \* 60u \* 60u\)" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_TRIES 2u" -->
@@ -184,7 +205,7 @@ A newer manifest version installs as usual, and a firmware upload installs witho
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="if \(saved && action == OTA_FLED_LAST\) return \{0, 0, 0\};" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.fled_release_retry version=%s try=%u" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="reason=fled_release version=%s age_s=%lu" -->
-The refusal lasts 24 hours of skip age, and its log line ends in `age_s=`. Then the check installs the release again and logs `ota.fled_release_retry version=... try=1`. If that try is rolled back, the next check installs it once more with `try=2`, and the second try starts a new 24 hours. `--force` installs at any age and spends no try.
+The refusal lasts 24 hours of skip age, and its log line ends in `age_s=`. Then the check installs the release again and logs `ota.fled_release_retry version=... try=1`. If that try does not confirm, the next check installs it once more with `try=2`, and the second try starts a new 24 hours. `--force` installs at any age and spends no try.
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_SAVE_S \(10u \* 60u\)" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="return value < 2u \* OTA_FLED_SAVE_S \? value : 2u \* OTA_FLED_SAVE_S;" -->
@@ -202,7 +223,7 @@ A unit without a synced clock, cellular-only or with SNTP blocked, counts uptime
 <!-- claim: repo=thesada-fw ref=26.10.1 file=lib/thesada-core/src/OTAUpdate.cpp absent="plannedRestart|proven_id|left_id|fled_ver" -->
 <!-- claim: repo=thesada-fw ref=26.10.2 file=lib/thesada-core/src/ota_health_policy.h absent="OTA_HEALTH_SETTLE_MS" -->
 <!-- claim: repo=thesada-fw ref=26.10.2 file=lib/thesada-core/src/OTAUpdate.cpp absent="plannedRestart|proven_id|left_id|fled_ver" -->
-The crash streak and the switch at the limit ship from 26.10.1. Firmware 26.10.1 and 26.10.2 count every software restart and have no one-hour clear, proven record or fled-release skip. When a switch boots an image from 26.10.2 or older, that image pulls the fled build again until the manifest changes.
+The crash streak and the switch at the limit ship from 26.10.1. Firmware 26.10.1 and 26.10.2 count every software restart and have no one-hour clear, proven record or fled-release skip. When a switch boots an image from 26.10.2 or older, that image pulls the fled build again until the manifest changes. An image of 26.11.1 or older writes no install record, so a build it installed that did not confirm is pulled again at every check.
 
 <!-- claim: repo=thesada-fw ref=26.10.1 file=lib/thesada-core/src/OTAUpdate.cpp match="prefs.putString\(\"left_ver\", desc.version\);" -->
 <!-- claim: repo=thesada-fw ref=26.10.2 file=lib/thesada-core/src/OTAUpdate.cpp match="prefs.putString\(\"left_ver\", desc.version\);" -->

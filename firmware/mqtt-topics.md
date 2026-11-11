@@ -164,13 +164,18 @@ JSON state events. Published on every OTA code path so operators can drive dashb
 |---|---|---|
 | `updating` | Manifest fetched and a flash is in progress. | not present |
 | `up-to-date` | Manifest matches the running version; nothing to do. | not present |
-| `refused` | OTA aborted before the download started. | one of `no-transport`, `no-manifest-url`, `no-ca`, `heap-low`, `manifest-fetch-failed`, `fled-release` |
+| `refused` | OTA aborted before the download started. | one of `no-transport`, `no-manifest-url`, `no-ca`, `insecure-url`, `heap-low`, `manifest-fetch-failed`, `fled-release` |
 | `failed` | Download or flash phase failed. | free-form short string |
 
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"insecure-url\"\)" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="return allowInsecure && strncmp\(url, \"http://\", 7\) == 0;" -->
+`insecure-url` means the manifest URL or the binary `url` in the manifest does not start with `https://`. `http://` passes only with `ota.allow_insecure` set. Nothing is fetched. See [OTA Update]({{ site.baseurl }}/firmware/architecture/connectivity.html#ota-update-otaupdate).
+
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"fled-release\"\)" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.install_recorded version=%s" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_SKIP_S \(24u \* 60u \* 60u\)" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="#define OTA_FLED_TRIES 2u" -->
-`fled-release` means the manifest offers the release a crash-loop slot switch left. `ota.check --force` installs it, and a newer manifest version or a firmware upload installs as usual. The device skips it for 24 hours of skip age, then installs it again, at most twice before another 24 hours start. A power-on does not end the skip. See [The fled-release skip]({{ site.baseurl }}/firmware/architecture/connectivity.html#the-fled-release-skip).
+`fled-release` means the manifest offers the release a crash-loop slot switch left, or a build this device installed that never confirmed. `ota.check --force` installs it, and a newer manifest version or a firmware upload installs as usual. The device skips it for 24 hours of skip age, then installs it again, at most twice before another 24 hours start. A power-on does not end the skip. See [The fled-release skip]({{ site.baseurl }}/firmware/architecture/connectivity.html#the-fled-release-skip).
 
 `reason` values are kebab-case stable identifiers. Add new reasons by extending `publishOtaRefusal()` in `OTAUpdate.cpp`.
 
@@ -265,7 +270,7 @@ The firmware emits one of these per active sensor on connect: temperature, humid
 The firmware connects with one of:
 
 - **Username + password** from `config.json` `mqtt.user` / `mqtt.password`. The fallback path used by unpaired devices.
-- **mTLS client certificate** stored in NVS. When present, `cert.apply` triggers a reconnect using the cert as identity (no username, no password). The broker maps the certificate CN onto the MQTT username via `use_identity_as_username`, so the connection arrives as if the device had logged in with username = CN.
+- **mTLS client certificate** stored in NVS. When both halves are present and pair, `cert.apply` reboots the device onto the cert as identity (no username, no password). The broker maps the certificate CN onto the MQTT username via `use_identity_as_username`, so the connection arrives as if the device had logged in with username = CN.
 
 Which auth the session used also decides what the `cli/` bridge will run. A certificate session reaches every command; a password session reaches only what pairing and recovery need, and anything else answers `Denied: not permitted on this connection`. See [CLI Reference](cli-reference.html#how-to-invoke-a-command).
 

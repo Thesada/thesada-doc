@@ -20,7 +20,9 @@ Every shell command registered by the firmware. The same handler runs on every t
 [wifi.rssi] -54 dBm
 ```
 
-**WebSocket** at `ws://<device-ip>/ws/serial`. Same line-based protocol.
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="Clients pass it as /ws/serial\?token=<hex>" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ws_grant_policy.h match="WS_GRANT_TTL_MS = 30000UL;" -->
+**WebSocket** at `ws://<device-ip>/ws/serial?token=<token>`. Same line-based protocol. Get the token first from `GET /api/ws/token` with Basic or Bearer auth, then connect from the same IP within 30 s. The token works once, and an upgrade without a valid one answers `401`. See [Config & Web UI]({{ site.baseurl }}/firmware/architecture/config-web.html).
 
 **MQTT** via the device's `cli/` bridge. Publish the command to `<topic_prefix>/cli/<command>`; payload is the argument string (empty for argless commands). The response lands on `<topic_prefix>/cli_response` as a JSON object.
 
@@ -376,7 +378,13 @@ net.ntp set 2026-04-30T20:00:00Z        # set clock from ISO 8601
 net.ntp sync                            # force a sync now
 ```
 
-Manual sets are intended for bench setup before the network is up; the regular NTP pull will overwrite once the device gets connectivity. `net.ntp sync` forces a sync immediately - over WiFi the background SNTP client already handles this, but on a cellular-only boot (WiFi never associated) nothing syncs the clock until the modem is asked, so `net.ntp sync` is the recovery path. The cellular sync timeout is configurable via `ntp.cell_timeout_s` (default 60).
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cell_ntp_policy.h match="CELL_NTP_FIRST_MS = 30000UL;\nstatic const uint32_t CELL_NTP_RETRY_MS = 60000UL;\nstatic const uint32_t CELL_NTP_MAX_MS   = 1800000UL;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cell_ntp_policy.h match="const char\* src\[3\] = \{server, server2, CELL_NTP_DEFAULT\};" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cell_ntp_policy.h match="CELL_NTP_PER_TRY = 2;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cell_ntp_policy.h match="zero IPv4 literal, or an mDNS .local name" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/cell_ntp_policy.h match="CELL_NTP_WAIT_MAX_MS = 15000UL;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-cellular/src/CellularModule.cpp match="if \(!WiFiManager::ntpSynced\(\) && cellNtpDue\(now, _ntpAt\)\) syncClock\(\);" -->
+Manual sets are intended for bench setup before the network is up. The regular NTP pull overwrites them once the device gets connectivity. Over WiFi the background SNTP client syncs on its own. Over cellular the firmware asks the modem 30 s after the bearer comes up, then retries at 60 s, doubling to at most 30 min, until the clock has synced this boot. Each try asks up to two servers, the first usable and distinct ones of `ntp.server`, `ntp.server2` and `pool.ntp.org`. A host a carrier cannot reach is skipped: a private, loopback or link-local IPv4 literal, or a `.local` name. `net.ntp sync` asks the modem right away over the same servers. The modem wait is `ntp.cell_timeout_s` (default 60), capped at 15 s for the scheduled sync.
 
 ### net.mqtt
 
@@ -409,7 +417,11 @@ ota.check --force https://...firmware.json
 The actual download + flash + reboot sequence runs from the OTA module's loop on the main task, so this command returns immediately ("download started"). Watch `boot.info` after the device comes back to confirm.
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.force_reflash version=fled" -->
-A plain check refuses the release a crash-loop slot switch fled, with `status/ota` reason `fled-release`, for as long as the [fled-release skip]({{ site.baseurl }}/firmware/architecture/connectivity.html#the-fled-release-skip) runs. `--force` installs it and logs `ota.force_reflash version=fled`.
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.install_recorded version=%s" -->
+A plain check refuses the release a crash-loop slot switch fled, or a build it installed that never confirmed, with `status/ota` reason `fled-release`, for as long as the [fled-release skip]({{ site.baseurl }}/firmware/architecture/connectivity.html#the-fled-release-skip) runs. `--force` installs it and logs `ota.force_reflash version=fled`.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"insecure-url\"\)" -->
+The manifest URL, configured or given, and the binary `url` in the manifest must be `https://`. An `http://` one is refused with `status/ota` reason `insecure-url` unless `ota.allow_insecure` is set, `--force` or not.
 
 ### ota.status
 
@@ -428,7 +440,7 @@ MQTT only, binary protocol: no JSON envelope, no `req_id`. The payload is the ty
 ```
 
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/MQTTClient.cpp match="type: client_cert\|client_key" -->
-Push the two halves as two publishes. Each is stored in NVS on its own and answered with `Client cert stored in NVS` or `Client key stored in NVS`; a payload without the newline, a type longer than 31 bytes, or a PEM of 4000 bytes or more is refused with the reason in `output`. `cert.set` does not check that the two halves belong together: the pair check runs when the next session loads them, after `cert.apply`, and a key that is not the private half of the cert is dropped there rather than handed to the TLS stack. `cert.info` shows which half is still missing. Nothing reconnects until `cert.apply`.
+Push the two halves as two publishes. Each is stored in NVS on its own and answered with `Client cert stored in NVS` or `Client key stored in NVS`. A payload without the newline, a type longer than 31 bytes, or a PEM of 4000 bytes or more is refused with the reason in `output`. `cert.set` does not check that the two halves belong together. `cert.apply` checks the pair, and so does the next session that loads them, so a key that is not the private half of the cert never reaches the TLS stack. `cert.info` shows which half is still missing. Nothing reconnects until `cert.apply`.
 
 ### cert.info
 
@@ -436,7 +448,11 @@ Show stored cert metadata: CN, serial number (hex), notBefore, notAfter, issuer 
 
 ### cert.apply
 
-If both halves of the cert+key are present in NVS, schedules a deferred reboot ~3 seconds out so the response can publish before the restart. Post-reboot, the firmware connects with mTLS and uses the cert CN as the MQTT username.
+When both halves are stored and the key is the private half of the cert, schedules a reboot ~3 s out so the reply can publish. Post-reboot, the firmware connects with mTLS and uses the cert CN as the MQTT username.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="Stored cert \+ key do not validate as a pair - not applied" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="Low heap - stored pair not checked, retry cert.apply" -->
+A missing half or a pair that does not validate replies `ok:false` (`No cert + key in NVS ...` / `Stored cert + key do not validate as a pair - not applied`) and does not reboot. A refused pair counts as a broken stored cert, so `cert.clear` then runs on the same password session. When the heap cannot hold the check, the reply is `Low heap - stored pair not checked, retry cert.apply`, nothing reboots and the stored cert's broken state does not change.
 
 ### cert.clear
 
