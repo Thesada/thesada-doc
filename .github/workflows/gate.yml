@@ -23,6 +23,8 @@ jobs:
           bundler-cache: true
       - name: build
         run: make build
+      - name: SEO and link check
+        run: make site-check
 
   style:
     name: style rules
