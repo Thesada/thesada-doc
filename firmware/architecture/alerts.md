@@ -91,6 +91,21 @@ local function json_str(s)
   return '"' .. body .. '"'
 end
 
+-- Alert JSON under 256 bytes: a longer payload is dropped while it waits in
+-- the offline queue. Cuts the message on a UTF-8 character boundary.
+local function alert_json(code, msg)
+  local head = '{"severity":"warn","code":' .. json_str(code) .. ',"message":'
+  local m = tostring(msg)
+  local out = head .. json_str(m) .. '}'
+  while #out > 255 and #m > 0 do
+    local n = #m - 1
+    while n > 0 and m:byte(n + 1) >= 0x80 and m:byte(n + 1) < 0xC0 do n = n - 1 end
+    m = m:sub(1, n)
+    out = head .. json_str(m) .. '}'
+  end
+  return out
+end
+
 -- One alert per firing. Telegram.broadcast publishes it and queues the chats,
 -- without the Telegram module the script publishes it itself.
 local function notify(code, msg)
@@ -98,8 +113,9 @@ local function notify(code, msg)
   if Telegram then
     Telegram.broadcast(msg, code)
   else
-    MQTT.publish(Config.get("mqtt.topic_prefix") .. "/alert",
-      '{"severity":"warn","code":' .. json_str(code) .. ',"message":' .. json_str(msg) .. '}')
+    -- Read at fire time, so a config.reload that moves the prefix moves alerts too.
+    local prefix = Config.get("mqtt.topic_prefix") or "thesada/node"
+    MQTT.publish(prefix .. "/alert", alert_json(code, msg))
   end
 end
 
@@ -130,6 +146,17 @@ end)
 ```
 
 The envelope matters: the platform keeps only JSON alerts with `severity` in `info`, `warn` or `crit` and reads `code` and `message` from them. `Telegram.broadcast` builds that JSON itself, and the `Telegram` global exists only when the module is built and enabled, hence the fallback in `notify`. A script that publishes its own alert with `MQTT.publish` builds the string by hand, since there is no `JSON.encode` binding, and must escape quote, backslash and control characters so a sensor name cannot break it. A plain-string publish reaches the log, but the platform drops it at ingest.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.h match="char payload\[256\];" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="mqtt.queue_rejected reason=oversize" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-telegram/src/TelegramModule.cpp match="alertMessageFit\(\"warn\", code, body, 256 - strlen\(crumb\)\)" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-scriptengine/src/ScriptEngine.cpp match="if \(current.isNull\(\)\) \{\n    lua_pushnil\(L\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="cfg\[\"mqtt\"\]\[\"topic_prefix\"\] \| \"thesada/node\"" -->
+Keep the whole JSON under 256 bytes. While the device is offline a publish waits in a queue of 256-byte slots, and a longer payload is dropped there with `mqtt.queue_rejected reason=oversize`. `alert_json` cuts the message until the JSON fits and never splits a UTF-8 character, so a sensor name with an umlaut still arrives as valid JSON. `Telegram.broadcast` fits its alert into the same slot itself. `Config.get` returns `nil` for a key that is not in `config.json`, so the script falls back to `thesada/node`, the prefix the firmware uses when `mqtt.topic_prefix` is unset.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="out\(\"Network config changed - reinitializing MQTT subscriptions\"\);\n    MQTTClient::reinitSubscriptions\(\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=examples/scripts/rules.lua.example match="MQTT.publish\(Config.get\(\"mqtt.topic_prefix\"\) .. \"/alert\"," -->
+`notify` reads the prefix each time an alert fires. `config.reload` moves the firmware's own topics to a new `mqtt.topic_prefix` but does not rerun the scripts, so a prefix cached when the script loaded would keep sending alerts to the old topic until `lua.reload` or a restart.
 
 **EventBus data format (temperature):**
 

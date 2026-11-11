@@ -113,6 +113,19 @@ The scalar `pin` form still works and is treated as a single bus.
 - `clamp_a_per_v: 30` - CT clamp ratio, amps per 1 V of output. SCT-013-030 = 30, SCT-013-005 = 5. Defaults to 30 if omitted.
 - RMS sampling: 30 samples over 2x 60Hz cycles for accurate AC current measurement
 
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-ads1115/src/ADS1115Module.cpp match="c.dc         = ch\[\"dc\"\] \| false;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ads_sample_policy.h match="Mean of the samples, the reading of a DC sensor" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-ads1115/src/ADS1115Module.cpp match="coupling=%s" -->
+- `"dc": true` on a channel reads the mean of the samples instead of the AC RMS, for a DC sensor such as a pressure transducer. The value is still scaled by `clamp_a_per_v` and published as `current`, so set that to the sensor's units per volt. The boot log shows `coupling=dc`. Default `false`, an AC current clamp.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ads_sample_policy.h match="ADS_PGA_FS_V\[ADS_PGA_RANGES\] = \{0\.256f, 0\.512f, 1\.024f, 2\.048f, 4\.096f, 6\.144f\};" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ads_sample_policy.h match="PGA range for a configured gain: the smallest range that holds it\." -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-ads1115/src/ADS1115Module.cpp match="float       gain  = ch\[\"gain\"\] \| 1\.024f;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-ads1115/src/ADS1115Module.cpp match="ads\.gain_rounded name=%s requested=%\.3f fs=%\.3f" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-ads1115/src/ADS1115Module.cpp match="if \(ch\.dc\) \{\n    rmsV = adsMeanVolts\(acc, ch\.gain\);\n    return true;\n  \}" -->
+- `dc` does not change `gain`. Pick a `gain` for a DC channel from the sensor's highest output, not from the clamp examples above: `0.256` suits a CT clamp's small swing and pins a 0.5 to 4.5 V transducer at the top of the range. `gain` is the full-scale voltage in V, rounded up to the next ADS1115 range: `0.256`, `0.512`, `1.024`, `2.048`, `4.096` or `6.144`. A rounded value logs `ads.gain_rounded`, and an absent `gain` means `1.024`. Choose the smallest range at or above the sensor's maximum: a sensor that tops out at 4.5 V needs `6.144`, one that tops out at 3 V needs `4.096`. A DC channel has no saturation check, so a signal past full scale reads as full scale with no log line.
+- The range sets the scale, not what the input pins tolerate. Per the ADS1115 datasheet every analog input has to stay between GND and the chip's supply (VDD), whatever the gain. On a chip powered from 3.3 V nothing above 3.3 V can be read, even at `6.144`. A 5 V sensor on a chip powered from 3.3 V needs a divider, and the `clamp_a_per_v` scale then has to include the divider ratio.
+
 **Multiple ADS1115 chips:** to read more than 4 channels, wire a second ADS1115 at a different I2C address (ADDR pin to VDD = 0x49) and list both under `devices`. Each device carries its own `channels`; `i2c_sda` / `i2c_scl` / `interval_s` / `line_voltage` stay shared at the top level:
 
 ```json

@@ -91,7 +91,7 @@ curl -s -o /dev/null -w "7 valid login %{http_code}\n" -u "admin:$WEB_PASS" http
 # 7 valid login during the lockout -> 429
 ```
 
-**WebSocket auth** - unauthenticated direct connections are rejected:
+**WebSocket auth** - a connection without a valid token is refused at the handshake:
 
 ```bash
 curl -i http://[ip]/ws/serial \
@@ -99,18 +99,19 @@ curl -i http://[ip]/ws/serial \
   -H "Connection: Upgrade" \
   -H "Sec-WebSocket-Key: dGhlc2FtcGxlbm9uY2U=" \
   -H "Sec-WebSocket-Version: 13"
-# -> 101 (handshake completes), then immediately receives WS close frame
-# Serial log shows: [WRN][WebServer] WS: rejected - not pre-authorized
+# -> 401, no log lines. The device logs web.ws_rejected reason=no_token
 ```
 
-**WS token endpoint** - requires auth:
+**WS token endpoint** - requires auth, returns a single-use token (30 s, bound to your IP):
 
 ```bash
 curl http://[ip]/api/ws/token
 # -> {"ok":false,"error":"Unauthorized"}
 
 curl -u "admin:$WEB_PASS" http://[ip]/api/ws/token
-# -> {"ok":true}
+# -> {"ok":true,"token":"<32 hex>"}
+# then connect to ws://[ip]/ws/serial?token=<32 hex> within 30 s. A second use answers 401.
+# With 4 grants open the endpoint answers 503 until one is used or expires.
 ```
 
 **Bearer token auth:**

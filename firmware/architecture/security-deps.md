@@ -30,7 +30,7 @@ No other files touched. `ModuleRegistry.cpp` has zero module-specific code - sel
 | All admin endpoints | Bearer token or HTTP Basic Auth (backwards compatible) |
 | Token auth | `POST /api/login` with Basic Auth returns a 1-hour Bearer token (max 4 concurrent tokens) |
 | Rate limiting | every authenticated route: 5 wrong credentials per source IP trigger a 30 s lockout (returns 429). Table holds 16 IPs plus one shared overflow entry. Once all 16 slots hold live IPs, every other IP counts on the overflow entry, so while it is locked a new IP gets 429 even with valid credentials. The overflow lock ends 30 s after it started like any other, and its next wrong guess locks it again at once. A slot frees on a success or after 10 min quiet. |
-| WebSocket terminal | Requires prior `GET /api/ws/token` (auth-gated); server records caller IP as authorized for 30 s (one-time use) |
+| WebSocket terminal | `GET /api/ws/token` (auth-gated) returns a single-use token, valid 30 s and bound to the caller IP. `/ws/serial?token=<hex>` spends it in the handshake. At most 4 open grants, a full table answers 503 |
 | Path traversal | `/api/file` rejects any path containing `..` |
 | TLS | MQTT and OTA load the CA from `/ca.crt` on LittleFS. If that file is missing or empty, both subsystems fall back to a PROGMEM bundle baked into the firmware (common public TLS roots). The rotation path stays flash-based; the bundle is a safety net for wiped data partitions. See TLS exceptions below. |
 
@@ -49,12 +49,12 @@ No other files touched. `ModuleRegistry.cpp` has zero module-specific code - sel
 
 ```
 1. JS calls GET /api/ws/token  (Authorization: Bearer <token>)
-2. Server records remoteIP -> authorized for 30 s
-3. JS opens ws://device/ws/serial  (no credentials in URL)
-4. WS_EVT_CONNECT: server checks remoteIP against grant table -> allow or close
+2. Server returns {"ok":true,"token":"<32 hex>"}: random, single use, 30 s, bound to the caller IP
+3. JS opens ws://device/ws/serial?token=<32 hex>
+4. Handshake: token and IP matched in constant time and spent, else 401 before any WebSocket client exists
 ```
 
-Unauthenticated WebSocket connections (e.g. direct curl or wscat) are accepted at TCP level (101 Switching Protocols) then immediately closed with a WS close frame. The rejection is logged as `[WRN][WebServer] WS: rejected - not pre-authorized`.
+A connection without a valid token (no token, a used or expired one, another IP's) gets `401` at the handshake and never receives a log line. The firmware logs `web.ws_rejected reason=no_token` or `reason=bad_token`. Two clients behind one NAT each get their own token.
 
 **Note:** The web interface uses HTTP, not HTTPS. Admin credentials transit in cleartext on the LAN. For internet-exposed deployments, put the device behind a reverse proxy with TLS termination.
 

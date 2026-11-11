@@ -185,8 +185,6 @@ The app reads `<prefix>/alert` as a JSON object with a `severity` of `info`, `wa
 Keep an alert under 256 bytes. The device queues a publish while it is offline or inside `mqtt.send_interval_s`, and the queue drops a longer payload with `mqtt.queue_rejected reason=oversize`.
 
 ```lua
-local prefix = Config.get("mqtt.topic_prefix") or "thesada/node"
-
 -- JSON string literal: escape quote, backslash and control characters.
 local function json_str(s)
   local body = tostring(s):gsub('[%c"\\]', function(c)
@@ -202,6 +200,7 @@ EventBus.subscribe("temperature", function(data)
     local s = sensors[i]
     if s.temp_c and s.temp_c > 40 then
       Log.warn("High temp: " .. s.name .. " " .. s.temp_c .. "C")
+      local prefix = Config.get("mqtt.topic_prefix") or "thesada/node"
       MQTT.publish(prefix .. "/alert",
         ('{"severity":"warn","code":"overheat","message":%s}'):format(
           json_str(s.name .. " overheating")))

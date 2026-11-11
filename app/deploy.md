@@ -80,6 +80,66 @@ With no subcommand the binary starts the long-running server.
 | Transactions | each file runs in its own transaction; the version row is inserted in the same transaction as the DDL |
 | Order | a failed migration aborts before the new server starts, leaving the prior version serving |
 
+<!-- claim: repo=thesada-app ref=dev file=migrations/0040_device_broker_identity.sql match="SET LOCAL ROLE thesada_app_admin;" -->
+<!-- claim: repo=thesada-app ref=dev file=migrations/0041_cert_pubkey_backfill_rls.sql match="Needs: GRANT thesada_app_admin TO thesada_app" -->
+<!-- claim: repo=thesada-app ref=dev file=docs/runbook.md match="permission denied to set role" -->
+<!-- claim: repo=thesada-app ref=dev file=docs/runbook.md match="`thesada-app migrate` runs as `thesada_app`, the owner of every table" -->
+Tenant tables enforce row-level security even for their owner, so a migration that changes rows in one switches to the bypass-RLS admin role with `SET LOCAL ROLE thesada_app_admin`. From migration 0040 on, the role `migrate` connects as (`thesada_app`, the owner of every table) needs a one-time grant, run as a superuser before the first such `migrate`:
+
+```sql
+GRANT thesada_app_admin TO thesada_app;
+```
+
+Without it, 0040 fails with `permission denied to set role "thesada_app_admin"`, the migration aborts, and the prior version keeps serving. Grant, then run `migrate` again.
+
+<!-- claim: repo=thesada-app ref=dev file=migrations/0001_init.sql match="IF NOT EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = 'thesada_app_admin'\) THEN\n        CREATE ROLE thesada_app_admin BYPASSRLS NOLOGIN;" -->
+<!-- claim: repo=thesada-app ref=dev file=migrations/0001_init.sql match="ALTER ROLE thesada_app_admin LOGIN;" -->
+<!-- claim: repo=thesada-app ref=dev file=deploy/docker-compose.yml match="POSTGRES_USER: thesada_app\n" -->
+**On a fresh database** the role `thesada_app_admin` does not exist until migration 0001 creates it, so the grant cannot run first. What to do depends on whether `thesada_app` is a superuser:
+
+| Setup | `thesada_app` | Before the first `migrate` |
+|---|---|---|
+| `deploy/docker-compose.yml` (`startup.sh`) | `POSTGRES_USER`, which the image makes a superuser | nothing. 0001 creates the roles, and a superuser may `SET ROLE` to any role |
+| Separate superuser, `thesada_app` a plain owner role (the hardened setup) | not a superuser, cannot create a `BYPASSRLS` role or make it `LOGIN`, and does not own `public` on PostgreSQL 15+ | run the bootstrap below as the superuser |
+
+<!-- claim: repo=thesada-app ref=dev file=migrations/0001_init.sql match="ALTER MATERIALIZED VIEW device_telemetry_hourly OWNER TO thesada_app_admin;" -->
+<!-- claim: repo=thesada-app ref=dev file=migrations/0001_init.sql match="GRANT CONNECT ON DATABASE thesada_app TO thesada_app_admin, thesada_app_mqtt;" -->
+<!-- claim: repo=thesada-app ref=dev file=migrations/0001_init.sql match="SELECT create_hypertable\(" absent="CREATE EXTENSION[^;]*timescaledb" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/servicetest/postgres.go match="Image = \"timescale/timescaledb:[0-9.]+-pg17\"" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/servicetest/postgres.go match="ALTER DATABASE `\+dbName\+` OWNER TO thesada_app;\n\s*ALTER SCHEMA public OWNER TO thesada_app;\n\s*GRANT ALL ON SCHEMA public TO thesada_app;\n\s*GRANT thesada_app_admin TO thesada_app;\n\s*GRANT USAGE, CREATE ON SCHEMA public TO thesada_app_admin;" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/servicetest/postgres.go match="GRANT USAGE, CREATE ON SCHEMA _timescaledb_internal TO thesada_app_admin;" -->
+<!-- claim: repo=thesada-app ref=dev file=migrations/migrate_integration_test.go match="servicetest\.BootstrapProdRoles\(t, super\)\n\s*migrator := servicetest\.OpenAs\(t, baseURL, \"thesada_app\"\)" -->
+The database has to be named `thesada_app`, because 0001 grants `CONNECT` on that name. Run this as the superuser, connected to that database, before the first `migrate`:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+
+CREATE ROLE thesada_app       LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+CREATE ROLE thesada_app_admin LOGIN NOSUPERUSER BYPASSRLS   NOCREATEDB NOCREATEROLE;
+CREATE ROLE thesada_app_mqtt  LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+
+ALTER DATABASE thesada_app OWNER TO thesada_app;
+ALTER SCHEMA public OWNER TO thesada_app;
+GRANT ALL ON SCHEMA public TO thesada_app;
+
+GRANT thesada_app_admin TO thesada_app;
+GRANT USAGE, CREATE ON SCHEMA public TO thesada_app_admin;
+GRANT USAGE, CREATE ON SCHEMA _timescaledb_internal TO thesada_app_admin;
+```
+
+Set a password on each role whose pool connects with one (`ALTER ROLE ... PASSWORD`). What each line is for:
+
+| Statement | Why |
+|---|---|
+| `CREATE EXTENSION timescaledb` | 0001 calls `create_hypertable` but never creates the extension, and a plain role cannot. It also creates `_timescaledb_internal`, which the last grant needs |
+| the three roles | 0001 skips a role that already exists, and a plain role cannot create a `BYPASSRLS` role or make it `LOGIN`. `LOGIN` on `thesada_app_admin` is the state 0001 leaves it in: the TimescaleDB refresh worker needs it |
+| `thesada_app` owns the database and `public` | PostgreSQL 15 and later no longer grant `CREATE` on `public` to every role, and `migrate` creates every table as `thesada_app` |
+| `GRANT thesada_app_admin TO thesada_app` | `migrate` can `SET LOCAL ROLE thesada_app_admin` (0040 on) and hand objects to that role |
+| `CREATE` on `public` for `thesada_app_admin` | 0001 makes `thesada_app_admin` the owner of the two continuous aggregates. PostgreSQL lets a non-superuser hand an object to a new owner only when that owner has `CREATE` on the object's schema, so without it 0001 fails |
+| `CREATE` on `_timescaledb_internal` for `thesada_app_admin` | a continuous aggregate's materialization hypertable lives in that schema and changes owner with it, so the same rule applies there |
+
+The app's migration integration test applies every migration as `thesada_app` on a fresh PostgreSQL 17 TimescaleDB container bootstrapped with exactly these grants. Then run `migrate` once, and it applies 0001 through the latest in one run.
+
 ## Configuration
 
 Secrets reach the app through the environment only. With Compose they live in `app.env` and `db.env` (mode `0600`, which is what `startup.sh` chmods them to); the standalone binary reads them from its process environment.
