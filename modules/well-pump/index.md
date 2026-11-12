@@ -1,15 +1,15 @@
 ---
-title: Well Pump Monitor
+title: Well Pump Monitoring System
 parent: Modules
 nav_order: 3
-description: "Well pump monitoring system - current draw, pressure tank, short-cycle detection, freeze risk alerting."
+description: "DIY open-source well pump monitor: watch a water well pump for dry running, short cycling, a stopped pump and freezing, with alerts to your phone."
 ---
 
-# Well Pump Monitor
+# Well Pump Monitoring System
 
 > **On the bench, not in the field yet.** This monitor is still being designed. If you look after wells or pumps and want to know more, or would like to try it in a test setup, get in touch: [info@hit-con.ca](mailto:info@hit-con.ca)
 
-Monitors a submersible well pump system - pump current draw, pressure tank pressure, short-cycle detection, and freeze risk alerting.
+Monitors a water well pump and its pressure tank: is the pump running, is it running dry, is it short cycling, and is the pump house about to freeze. It sends an alert to your phone before a small problem becomes a burnt-out pump or a burst pipe. Open source, about $57 CAD in parts, no cloud subscription.
 
 ---
 
@@ -19,6 +19,7 @@ A submersible well pump fails silently. Common failure modes:
 
 - **Short cycling:** The pump turns on and off too frequently - usually means the pressure tank has lost its air charge (waterlogged) or you have a leak somewhere. This kills pump motors. By the time you notice low water pressure, the pump may already be damaged.
 - **Pump seizure:** Motor draws excessive current or zero current. Either way, no water.
+- **Running dry:** The water level drops below the pump intake (drought, a heavy draw, a failing well). The pump keeps spinning with no water to move and no water to cool it. A few minutes of this can destroy the motor.
 - **Freeze risk:** In an unheated pump house or exposed plumbing, the pressure tank and lines can freeze. By the time you notice, pipes have burst.
 
 None of these are visible without instrumentation. The goal is to detect all three conditions and alert via Telegram before they cause damage.
@@ -142,6 +143,14 @@ Same sensor as the OWB monitor. Mount near the pressure tank or on exposed plumb
 | Ambient temp < 0C | Freeze warning - take action | Critical |
 | Pressure below 20 PSI for > 10 min | Low system pressure | Critical |
 
+### Dry-Run Detection
+
+A submersible pump moving water draws a steady current. With no water at the intake it has almost no load, so the current drops well below its normal running value while the pump stays switched on. Pressure stops rising at the same time.
+
+Detection: while the pump is on, current more than about 30 % below its learned normal running current, together with flat or falling pressure for more than 30 seconds, raises a critical "pump running dry" alert. The normal running current is learned from the first days of data, since every pump and well depth differs.
+
+This is a monitor, not a protection relay. It tells you fast, it does not switch the pump off. For automatic cut-off, a dry-run protection relay in the control box is the right part, and this monitor shows you when it trips.
+
 ### Short-Cycle Detection Logic
 
 A healthy well pump cycle looks like:
@@ -169,7 +178,7 @@ Detection: count pump start events (current going from ~0 to > 1A) per hour. Mor
 Same controller as OWB monitor (LILYGO T-SIM7080-S3):
 
 | Function | GPIO |
-|---|---|---|
+|---|---|
 | 1-Wire (DS18B20) | GPIO12 |
 | I2C SDA (ADS1115) | GPIO1 |
 | I2C SCL (ADS1115) | GPIO2 |
@@ -186,6 +195,18 @@ Same controller as OWB monitor (LILYGO T-SIM7080-S3):
 | Local hardware store | 1/4" NPT brass tee, Teflon tape |
 
 Order the pressure transducer early - AliExpress lead time is 2-4 weeks. Verify the thread is 1/4" NPT (not BSP) before ordering. Most North American pressure tanks use NPT threads.
+
+---
+
+## FAQ
+
+**How do I know if my well pump is running?** Clamp a current sensor around one hot wire at the control box. Current above about 1 A means the pump runs. This monitor logs every start and stop, so you also see how long and how often it runs.
+
+**Can I detect a dry well before the pump burns out?** Yes, by its current. A pump with no water draws noticeably less than its normal running current. See dry-run detection above.
+
+**What is short cycling and why does it matter?** The pump starts and stops many times an hour, usually because the pressure tank lost its air charge. Every start wears the motor. Counting starts per hour catches it early.
+
+**Does it need internet or a cloud account?** It needs a network to send alerts: Wi-Fi, or LTE-M on the cellular board when the pump house has no Wi-Fi. There is no cloud subscription. Data goes to your own app or Home Assistant.
 
 ---
 
