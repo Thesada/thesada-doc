@@ -100,6 +100,20 @@ resolves through the same check, so Bearer is accepted everywhere Basic is.
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/dashboard.html.h match="Too large to edit here \(max 64 KB\), downloading it instead" -->
 **Request bodies.** A POST body must carry `Content-Length`. A request without it is refused with `411`, both a chunked one (`Transfer-Encoding`) and one with no length header at all, so neither reads as an empty body. Only a declared `Content-Length: 0` is empty, and on `POST /api/file` it writes an empty file. A body over the route's cap is refused with `413`: 16 KB for a config write, 64 KB for `POST /api/file`, 2 KB for `/api/cmd`. A body that does not arrive whole is refused with `400`, and nothing is written. Reads are not capped: `GET /api/file` streams the file whole at any size. The dashboard file editor opens files up to 64 KB, the most `POST /api/file` takes back, and downloads a larger file instead.
 
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/http_body_policy.h match="HTTP_BODY_BUDGET = HTTP_BODY_FILE_MAX \+ HTTP_BODY_CFG_MAX;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="web\.body_refused reason=budget len=%u held=%u" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="else req->onDisconnect\(\[total\]\(\) \{ httpBodyRelease\(_bodyHeld, total\); \}\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="req->send\(503, \"application/json\", \"\{\\\"ok\\\":false,\\\"error\\\":\\\"busy, retry\\\"\}\"\);" -->
+**Body budget.** All bodies in flight share one 80 KB budget, one 64 KB file write beside one 16 KB config push. A body reserves its declared length once its first chunk authenticates and gives it back when the request ends. A body that does not fit while others hold the budget is not buffered: the route answers `503` with `busy, retry` and the device logs `web.body_refused reason=budget`. Retry once the other upload has finished.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/http_body_policy.h match="HTTP_FORM_MAX = 1024;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/http_body_policy.h match="const bool form = is\(\"application/x-www-form-urlencoded\", true\) \|\| is\(\"text/plain\", false\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="form body too large" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="multipart only on /ota" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="const bool upload = req->method\(\) == HTTP_POST && req->url\(\) == \"/ota\";" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="server\.addHandler\(new ParsedBodyGuard\(\)\);" -->
+**Bodies the web library parses itself.** A form body (`application/x-www-form-urlencoded`) or a `text/plain` body larger than 1 KB is refused with `413` (`form body too large`) on every route, and a multipart body on any route but `POST /ota` with `415` (`multipart only on /ota`). Both are judged once the headers are in, before the body is read or authenticated, and logged as `web.body_refused reason=form_too_large` or `reason=multipart`. Send file and config bodies as `application/octet-stream` or `application/json`, as the dashboard and the examples on these pages do. `curl -d` and `--data-binary` default to the form type, so set `-H 'Content-Type: application/octet-stream'` with them.
+
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/shell_mode_policy.h match="if \(s == HTTP_SURFACE_CONFIG_PUSH \|\| s == HTTP_SURFACE_OTA\) return true;\n  return shellModeHttpAllowed\(m\);" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="shell.mode closes the HTTP command surface" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="shell.mode closes file writes over HTTP" -->

@@ -77,6 +77,10 @@ The full config lives on LittleFS at `/config.json`. Edit via the web UI, HTTP A
 - `unit: "F"` publishes in Fahrenheit (thresholds in alert scripts always use Celsius)
 - `read_retries: 2` re-reads a probe on a transient bus fault before reporting it stale (default 2). DS18B20 scratchpad CRC is always checked by the driver; this adds retries on top.
 - `max_delta_c: 40` holds a reading that jumps more than 40 C from the last accepted one - guards against marginal-bus garbage (long flying leads can read wildly wrong but CRC-valid). The held probe publishes as `stale` with no value. The next reading within 40 C of the held one is accepted and becomes the new baseline, so one real step (a probe returning mid fire-up) does not lock it out. The first reading after boot is accepted unchecked. Set `0` to disable.
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/temp_guard_policy.h match="TEMP_POWER_ON_C      = 85\.0f;\nconstexpr float TEMP_POWER_ON_NEAR_C = 2\.0f;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/temp_guard_policy.h match="return TempVerdict::PowerOn;  // never a held reading another one confirms" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-temperature/src/TemperatureModule.cpp match="temp\.read_rejected addr=%s last=%\.2f got=%\.2f reason=power_on" -->
+- 85.0 C is the DS18B20 power-on value, read after a reset before the first conversion. A reading of exactly 85.0 C is held back and the probe publishes as `stale`, logged as `temp.read_rejected reason=power_on`, unless the last accepted reading is within 2 C of it. This check runs even with `max_delta_c: 0` and on the first reading after boot. Repeats never confirm 85.0, and it never counts as the reading that confirms a jump. A boiler that really sits at 85 C keeps reading, because its last reading was close. One already at 85 C at boot reads `stale` until its first reading that is not exactly 85.00.
 
 **Multiple 1-Wire buses:** to drive more than one bus, replace the scalar `pin` with a `buses` list. Each bus gets its own GPIO; probes from all buses aggregate into one sensor list (DS18B20 ROM addresses are globally unique):
 

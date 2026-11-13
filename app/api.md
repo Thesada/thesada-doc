@@ -210,6 +210,17 @@ The certificate endpoint does not seal the enrollment; this does. Until the ackn
 { "channel": "email", "min_severity": "warn", "device_pk": null }
 ```
 
-`channel` is `email` or `telegram`. `min_severity` is `info`, `warn`, or `crit` (default `warn`). `device_pk` is optional - omit it or send `null` to cover all of the user's devices; a supplied id must belong to your tenant. Returns 201 `{ "status": "created" }`.
+<!-- claim: repo=thesada-app ref=dev file=pkg/api/v1/alerts.go match="channel must be email, telegram, or webhook" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/api/v1/alerts.go match="webhook needs an http\(s\) URL" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/api/v1/alerts.go match="if errors\.Is\(err, service\.ErrNoChannel\) \{\n\s*writeJSON\(w, http\.StatusConflict, map\[string\]string\{\"error\": \"add a \" \+ req\.Channel \+ \" channel first\"\}\)" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/alert_channel.go match="case \"email\":\n\s*return accountEmailChannelTx\(ctx, tx, userID\)" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/alert_channel.go match="return uuid\.Nil, ErrNoChannel" -->
+`channel` is `email`, `telegram`, or `webhook`. `email` sends to your account address, `telegram` uses your oldest Telegram channel, and `webhook` needs an `http(s)` URL in `destination`. `min_severity` is `info`, `warn`, or `crit` (default `warn`). `device_pk` is optional - omit it or send `null` to cover all of your devices. A supplied id must belong to your tenant. Returns 201 `{ "status": "created" }`.
+
+| Status | Cause |
+|---|---|
+| 400 | unknown `channel` or `min_severity`, or a webhook without an `http(s)` URL |
+| 404 | `device_pk` is not a device in your tenant |
+| 409 | `telegram` before you have set up a Telegram channel: `{ "error": "add a telegram channel first" }`. Add the channel in the dashboard settings, then retry |
 
 **DELETE /alert-subscriptions/{id}** - removes one of your subscriptions. Idempotent; returns 204.

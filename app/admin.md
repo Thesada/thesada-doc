@@ -13,7 +13,10 @@ This page is a tour of each admin area.
 
 ## Tenants
 
-`/admin/tenants` lists every tenant and lets you create one (slug plus display name) or delete one. Within a tenant, `/admin/tenants/{slug}/users` manages its users:
+<!-- claim: repo=thesada-app ref=dev file=pkg/web/templates/admin-tenants.html match="title=\"Users with an alert subscription on an enabled channel\">Subscribers</th>" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/web/templates/admin-tenants.html match="\{\{if and \.DeviceCount \(not \.SubscriberCount\)\}\}text-rose-700\{\{end\}\}" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/tenant.go match="func \(s \*TenantService\) CountSubscribersAny" -->
+`/admin/tenants` lists every tenant and lets you create one (slug plus display name) or delete one. Each row shows users and devices against their quotas, alerts per day, and **Subscribers**: how many of the tenant's users have an alert subscription on an enabled channel. The count turns red when the tenant has devices and no subscriber, which means its alerts reach nobody (see [Alerts]({{ site.baseurl }}/app/architecture.html#alerts)). Within a tenant, `/admin/tenants/{slug}/users` manages its users:
 
 | Action | What it does |
 |---|---|
@@ -46,7 +49,22 @@ This page is a tour of each admin area.
 
 ### Device secrets
 
-`/admin/devices/{id}/secrets` holds the per-device overrides for the write-only secret fields (`mqtt.password`, `telegram.bot_token`, `web.password`, `wifi.ap_password`, per-SSID WiFi passwords). Values are encrypted at rest and never displayed; the page shows two columns, **Stored** (the app store) and **Device** (the live NVS state, read over MQTT when the device answers). Setting a field stores it. **Provision to device** pushes every stored value to an already-paired device over MQTT, and **Clear** drops an override so the device falls back to the tenant default at the next provision. The same page exists per tenant at `/admin/tenants/{slug}/secrets` for the defaults. Use this page rather than the CLI box on the config workspace: `secret.set` is a raw `<field>\n<value>` payload with no JSON envelope, which that box cannot send. The whole feature is off until `THESADA_DEVICE_CONFIG_KEK` is set, see [Deployment]({{ site.baseurl }}/app/deploy.html).
+`/admin/devices/{id}/secrets` holds the per-device overrides for the write-only secret fields (`mqtt.password`, `telegram.bot_token`, `web.password`, `wifi.ap_password`, per-SSID WiFi passwords). Values are encrypted at rest and never displayed; the page shows two columns, **Stored** (the app store) and **Device** (the live NVS state, read over MQTT when the device answers). Setting a field stores it.
+
+<!-- claim: repo=thesada-app ref=dev file=pkg/web/templates/admin-device-secrets.html match="title=\"Not in NVS: the device reads config\.json, which may be blank\">config/none</span>" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/web/admin_secrets.go match="out\[f\] = \"none\"" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/web/admin_secrets.go match="const secretInfoTimeout = 5 \* time\.Second" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/web/admin_secrets.go match="An SSID may hold spaces" -->
+| Device badge | Meaning |
+|---|---|
+| on device | the value is in the device's NVS |
+| config/none | not in NVS: the device falls back to its `config.json` value, which may be blank |
+| not set | the device's `secret.info` does not list the field |
+| - | the device did not answer within 5 s |
+
+Per-SSID WiFi rows get a badge too, an SSID with spaces included.
+
+**Provision to device** pushes every stored value to an already-paired device over MQTT, and **Clear** drops an override so the device falls back to the tenant default at the next provision. The same page exists per tenant at `/admin/tenants/{slug}/secrets` for the defaults. Use this page rather than the CLI box on the config workspace: `secret.set` is a raw `<field>\n<value>` payload with no JSON envelope, which that box cannot send. The whole feature is off until `THESADA_DEVICE_CONFIG_KEK` is set, see [Deployment]({{ site.baseurl }}/app/deploy.html).
 
 ## MQTT shell
 
