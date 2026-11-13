@@ -46,6 +46,21 @@ flowchart LR
 3. A background dispatcher matches alert subscriptions - per device or tenant-wide, each with a minimum-severity threshold - and sends email and/or Telegram. Delivery flags are set idempotently so retries never double-send.
 4. A failed send is retried with doubling backoff (a redispatch sweep also runs at startup, so a restart mid-alert loses nothing). After the attempt budget (default 5) the alert is dead-lettered and logged loudly; the attempt budget, backoff, and sweep cadence are configurable via `THESADA_ALERT_*` (see [Deploy]({{ site.baseurl }}/app/deploy.html)).
 
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/certificate.go match="ensureTenantSubscriptionTx\(ctx, tx, tenantID, devicePk\)" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/alert_default.go match="const DefaultSubscriptionSeverity = \"warn\"" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/alert_default.go match="ORDER BY \(d\.id IS NOT NULL\) DESC, u\.is_admin DESC, u\.is_super_admin, u\.created_at, u\.id" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/alert_default.go match="insertSubscriptionTx\(ctx, tx, userID, nil, channelID, DefaultSubscriptionSeverity\)" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/alert_default.go match="pg_advisory_xact_lock" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/alert_default.go match="sp, err := tx\.Begin\(ctx\)" why="savepoint, a failure only logs" -->
+**Default subscription on pairing.** Pairing a device into a tenant that has no alert subscription yet creates one, so the first alerts reach someone. It goes to the user who claimed the device, else the oldest tenant admin, else the oldest user (super-admins last), covers all devices at `warn`, and sends to that user's account email. It runs on every pairing path (admin pair, the API pair and a self-service claim). Parallel or repeated pairings in one tenant create one subscription, and a failure here is logged as `alert.subscription.default_failed` and never undoes the pairing. A tenant that already has a subscription is left as it is.
+
+<!-- claim: repo=thesada-app ref=dev file=pkg/web/templates/layout.html match="Nobody gets alerts for this tenant\." -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/web/web_device.go match="return paired && subs == 0" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/service/alert_default.go match="JOIN notification_channels c ON c\.id = s\.channel_id AND c\.enabled" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/web/templates/devices.html match="\{\{template \"alert-coverage\" \.\}\}" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/web/templates/alerts.html match="\{\{template \"alert-coverage\" \.\}\}" -->
+**"Nobody gets alerts" banner.** While a tenant has a paired device and no user with a subscription on an enabled channel, the Devices and Alerts pages show `Nobody gets alerts for this tenant.` with a link to the notification settings. Alerts are still stored and shown, they just reach no one. The banner goes away once one subscription on an enabled channel exists.
+
 ## Where state lives
 
 All persistent state is in PostgreSQL (with the TimescaleDB extension). Tenant isolation is enforced by Postgres row-level security (RLS) as the steady-state default: the app sets a per-transaction tenant identifier, so every query is automatically scoped to one tenant.

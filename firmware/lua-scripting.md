@@ -119,8 +119,20 @@ end)
 ```
 
 Event names are exact strings - there is no `sensor.*` namespace or wildcard
-matching. Write thresholds against `temp_c` (always Celsius); `temp` is the
+matching. Write thresholds against `temp_c` (always Celsius). `temp` is the
 same reading in the configured display unit.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/event_bus_table.h match="constexpr size_t EVENT_SUBS_MAX = 128;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/event_bus_table.h match="constexpr size_t EVENT_PUBLISH_MARGIN = 64;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-scriptengine/src/ScriptEngine.cpp match="script\.event_subscribe_refused event=%s reason=full max=%u" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-scriptengine/src/ScriptEngine.cpp match="lua_pushboolean\(L, 0\);\n    return 1;\n  \}\n\n  Log::kvf\(TAG, \"script\.event_subscribed event=%s\", event\);\n  lua_pushboolean\(L, 1\);" -->
+`EventBus.subscribe` returns `true` once the callback is registered. One event holds at most 128 live callbacks, and past that the call returns `false`, registers nothing and logs `script.event_subscribe_refused`. One publish runs the callbacks it started with plus at most 64 added during it, so a callback that subscribes from inside itself cannot hold the loop. Subscribe once at top level, not from inside a callback:
+
+```lua
+if not EventBus.subscribe("battery", on_battery) then
+  Log.warn("battery subscription refused")
+end
+```
 
 Common events (varies by build):
 
@@ -133,7 +145,8 @@ Common events (varies by build):
 
 The C++ side publishes to the EventBus as soon as a sensor read completes; subscribing in Lua is the lowest-latency way to react.
 
-Every DS18B20 probe is listed each cycle. One whose read failed, or whose reading the `max_delta_c` guard held back, carries `stale = true` and no `temp_c` or `temp`; it is never filled with its last value. Guard every temperature field (`if s.temp_c then`) or skip `s.stale`: comparing or concatenating a missing field throws, and the throw ends the callback's loop over the remaining probes.
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-temperature/src/TemperatureModule.cpp match="case TempVerdict::PowerOn:" -->
+Every DS18B20 probe is listed each cycle. One whose read failed, whose reading the `max_delta_c` guard held back, or that read the 85.0 C power-on value away from its last reading carries `stale = true` and no `temp_c` or `temp`. It is never filled with its last value. Guard every temperature field (`if s.temp_c then`) or skip `s.stale`: comparing or concatenating a missing field throws, and the throw ends the callback's loop over the remaining probes.
 
 ### `JSON`
 
@@ -144,7 +157,12 @@ if data and data.value then
 end
 ```
 
-Decode-only for now; build outbound JSON by string concatenation or `string.format`.
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-scriptengine/src/ScriptEngine.cpp match="if \(doc\.is<JsonObject>\(\) \|\| doc\.is<JsonArray>\(\)\) \{\n    pushJsonVariant\(L, doc\.as<JsonVariant>\(\)\);\n  \} else \{\n    lua_pushnil\(L\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-scriptengine/src/ScriptEngine.cpp match="if \(v\.isNull\(\)\) \{\n    lua_pushnil\(L\);\n  \} else if \(v\.is<bool>\(\)\) \{\n    lua_pushboolean\(L, v\.as<bool>\(\)\);\n  \} else if \(v\.is<long>\(\)\) \{\n    lua_pushinteger" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-scriptengine/src/ScriptEngine.cpp match="Shared by JSON\.decode and the EventBus payloads\." -->
+`JSON.decode(str)` returns a table for a JSON object or array, and `nil` for invalid JSON or a bare top-level value (`"42"`, `"true"`). Objects and arrays nest at any depth, arrays as 1-based tables. `true` and `false` arrive as Lua booleans, a whole number as a Lua integer, a fractional number as a float, and `null` as `nil`, so a key holding `null` is absent from the table and a `null` array element leaves a hole. EventBus payloads are converted the same way.
+
+Decode-only for now. Build outbound JSON by string concatenation or `string.format`.
 
 ### Stdlib sandbox
 
@@ -164,9 +182,17 @@ If a binding is missing on the running build, referencing it raises a Lua error.
 
 ## Generation safety on reload
 
-Every successful `lua.reload` bumps an internal generation counter. MQTT subscriptions and EventBus subscriptions registered by Lua capture the generation at registration time; when a callback fires, it checks against the current generation and silently no-ops if it is stale. The same goes for `Node.setTimeout` callbacks - timer slots are cleared at the start of `createState`, so a pending timer from the previous load will never fire.
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-scriptengine/src/ScriptEngine.cpp match="_generation\+\+;\n.*\n  MQTTClient::unsubscribeOwner\(MQTT_SUB_OWNER_LUA\);\n  EventBus::unsubscribeOwner\(EVENT_OWNER_LUA\);" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/mqtt_sub_table.h match="fn\(topic\) runs once per freed topic no\n  // other active slot still holds" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.h match="MQTT_MAX_SUBS  = 16;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="if \(_client\.connected\(\)\) _client\.unsubscribe\(topic\);" -->
+Every MQTT and EventBus subscription a script makes is tagged as Lua-owned. A successful `lua.reload` frees all of them before the new state runs: the MQTT slots go back to the shared 16-slot table, a topic no other slot still holds is unsubscribed at the broker, and the Lua EventBus callbacks are dropped. Subscriptions the firmware itself holds stay. The new scripts subscribe again from their top level, so repeated reloads never fill the table or pile up callbacks.
 
-The point: you can `lua.reload` mid-flight without leftover subscriptions executing under the new state. The C++ side keeps the broker subscription alive across reloads, so the new script's `MQTT.subscribe` re-attaches its own handler without re-talking to the broker.
+The reload also bumps a generation counter that every Lua callback checks, so a callback from the previous load that is already in flight no-ops instead of running under the new state. `Node.setTimeout` slots are cleared at the start of `createState`, so a pending timer from the previous load never fires.
+
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/Shell.cpp match="Network config changed - reinitializing MQTT subscriptions" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/MQTTClient.cpp match="void MQTTClient::reinitSubscriptions\(\) \{(.|\n)*?_subs\.removeOwner\(MQTT_SUB_OWNER_CORE\);" -->
+A `config.reload` that changes an MQTT network setting (`mqtt.topic_prefix`, broker, port, user, password or `ota.cmd_topic`) rebuilds only the firmware's own subscriptions and keeps the Lua ones, which hold the whole topics the script chose.
 
 ## Alert envelope
 
@@ -306,7 +332,7 @@ If a script has a syntax error or runtime error during top-level execution, the 
 - **Heap pressure**. The Lua state itself costs ~30 KB plus per-script overhead. On a board without PSRAM, heavy table allocations during alert handlers can spike free-heap below the TLS reconnect floor and trigger a preventive reboot. Use `collectgarbage("collect")` from a periodic `Node.setTimeout` if you see linear heap decline.
 - **8 timer slots**. Concurrent `setTimeout` count is hard-capped. Long polling loops should re-arm one timer at a time, not stack many.
 - **No file I/O from Lua at all**. `io` is nil-out for sandbox reasons (see Stdlib sandbox above). Config is read-only from Lua (`Config.get`); a config change goes through the `config.set` shell command, and state leaves the device over MQTT. For LittleFS cleanup use the `fs.rm` shell command.
-- **Lua 5.3 integer / float semantics**. Numbers from `JSON.decode` come as floats; cast with `math.floor` or `n // 1` (integer division) before string formatting if you want an integer print.
+- **Lua 5.3 integer / float semantics**. `JSON.decode` gives a whole number as an integer and a fractional one as a float (see [`JSON`](#json)). A reading such as `21.0` that the sender wrote with a decimal point arrives as a float, so cast with `math.floor` or `n // 1` (integer division) before string formatting if you want an integer print.
 - **String concatenation in tight loops** allocates. Prefer `table.concat` for building large strings.
 - **Generation guard does not cover top-level side effects**. If `main.lua` allocates a global, hot-reload re-runs it from scratch in a new state - the previous state's global is gone, but any external resource the previous run held (a WiFi socket, a file handle) is also gone. Modules clean up their own resources on script-state teardown; Lua-side helpers should not hold resources that need explicit close.
 

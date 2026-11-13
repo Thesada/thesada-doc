@@ -30,6 +30,11 @@ Because the firmware re-publishes `/info` right after a `config.reload`, a chang
 - **config.json** is pulled with a single `config.dump` command.
 - **Lua scripts** are pulled with chunked `fs.cat` (paged reads), since a script can exceed the MQTT buffer. See [Chunked File I/O]({{ site.baseurl }}/firmware/chunked-io.html).
 
+<!-- claim: repo=thesada-app ref=dev file=pkg/mqtt/mqtt_snapshot.go match="func \(c \*Client\) driftCLI\(topicPrefix, command, payload string\)" -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/mqtt/mqtt.go match="cliTimeout:       cfg\.CLIRequestTimeout," -->
+<!-- claim: repo=thesada-app ref=dev file=pkg/config/config.go match="envOrDuration\(\"THESADA_CLI_REQUEST_TIMEOUT\", 120\*time\.Second\)" -->
+Each round trip of a pull (the `config.dump`, the script listing, every `fs.cat` page) waits up to `THESADA_CLI_REQUEST_TIMEOUT` for the device, default 120 s, the same budget as an operator command from the admin config page. That leaves a device on cellular time to answer.
+
 Pulled content is validated before it is stored: a config must parse as a JSON object, and a script must be non-empty and free of shell-error markers. Invalid pulls are discarded rather than recorded.
 
 ## What is stored

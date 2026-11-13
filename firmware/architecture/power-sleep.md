@@ -98,8 +98,12 @@ stateDiagram-v2
 }
 ```
 
-- `sleep_s` minimum: 10 seconds
-- `wake_s` minimum: 10 seconds
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/SleepManager.cpp match="if \(sleepS < 10\)  sleepS = 10;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/SleepManager.h match="static uint64_t _sleepUs;" why="sleep_s past 4294 s no longer wraps the 32-bit microsecond count" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/sleep_policy.h match="SLEEP_WAKE_S_MIN = 10;\nconstexpr uint32_t SLEEP_WAKE_S_MAX = 86400;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/SleepManager.cpp match="sleep\.wake_clamped wake_s=%lu max=%lu" -->
+- `sleep_s` minimum: 10 seconds. Longer sleeps are kept whole, the timer counts 64-bit microseconds.
+- `wake_s` is held to 10 seconds .. 1 day (86400 s). A larger value is cut to 1 day and logs `sleep.wake_clamped`, and the `sleep` command shows the window actually applied.
 - Default: disabled (continuous operation)
 
 **RTC memory** (persists across deep sleep, cleared on power cycle):

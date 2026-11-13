@@ -167,6 +167,32 @@ request carrying no credential attempted nothing, so neither is counted -
 otherwise a page on another origin could lock an operator out of their own
 device with five requests it cannot read.
 
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/http_body_policy.h match="if \(!authed\) return HTTP_BODY_UNAUTHORIZED;\n  if \(chunked \|\| !lengthDeclared\) return HTTP_BODY_LENGTH_REQUIRED;" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="Content-Length required, chunked or unsized bodies are refused" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="form body too large" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-mod-httpserver/src/HttpServer.cpp match="multipart only on /ota" -->
+**Request bodies** - a body without a declared length, a large form body and a multipart body off `/ota` are refused before anything is written:
+
+```bash
+# chunked body -> 411
+curl -s -u "admin:$WEB_PASS" -X POST 'http://[ip]/api/file?path=/t.txt&source=littlefs' \
+  -H 'Content-Type: application/octet-stream' -H 'Transfer-Encoding: chunked' --data-binary @t.txt
+# -> {"ok":false,"error":"Content-Length required, chunked or unsized bodies are refused"}
+
+# POST with no Content-Length header at all -> the same 411, /t.txt untouched
+curl -s -u "admin:$WEB_PASS" -X POST 'http://[ip]/api/file?path=/t.txt&source=littlefs'
+
+# form body past 1 KB -> 413 on any route, before auth
+head -c 2000 /dev/zero | tr '\0' a | curl -s -X POST http://[ip]/api/config --data-binary @-
+# -> {"ok":false,"error":"form body too large"}, logs web.body_refused reason=form_too_large
+
+# multipart off /ota -> 415
+curl -s -u "admin:$WEB_PASS" -F file=@t.txt 'http://[ip]/api/file?path=/t.txt&source=littlefs'
+# -> {"ok":false,"error":"multipart only on /ota"}
+```
+
+A declared `Content-Length: 0` is the one empty body: on `POST /api/file` it writes an empty file. See [Config & Web UI]({{ site.baseurl }}/firmware/architecture/config-web.html) for the caps and the shared body budget.
+
 ---
 
 ## 7. Config Editor
