@@ -420,8 +420,9 @@ The actual download + flash + reboot sequence runs from the OTA module's loop on
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.install_recorded version=%s" -->
 A plain check refuses the release a crash-loop slot switch fled, or a build it installed that never confirmed, with `status/ota` reason `fled-release`, for as long as the [fled-release skip]({{ site.baseurl }}/firmware/architecture/connectivity.html#the-fled-release-skip) runs. `--force` installs it and logs `ota.force_reflash version=fled`.
 
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp absent="insecure_url" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"insecure-url\"\)" -->
-The manifest URL, configured or given, and the binary `url` in the manifest must be `https://`. An `http://` one is refused with `status/ota` reason `insecure-url` unless `ota.allow_insecure` is set, `--force` or not.
+Use `https://` for the manifest URL, configured or given, and for the binary `url` in the manifest. The released firmware fetches an `http://` one as plain HTTP over WiFi. In the next release an `http://` one is refused with `status/ota` reason `insecure-url` unless `ota.allow_insecure` is set, `--force` or not. See [URL scheme]({{ site.baseurl }}/firmware/architecture/connectivity.html#ota-update-otaupdate).
 
 ### ota.status
 

@@ -22,7 +22,7 @@ description: "OTA update testing (pull and push), temperature alerts, webhook, S
 | Manifest version matches current, force mode | `[WRN][OTA] Force flag set - re-flashing same or older version` then flash |
 | Manifest version is newer | Download + verify + install + reboot |
 | Manifest SHA256 mismatch | `[ERR][OTA] SHA256 mismatch` - no flash |
-| `ota.check http://<host>/firmware.json`, then an `https://` manifest of a newer version whose `url` is `http://`, both with `ota.allow_insecure` unset | `ota.check_refused reason=insecure_url`, then `ota.phase_change from=fetch_manifest to=idle reason=insecure_url`. `status/ota` shows `refused` / `insecure-url` both times, and nothing is downloaded |
+| Next release only: `ota.check http://<host>/firmware.json`, then an `https://` manifest of a newer version whose `url` is `http://`, both with `ota.allow_insecure` unset | `ota.check_refused reason=insecure_url`, then `ota.phase_change from=fetch_manifest to=idle reason=insecure_url`. `status/ota` shows `refused` / `insecure-url` both times, and nothing is downloaded |
 
 ### 9a. Debug CLI (partition + chip + MQTT state)
 
