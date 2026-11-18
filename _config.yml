@@ -31,7 +31,7 @@ mermaid:
   version: "10.9.0"
 nav_sort: case_insensitive
 
-footer_content: "Thesada - AGPL-3.0-only (app) / GPL-3.0-only (firmware) / CC BY-NC-SA 4.0 (docs) - <a href='/legal/license.html'>License</a> - <a href='https://foothillsbuilds.com/about/' target='_blank' rel='noopener noreferrer'>About</a> - A <a href='https://hit-con.ca'>Humpf IT</a> project"
+footer_content: "Thesada - AGPL-3.0-only (app) / GPL-3.0-only (firmware) / CC BY-NC-SA 4.0 (docs) - <a href='/legal/license.html'>License</a> - <a href='https://foothillsbuilds.com/about/' target='_blank' rel='noopener noreferrer'>About</a> - A <a href='https://hit-con.ca'>HIT CON</a> project"
 
 aux_links:
   "GitHub":
