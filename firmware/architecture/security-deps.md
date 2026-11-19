@@ -60,7 +60,10 @@ A connection without a valid token (no token, a used or expired one, another IP'
 
 ### TLS exceptions
 
-MQTT and OTA load `/ca.crt` from LittleFS. If that file is missing or empty, both use the certificate bundle baked into the firmware. A boot clock floor is applied before the first MQTT handshake, so there is no unchecked connection while waiting for NTP.
+MQTT and OTA load `/ca.crt` from LittleFS. If that file is missing or empty, both use the certificate bundle baked into the firmware. MQTT checks the broker chain from the first connect, so there is no unchecked connection while waiting for NTP. The exception is `mqtt.allow_insecure` with no CA at all, in the table below.
+
+<!-- claim: repo=thesada-fw file=docs/invariants.md match="### Certificate validity dates are not enforced, at any clock value" -->
+The TLS stack on this build never checks certificate dates (`notBefore`, `notAfter`), at any clock value. An expired or not-yet-valid certificate is accepted on MQTT and OTA. Trust rests on the chain to the CA, and for OTA also on the binary `sha256` from the manifest. Certificate rotation is an operational step, not something the device enforces.
 
 `setInsecure()` (TLS without certificate validation) is not the MQTT default.
 

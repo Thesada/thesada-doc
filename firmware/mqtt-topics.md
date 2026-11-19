@@ -66,7 +66,7 @@ Retained JSON blob describing the device. Published once per successful connect,
   "chip_model": "esp32-s3",
   "chip_revision": 0,
   "chip_cores": 2,
-  "mac": "02:00:00:aa:bb:cc",
+  "mac": "<mac address>",
   "psram": true,
   "build_time": "<build timestamp>",
   "config_hash": "a3b1...e2",
@@ -110,7 +110,7 @@ The point: when a device is decommissioned, the retained payloads it owns persis
 | `<prefix>/sensor/battery/charging` | (singleton) | `Charging` / `Discharging` |
 | `<prefix>/sensor/wifi/rssi` | (singleton) | `-54` |
 | `<prefix>/sensor/wifi/ssid` | (singleton) | `MyWiFi` |
-| `<prefix>/sensor/wifi/ip` | (singleton) | `192.168.1.50` |
+| `<prefix>/sensor/wifi/ip` | (singleton) | `<ip>` |
 | `<prefix>/sensor/heap/free` | (singleton) | `123456` |
 | `<prefix>/sensor/heap/min_free` | (singleton) | `89012` |
 | `<prefix>/sensor/heap/max_alloc_block` | (singleton) | `38400` |
@@ -164,12 +164,12 @@ JSON state events. Published on every OTA code path so operators can drive dashb
 |---|---|---|
 | `updating` | Manifest fetched and a flash is in progress. | not present |
 | `up-to-date` | Manifest matches the running version; nothing to do. | not present |
-| `refused` | OTA aborted before the download started. | one of `no-transport`, `no-manifest-url`, `no-ca`, `insecure-url`, `heap-low`, `manifest-fetch-failed`, `fled-release` |
+| `refused` | OTA aborted before the download started. | one of `no-transport`, `no-manifest-url`, `no-ca`, `heap-low`, `manifest-fetch-failed`, `fled-release`, and `insecure-url` from the next release |
 | `failed` | Download or flash phase failed. | free-form short string |
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"insecure-url\"\)" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="return allowInsecure && strncmp\(url, \"http://\", 7\) == 0;" -->
-`insecure-url` means the manifest URL or the binary `url` in the manifest does not start with `https://`. `http://` passes only with `ota.allow_insecure` set. Nothing is fetched. See [OTA Update]({{ site.baseurl }}/firmware/architecture/connectivity.html#ota-update-otaupdate).
+`insecure-url` comes with the next release. It means the manifest URL or the binary `url` in the manifest does not start with `https://`. `http://` passes only with `ota.allow_insecure` set. A refused manifest URL fetches nothing. A refused binary URL comes after the manifest fetch, so no binary is fetched. The released firmware has no such check and fetches an `http://` URL. See [OTA Update]({{ site.baseurl }}/firmware/architecture/connectivity.html#ota-update-otaupdate).
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"fled-release\"\)" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.install_recorded version=%s" -->
