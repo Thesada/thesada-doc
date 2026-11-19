@@ -68,7 +68,30 @@ allow_anonymous false
 password_file /etc/mosquitto/passwd
 ```
 
-`certfile` and `keyfile` together turn TLS on for that listener. Create the password file with `mosquitto_passwd -c /etc/mosquitto/passwd demo`.
+`certfile` and `keyfile` together turn TLS on for that listener. The `openssl` commands left the files in your working directory, so copy them to where the config looks. Mosquitto 2 drops to the `mosquitto` user before it loads them, so that user has to own the key and nobody else may read it:
+
+```bash
+sudo install -d -m 0755 /etc/mosquitto/certs
+sudo install -m 0644 server.crt ca.crt /etc/mosquitto/certs/
+sudo install -m 0600 -o mosquitto -g mosquitto server.key /etc/mosquitto/certs/
+```
+
+Create the password file and give it the same owner and mode:
+
+```bash
+sudo mosquitto_passwd -c /etc/mosquitto/passwd demo
+sudo chown mosquitto:mosquitto /etc/mosquitto/passwd
+sudo chmod 0600 /etc/mosquitto/passwd
+```
+
+`-c` creates the file and overwrites one that already exists, with every user in it. To add a user to an existing file, leave it out: `sudo mosquitto_passwd /etc/mosquitto/passwd another-user`.
+
+Restart the broker so the listener picks up the certificate, and check that it came up:
+
+```bash
+sudo systemctl restart mosquitto
+sudo systemctl status mosquitto
+```
 
 Test from another machine before touching the ESP32. If this fails, the sketch will too:
 
@@ -97,19 +120,21 @@ const char* CA_CERT = R"PEM(
 
 WiFiClientSecure tls;
 PubSubClient mqtt(tls);
+char clientId[24];  // unique per board, see below
 
 void setup() {
   Serial.begin(115200);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   while (WiFi.status() != WL_CONNECTED) delay(250);
 
+  snprintf(clientId, sizeof(clientId), "esp32-%012llx", ESP.getEfuseMac());
   tls.setCACert(CA_CERT);
   mqtt.setServer("mqtt.example.com", 8883);  // the name in the server certificate
 }
 
 void loop() {
   if (!mqtt.connected()) {
-    if (mqtt.connect("esp32-demo", "demo", "demo-password")) {
+    if (mqtt.connect(clientId, "demo", "demo-password")) {
       mqtt.publish("demo/hello", "connected over TLS");
     } else {
       Serial.printf("mqtt connect failed, state=%d\n", mqtt.state());
@@ -127,6 +152,8 @@ What the calls do:
 | `tls.setCACert(pem)` | the broker certificate must chain to this CA. The string is not copied, so it has to outlive the client |
 | `mqtt.setServer(name, 8883)` | the name is sent as SNI and compared with the certificate |
 | `tls.setInsecure()` | encrypts without checking who is on the other end. Fine for five minutes of debugging, not for a device you leave running |
+
+The client ID comes from the chip's factory MAC, so every board gets its own. The broker keeps one session per client ID and drops the older connection when a second one logs in with the same ID. Two boards flashed with a fixed ID knock each other off, reconnect in `loop()`, and keep doing that.
 
 Traps that cost an evening:
 
@@ -175,6 +202,17 @@ use_identity_as_username true
 | `require_certificate true` | no valid client certificate, no connection |
 | `use_identity_as_username true` | the certificate CN is used as the MQTT username, and the password file is not used on this listener |
 
+Neither listener limits topics. Any device that gets in can publish and subscribe to everything, including another device's topics. Before you rely on one certificate per device for isolation, add an `acl_file`. A minimal one that keeps each certificate under its own CN and lets the `demo` password user keep `demo/`:
+
+```text
+user demo
+topic readwrite demo/#
+
+pattern readwrite devices/%u/#
+```
+
+Point the broker at it with `acl_file /etc/mosquitto/acl`, give it the same owner and mode as the password file, and restart. With an ACL file loaded, every topic it does not grant is denied. The format is in [mosquitto.conf(5)](https://mosquitto.org/man/mosquitto-conf-5.html) under `acl_file`.
+
 On the ESP32, add the two PEM strings and connect without a password:
 
 ```cpp
@@ -183,7 +221,7 @@ tls.setCertificate(CLIENT_CERT);  // client.crt
 tls.setPrivateKey(CLIENT_KEY);    // client.key
 mqtt.setServer("mqtt.example.com", 8884);
 // ...
-mqtt.connect("esp32-demo");
+mqtt.connect(clientId);  // the per-board ID from above
 ```
 
 Both listeners can run side by side: 8883 with a password for devices that have no certificate yet, 8884 for those that do.
@@ -246,7 +284,7 @@ Where `/ca.crt` comes from, how to replace it on a running device, and the publi
 | Topic | Source |
 |---|---|
 | `openssl` commands, distinct subjects | [mosquitto-tls(7)](https://mosquitto.org/man/mosquitto-tls-7.html) |
-| `listener`, `certfile`, `keyfile`, `cafile`, `require_certificate`, `use_identity_as_username` | [mosquitto.conf(5)](https://mosquitto.org/man/mosquitto-conf-5.html) |
+| `listener`, `certfile`, `keyfile`, `cafile`, `require_certificate`, `use_identity_as_username`, `acl_file` | [mosquitto.conf(5)](https://mosquitto.org/man/mosquitto-conf-5.html) |
 | `setCACert`, `setCertificate`, `setPrivateKey`, `setInsecure`, SNI | [arduino-esp32: NetworkClientSecure](https://github.com/espressif/arduino-esp32/tree/master/libraries/NetworkClientSecure) |
 | Buffer size, `state()` codes | [PubSubClient.h](https://github.com/knolleary/pubsubclient/blob/v2.8/src/PubSubClient.h) |
 | `CONFIG_MBEDTLS_HAVE_TIME_DATE` | [ESP-IDF: components/mbedtls/Kconfig](https://github.com/espressif/esp-idf/blob/v5.5/components/mbedtls/Kconfig) |

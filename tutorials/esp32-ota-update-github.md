@@ -121,18 +121,26 @@ bool otaUpdate() {
   if (!http.begin(tls, FW_URL)) return false;
   if (http.GET() != HTTP_CODE_OK) { http.end(); return false; }
 
-  int total = http.getSize();  // -1 when the server sends no Content-Length
-  if (!Update.begin(total > 0 ? total : UPDATE_SIZE_UNKNOWN)) { http.end(); return false; }
+  // -1 without Content-Length, which includes a chunked body. The raw stream
+  // would carry the chunk framing into the slot, so refuse it.
+  int total = http.getSize();
+  if (total <= 0) {
+    Serial.println("ota: no Content-Length, refusing the download");
+    http.end();
+    return false;
+  }
+  WiFiClient* stream = http.getStreamPtr();  // nullptr once the server has hung up
+  if (!stream) { http.end(); return false; }
+  if (!Update.begin(total)) { http.end(); return false; }
 
   mbedtls_sha256_context sha;
   mbedtls_sha256_init(&sha);
   mbedtls_sha256_starts(&sha, 0);  // 0 = SHA-256
 
-  WiFiClient* stream = http.getStreamPtr();
   uint8_t buf[1024];
   int got = 0;
   uint32_t lastData = millis();
-  while ((total <= 0 || got < total) && millis() - lastData < 10000) {
+  while (got < total && millis() - lastData < 10000) {
     int n = stream->available();
     if (n <= 0) {
       if (!http.connected()) break;
@@ -153,8 +161,8 @@ bool otaUpdate() {
   char hex[65];
   for (int i = 0; i < 32; i++) snprintf(hex + 2 * i, 3, "%02x", digest[i]);
 
-  if (got == 0 || (total > 0 && got != total) || strcasecmp(hex, FW_SHA256) != 0) {
-    Update.abort();  // the boot slot stays as it was
+  if (got != total || strcasecmp(hex, FW_SHA256) != 0) {
+    Update.abort();  // short stream or wrong hash: the boot slot stays as it was
     return false;
   }
   return Update.end(true);  // makes the new slot the one to boot
@@ -179,6 +187,8 @@ void loop() {
   if (Serial.read() == 'u' && otaUpdate()) ESP.restart();
 }
 ```
+
+The sketch only accepts a response with a `Content-Length`. `getStreamPtr()` hands over the raw connection, so a chunked body would put the chunk sizes between the firmware bytes and the hash would fail. GitHub release assets come with a length, so this costs nothing there. The stream pointer is checked before `Update.begin()`, so a server that hangs up after the headers ends the update before anything is written. A stream that stops early leaves `got` short of `total`, and `Update.abort()` drops the partial image.
 
 Get the hash on the build machine with `sha256sum firmware.bin` (`shasum -a 256` on macOS).
 
