@@ -76,7 +76,7 @@ sudo install -m 0644 server.crt ca.crt /etc/mosquitto/certs/
 sudo install -m 0600 -o mosquitto -g mosquitto server.key /etc/mosquitto/certs/
 ```
 
-Create the password file and give it the same owner and mode:
+Create the password file and give it the same owner and mode. `-c` creates the file and overwrites one that already exists, with every user in it. To add a user to an existing file, leave it out: `sudo mosquitto_passwd /etc/mosquitto/passwd another-user`.
 
 ```bash
 sudo mosquitto_passwd -c /etc/mosquitto/passwd demo
@@ -84,7 +84,7 @@ sudo chown mosquitto:mosquitto /etc/mosquitto/passwd
 sudo chmod 0600 /etc/mosquitto/passwd
 ```
 
-`-c` creates the file and overwrites one that already exists, with every user in it. To add a user to an existing file, leave it out: `sudo mosquitto_passwd /etc/mosquitto/passwd another-user`.
+`mosquitto_passwd` asks for the password twice. Enter `demo-password` both times, the password the test and the sketch below use.
 
 Restart the broker so the listener picks up the certificate, and check that it came up:
 
@@ -213,6 +213,8 @@ pattern readwrite devices/%u/#
 
 Point the broker at it with `acl_file /etc/mosquitto/acl`, give it the same owner and mode as the password file, and restart. With an ACL file loaded, every topic it does not grant is denied. The format is in [mosquitto.conf(5)](https://mosquitto.org/man/mosquitto-conf-5.html) under `acl_file`.
 
+A `pattern` line applies to every username on both listeners, so a password user named like a certificate CN gets that device's topics too. Keep password usernames distinct from certificate CNs.
+
 On the ESP32, add the two PEM strings and connect without a password:
 
 ```cpp
@@ -221,8 +223,12 @@ tls.setCertificate(CLIENT_CERT);  // client.crt
 tls.setPrivateKey(CLIENT_KEY);    // client.key
 mqtt.setServer("mqtt.example.com", 8884);
 // ...
-mqtt.connect(clientId);  // the per-board ID from above
+if (mqtt.connect(clientId)) {  // the per-board ID from above
+  mqtt.publish("devices/esp32-demo/hello", "connected over mTLS");
+}
 ```
+
+The username on this listener is the CN `esp32-demo`, so the ACL grants it `devices/esp32-demo/#` and denies the `demo/hello` topic of the password sketch.
 
 Both listeners can run side by side: 8883 with a password for devices that have no certificate yet, 8884 for those that do.
 
