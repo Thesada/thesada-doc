@@ -169,7 +169,7 @@ JSON state events. Published on every OTA code path so operators can drive dashb
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"insecure-url\"\)" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="return allowInsecure && strncmp\(url, \"http://\", 7\) == 0;" -->
-`insecure-url` comes with the next release. It means the manifest URL or the binary `url` in the manifest does not start with `https://`. `http://` passes only with `ota.allow_insecure` set. Nothing is fetched. The released firmware has no such check and fetches an `http://` URL. See [OTA Update]({{ site.baseurl }}/firmware/architecture/connectivity.html#ota-update-otaupdate).
+`insecure-url` comes with the next release. It means the manifest URL or the binary `url` in the manifest does not start with `https://`. `http://` passes only with `ota.allow_insecure` set. A refused manifest URL fetches nothing. A refused binary URL comes after the manifest fetch, so no binary is fetched. The released firmware has no such check and fetches an `http://` URL. See [OTA Update]({{ site.baseurl }}/firmware/architecture/connectivity.html#ota-update-otaupdate).
 
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="publishOtaRefusal\(\"fled-release\"\)" -->
 <!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/OTAUpdate.cpp match="ota.install_recorded version=%s" -->

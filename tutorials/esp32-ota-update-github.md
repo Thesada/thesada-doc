@@ -240,12 +240,16 @@ A manifest over 8 KB is refused.
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="mbedtls_sha256_update\(&sha_ctx, buf, len\);" -->
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/ota_verify_policy.h match="if \(strlen\(expectedHex\) != OTA_SHA256_HEX_LEN\) return false;\n  return strcasecmp\(computedHex, expectedHex\) == 0;" -->
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="reason=sha256_mismatch computed=%s\", computedHex\);\n    Update.abort\(\);" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="http\.begin\(plainClient, url\);" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp absent="insecure_url" -->
+<!-- claim: repo=thesada-fw ref=dev file=lib/thesada-core/src/ota_verify_policy.h match="return allowInsecure && strncmp\(url, \"http://\", 7\) == 0;" -->
 
 | Step | Thesada |
 |---|---|
 | Redirects | `HTTPClient` following is off. The client follows up to 5 hops itself, one request each, and only to an absolute URL with the same scheme, so an `https` fetch never drops to `http` |
 | Root CAs | `/ca.crt` on the LittleFS partition when present. Otherwise a bundle compiled into the firmware: ISRG Root X1 and X2, DigiCert Global Root CA, G2 and G3, USERTrust ECC |
 | No CA at all | OTA stays off unless `ota.allow_insecure` is set in the config |
+| URL scheme | Use `https://` for the manifest and the binary `url`. The released firmware fetches an `http://` URL over WiFi as plain HTTP, `ota.allow_insecure` set or not, so an on-path host can swap the binary and its hash together. In the next release an `http://` URL is refused unless `ota.allow_insecure` is set. See [URL scheme]({{ site.baseurl }}/firmware/architecture/connectivity.html#ota-update-otaupdate) |
 | Hash | SHA256 over the stream while it is written, the same way as the sketch. The manifest value must be exactly 64 hex characters, either case |
 | Mismatch | `Update.abort()`, logged as `reason=sha256_mismatch` with the computed hash. The running image stays |
 
@@ -280,6 +284,12 @@ The bootloader only catches an image that resets before the confirm. Thesada add
 | Confirmed | the other slot becomes the boot slot and the device restarts |
 
 Without such a target the running image stays. So a release that survives its first five minutes and starts crash-looping a day later still gets replaced by the previous one.
+
+<!-- claim: repo=thesada-fw ref=26.09.3 file=lib/thesada-core/src/ota_health_policy.h absent="OTA_HEALTH_CRASH_LIMIT" -->
+<!-- claim: repo=thesada-fw ref=26.10.1 file=lib/thesada-core/src/ota_health_policy.h match="#define OTA_HEALTH_CRASH_LIMIT 3u" -->
+<!-- claim: repo=thesada-fw ref=26.10.2 file=lib/thesada-core/src/OTAUpdate.cpp absent="fled_ver" -->
+<!-- claim: repo=thesada-fw ref=26.10.2 file=lib/thesada-core/src/OTAUpdate.cpp absent="remove\(\"left_" -->
+This needs 26.10.1 or newer on the crashing image. When the previous image is 26.10.2 or older, it pulls the fled build again until the manifest changes, and 26.10.1 and 26.10.2 accept no rollback target after their first switch from a confirmed image ([Rollback and the crash streak]({{ site.baseurl }}/firmware/architecture/connectivity.html#rollback-and-the-crash-streak)).
 
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/ota_health_policy.h match="A USB flash leaves its slot UNDEFINED, which the bootloader never rolls" -->
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/ota_health_policy.h match="if \(state != OTA_IMG_UNDEFINED \|\| !streakKnown\) return false;\n  return otaHealthSettleDue\(uptimeMs, lastFailMs\);" -->

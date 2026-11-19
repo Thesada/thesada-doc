@@ -103,7 +103,11 @@ mosquitto_pub ... -t '<prefix>/cli/ota.check' -m '--force https://example.com/fi
 Force mode bypasses `isNewer()` and the [fled-release skip](#the-fled-release-skip), so dev iteration does not need a `FIRMWARE_VERSION` bump every test cycle. Intended for development and for recovering a stuck device without version juggling.
 
 <!-- claim: repo=thesada-fw file=lib/thesada-core/src/boot_wait_policy.h match="TASK_WDT_TIMEOUT_MS = 30000;" -->
-**Watchdog-safe download loop**: the per-chunk download path feeds the task watchdog after each `Update.write()` and uses short socket + handshake timeouts (10 s) on the local `WiFiClientSecure`. This prevents a slow `readBytes()` on a flaky upstream from blocking the client past the 30 s task watchdog window and panic-rebooting mid-flash. Required for OTA reliability on weak wireless links.
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="yield\(\); Watchdog::feed\(\);\n    Shell::pumpConsole\(\);" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="int n = stream->readBytes\(buf, std::min\(\(size_t\)avail, sizeof\(buf\)\)\);" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="uint32_t deadline = millis\(\) \+ 5UL \* 60UL \* 1000UL;" -->
+<!-- claim: repo=thesada-fw file=lib/thesada-core/src/OTAUpdate.cpp match="Unfed: TCP 10 s \+ TLS 10 s \+ headers 5 s idle per line" -->
+**Watchdog-safe download loop**: over WiFi the body loop feeds the task watchdog on every pass and reads at most `min(available, 1024)` bytes, which are already buffered, so `readBytes()` never waits on a slow sender. A trickle keeps the loop polling and fed, and the whole body is capped at 5 minutes. The task watchdog window is 30 s. The steps before the loop are not fed while they wait: connect, TLS handshake and headers are bounded by 10 s, 10 s and 5 s of silence per header line.
 
 **TLS:** loads `/ca.crt` from LittleFS. If the file is missing or empty, the OTA client falls back to a PROGMEM bundle of common public TLS roots baked into the firmware. The OTA path stays cert-validated even when the LittleFS data partition has been wiped.
 
@@ -125,7 +129,7 @@ Force mode bypasses `isNewer()` and the [fled-release skip](#the-fled-release-sk
 | `http://`, `ota.allow_insecure` unset | refused, `--force` or not |
 | any other scheme | refused |
 
-A refused manifest URL logs `ota.check_refused reason=insecure_url url=...`. A refused binary URL logs `ota.phase_change from=fetch_manifest to=idle reason=insecure_url url=...`. Both publish `{"state":"refused","reason":"insecure-url"}` on `status/ota` and fetch nothing. The binary check runs before the [fled-release skip](#the-fled-release-skip), so it spends no try.
+A refused manifest URL logs `ota.check_refused reason=insecure_url url=...`. A refused binary URL logs `ota.phase_change from=fetch_manifest to=idle reason=insecure_url url=...`. Both publish `{"state":"refused","reason":"insecure-url"}` on `status/ota`. A refused manifest URL fetches nothing. A refused binary URL comes after the manifest fetch, so no binary is fetched. The binary check runs before the [fled-release skip](#the-fled-release-skip), so it spends no try.
 
 **config.json keys:**
 ```json
